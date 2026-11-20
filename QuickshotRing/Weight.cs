@@ -484,7 +484,7 @@ namespace QuickshotRing {
                 PlayerController? shooter = Find(d.Release)?.Shooter;
                 Pool(h, out float before, out float _);
                 var hit = new ImpactHit(0f, cripple, 1f, 1f, null, ImpactType.Spiritual, h.transform.position, Vector3.zero, Vector3.zero, null, null, shooter);
-                h.DetectImpact(hit);
+                using (HitScope.As(DealtBy.Weight, d.Release)) h.DetectImpact(hit); // balance telemetry
                 Pool(h, out float after, out float max);
                 if (Logs.Debug) MelonLogger.Msg(Inv($"[Archery] Weight: arrow {d.Release} '{c.Name}' stagger {d.Stagger:0.00} in {d.Parts} part(s) -> cripple {cripple:0.000} (Spiritual x{m:0.##}); pool {before:0.00} -> {after:0.00} of {max:0.00}"));
             }

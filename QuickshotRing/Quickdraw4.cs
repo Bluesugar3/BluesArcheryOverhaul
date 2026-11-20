@@ -290,10 +290,12 @@ namespace QuickshotRing {
                     Place(arrow, struck ? end + direction * 0.03f : end, direction);
 
                     string what = "nothing";
+                    using var _tel = HitScope.As(DealtBy.Line, shotEntity.Identifier); // balance telemetry: the line's hits (Ricochet and Shatter open their own)
                     ImpactTool tool = arrow.ImpactTool;
                     // Needles first (they never move or embed the arrow): one ray each at NeedleShare, no Line bonus, no weight.
                     int needles = Math.Min(Draws.ReleaseOf(shotEntity.Identifier)?.Plan.Echoes ?? 0, ReleasePlan.MaxNeedles);
                     if (needles > 0) {
+                        using var _needle = HitScope.As(DealtBy.Needle, shotEntity.Identifier); // balance telemetry: the needle lines
                         int hits = 0;
                         float share = Paths.Values.NeedleShare;
                         var names = new List<string>();

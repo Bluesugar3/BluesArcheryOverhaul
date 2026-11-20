@@ -1119,7 +1119,8 @@ namespace QuickshotRing {
                             int struckLock = s.homing && s.h.Chain && s.h.Let == LetGo.None && s.flight != null && !s.flight.Refused ? Seek.LockOf(s.flight, hit.collider) : -1;
                             // H1: a core arrow is no ghost (no gold stagger) and queues no jump of its own
                             if (server && s.tool != null)
-                                Hits.Spectral(s.tool, hit, s.share, s.charge, s.release, s.shooter, !s.core && (s.kind == SpectralKind.Inner || s.kind == SpectralKind.Outer), !s.core);
+                                Hits.Spectral(s.tool, hit, s.share, s.charge, s.release, s.shooter, !s.core && (s.kind == SpectralKind.Inner || s.kind == SpectralKind.Outer), !s.core,
+                                              TelemetryRules.SourceOf(s.kind, s.core));
                             if (visuals) {
                                 try {
                                     // a heavy arrow lands in the charged hit effect (gold sparks if that cannot be had)

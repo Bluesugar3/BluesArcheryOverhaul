@@ -223,6 +223,7 @@ namespace QuickshotRing {
             }
             Gather(struckId, struckHealth, point, Pvp.BlastLandsOnPlayers, shooter); // fixF I-2: players only with [PvP] BlastHitsPlayers
             int struck = 0, skipped = 0;
+            using var _tel = HitScope.As(DealtBy.Shatter, rec.Id); // balance telemetry: the blast's hits
             for (int i = 0; i < candidates.Count; i++) {
                 SplinterCandidate c = candidates[i];
                 float share = ShatterBlast.Share(struckId, point.x, point.y, point.z, axis.x, axis.y, axis.z, c, v, rec.MultiOrbs);

@@ -307,6 +307,7 @@ namespace QuickshotRing {
         /// <paramref name="copyOf"/> set: a copy of the real arrow's hit at <paramref name="multiplier"/> (Hits.Copy, its cripple copied
         /// at the same share); else a hand-made hit of <paramref name="tool"/> with no cripple (Hits.Apply). Under Hits.Dealing.</summary>
         static bool Hit(uint release, HealthObject target, Vector3 at, Vector3 fromC, ImpactTool? tool, ImpactHitWithTool? copyOf, float multiplier, out string how) {
+            using var _tel = HitScope.As(DealtBy.Ricochet, release); // balance telemetry
             Vector3 normal = (fromC - at).sqrMagnitude > 1e-6f ? (fromC - at).normalized : Vector3.up;
             bool dealt = false; how = "no detector";
             foreach (object o in target.ImpactDetectors) {

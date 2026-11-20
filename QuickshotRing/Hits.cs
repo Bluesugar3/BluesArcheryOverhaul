@@ -405,6 +405,7 @@ namespace QuickshotRing {
             public readonly HitBatch batch = new HitBatch();
             public readonly Dictionary<int, Payload> first = new Dictionary<int, Payload>();
             public readonly Dictionary<int, int> ghosts = new Dictionary<int, int>(); // ghost (inner/outer) arrows among the hits, per target
+            public readonly Dictionary<int, SpectralMix> mix = new Dictionary<int, SpectralMix>(); // balance telemetry: each kind's share, per target
         }
 
         // What one release did, for its closing log line.
@@ -463,7 +464,10 @@ namespace QuickshotRing {
         static readonly int T_Spectral = Timing.Section("hit Hits.Spectral (queue)");
         /// <param name="jumps">H1: false for a homing volley's core arrow: it is dealt with the rest but queues no Ricochet jump of its own
         /// (the core cluster's landing stands in once for the real arrow's jump, Seek.CoreEnded).</param>
-        internal static bool Spectral(ImpactTool tool, RaycastHit hit, float share, float chargeMultiplier, uint release, Player? shooter, bool ghost, bool jumps = true) {
+        /// <param name="kind">Balance telemetry: which kind of spectral arrow this is (TelemetryRules.SourceOf), so the batched hit's damage
+        /// can be split back by kind.</param>
+        internal static bool Spectral(ImpactTool tool, RaycastHit hit, float share, float chargeMultiplier, uint release, Player? shooter, bool ghost, bool jumps = true,
+                                      DealtBy kind = DealtBy.Ghost) {
             using var _t = Timing.Begin(T_Spectral, release);
             if (tool == null || hit.collider == null || !(share > 0f)) return false;
             ImpactDetector detector = hit.collider.GetComponentInParent<ImpactDetector>();
@@ -479,6 +483,7 @@ namespace QuickshotRing {
             if (!p.first.ContainsKey(key))
                 p.first[key] = new Payload { tool = bestTool, generator = best, detector = detector, channel = channel, point = hit.point, normal = hit.normal, charge = chargeMultiplier };
             p.batch.Add(key, share, jumps);
+            p.mix.TryGetValue(key, out SpectralMix m); m.Add(kind, share); p.mix[key] = m;
             if (ghost) { p.ghosts.TryGetValue(key, out int g); p.ghosts[key] = g + 1; }
             if (releases.TryGetValue(release, out ReleaseInfo info)) {
                 info.landed++;
@@ -533,7 +538,8 @@ namespace QuickshotRing {
                                 CripplingMultiplier = 0f,
                             };
                             inSpectral = true; current = info; Dealing = true;
-                            hitNow.Hit();
+                            rp.Value.mix.TryGetValue(key, out SpectralMix mix);
+                            using (HitScope.Spectral(rp.Key, mix)) hitNow.Hit(); // balance telemetry: split back by kind
                             dealt = true;
                         }
                         catch (Exception ex) { MelonLogger.Error($"[Archery] Spectral hit on '{pl.detector.name}' failed: {ex}"); }

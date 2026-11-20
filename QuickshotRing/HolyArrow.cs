@@ -101,6 +101,16 @@ namespace QuickshotRing {
         /// <summary>Client: the arrow left this bow (Volley.Fire, after the release was decided), so Holy Arrow is no longer armed.</summary>
         internal static void ClearClientArmed(BowString? bow) { if (bow != null) clientArmed.Remove(bow); }
 
+        // Client: arrows whose beam this client saw fire (BeamFiredSync), for WatcherSkipsKeptArrow; kept 2 s, at most 32.
+        static readonly Dictionary<uint, float> beamFired = new Dictionary<uint, float>();
+        static void NoteBeamFired(uint arrow) {
+            if (arrow == 0u) return;
+            if (beamFired.Count >= 32) beamFired.Clear();
+            beamFired[arrow] = Time.time;
+        }
+        static bool TakeBeamFired(uint arrow) =>
+            beamFired.TryGetValue(arrow, out float at) & beamFired.Remove(arrow) && Time.time - at <= 2f;
+
         static void SetClientArmed(BowString bow, uint arrow) {
             if (arrow == 0u) { clientArmed.Remove(bow); return; }
             if (clientArmed.Count > 64) clientArmed.Clear(); // a cap; a live draw re-arms on its next Charged status at worst
@@ -262,9 +272,10 @@ namespace QuickshotRing {
             internal static MethodInfo? Method => method;
             static bool Prefix(LightBeamSkill __instance, BowString bowString, NetworkEntity shotEntity) {
                 using var _t = Timing.Begin(T);
-                bool cast = false;
+                bool cast = false, keeping = false;
                 try {
                     cast = shotEntity != null && bowString != null && Skyfall.IsCast(shotEntity.Identifier);
+                    keeping = !cast;
                     if (!cast) return !(keepsArrow.Value && KeepArrow(__instance, bowString!, shotEntity!));
                     bowString!.IsIgnoringCollisionOnShoot = true;   // cast says it is not null (the test above it)
                     if (method != null)
@@ -272,7 +283,7 @@ namespace QuickshotRing {
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Skyfall: arrow {shotEntity!.Identifier} kept from Holy Arrow's sacrifice (Skyfall holds it; the server destroys it after the relay)");
                     return false;
                 }
-                catch (Exception e) { MelonLogger.Warning($"[Archery] {(cast ? "Skyfall: Holy Arrow's sacrifice check" : "Holy: keeping the arrow")} failed: {e.Message}"); return !cast; }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] {(keeping ? "Holy: keeping the arrow" : "Skyfall: Holy Arrow's sacrifice check")} failed: {e.Message}"); return !cast; }
             }
         }
 
@@ -299,7 +310,7 @@ namespace QuickshotRing {
         static readonly int T_Return = Timing.Section("tick HolyArrow.ReturnArrow");
         static System.Collections.IEnumerator ReturnArrow(Pickup arrow, Rigidbody? rb, PlayerController? owner) {
             yield return null;
-            using var _t = Timing.Begin(T_Return);   // after the yield: a using cannot span one
+            using var _t = Timing.Begin(T_Return);   // after the yield, so the frame wait is not timed
             try {
                 if (arrow == null || arrow.Entity == null || arrow.Entity.IsBeingDestroyed) yield break;
                 if (rb != null) rb.isKinematic = false;
@@ -339,6 +350,7 @@ namespace QuickshotRing {
                         shooter = shooter, centreDamage = blast.Value * charged, bow = bow != null && bow.Bow != null ? bow.Bow.transform : null,
                         channels = Channels(arrowTool), // the blast hurts what the sacrificed arrow could hurt
                     };
+                    Telemetry.Beam(entity.Identifier, arrowTool); // balance telemetry: the beam's hit and blast find this arrow's shot (never throws)
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Holy: beam ready, direct {direct.Value * charged:0.###}, blast centre {blast.Value * charged:0.###} (charge tier {tier} x{slow:0.##}); arrow: {Hits.Describe(arrowTool)}");
                     if (charged <= 0f) MelonLogger.Warning("[Archery] Holy: the sacrificed arrow has no damage rating (a shrine training arrow?), so this Holy Arrow will do no damage.");
                 }
@@ -366,12 +378,14 @@ namespace QuickshotRing {
             return shooting != 0u && shotStrength.TryGetValue(shooting, out strength);
         }
 
-        // Watching clients, [HolyArrow] KeepsArrow (review of 0.17.16): the server no longer destroys the arrow before it relays the
-        // shot, so a watcher's relayed Shooter.Shoot would find it, fly it locally and run the SHOOTER's beam path (Volley.Fire,
-        // BeamShot's own trail). A relayed shot of an arrow this client saw armed for Holy Arrow is shot with no arrow, exactly as
-        // when the game sacrificed it: the beam's own SyncFired message draws it (BeamFiredSync), and the server's dock moves the
-        // arrow to the quiver. A Skyfall cast keeps its arrow on purpose (SkyfallKeepsArrow) and is left alone. With KeepsArrow off the
-        // relayed arrow is already gone, so this never fires.
+        // Watching clients: whenever the server KEEPS a Holy Arrow's arrow ([HolyArrow] KeepsArrow, or RevampedSkills' arrow recovery,
+        // which skips the game's destroy whatever KeepsArrow says), its relayed Shooter.Shoot finds the arrow, and the watcher shoots
+        // the real arrow locally and resolves the release itself (Volley: "Charged ult:-"). A relayed shot of an arrow whose beam this
+        // client just saw fire (BeamFiredSync: the server sends SyncFired inside its own Shoot, 3-12 ms before it relays the shot, and
+        // clears the armed flag there, so the beam-fired record is what is checked) or that is still armed is shot with no arrow,
+        // exactly the vanilla sacrificed path (which logs the game's own "Failed shooting arrow" NullReferenceException each time); the
+        // beam is drawn from SyncFired, and the server moves the arrow. A sky shot (Skyfall, Festival, Fizzled) keeps its arrow and is
+        // left alone. The record is taken when used, so the same arrow's next plain shot is untouched.
         [HarmonyPatch(typeof(Shooter), nameof(Shooter.Shoot))]
         static class WatcherSkipsKeptArrow {
             static readonly int T = Timing.Section("patch Shooter.Shoot / HolyArrow.WatcherSkipsKeptArrow");
@@ -381,10 +395,11 @@ namespace QuickshotRing {
                 try {
                     if (!isFromNetwork || NetworkSceneManager.IsServer || pickup == null || pickup.Entity == null) return;
                     uint id = pickup.Entity.Identifier;
-                    if (!ArmedFlagFor(Volley.BowForShooter(__instance), id)) return;
                     // a sky shot (Skyfall, Festival, Fizzled) keeps its arrow: its storm is drawn from OnShoot. Read from the relayed
                     // claim (filled during SyncShoot's args.Serialize); Skyfall.IsCast is decided only later, in Draws.Release.
                     if (Claims.TryRelay(id, out ShotClaim? c) && c != null && c.Sky != SkyCode.None) return;
+                    bool fired = TakeBeamFired(id);
+                    if (!fired && !ArmedFlagFor(Volley.BowForShooter(__instance), id)) return;
                     pickup = null!;
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Holy: relayed beam shot of kept arrow {id}: shot without the arrow, as a sacrificed one");
                 }
@@ -471,7 +486,10 @@ namespace QuickshotRing {
                 try {
                     if (!SeenBeamRule.DrawsFired(false, ApplicationManager.IsHeadless, IsBeam(__instance.Entity), false, seen.ContainsKey(__instance))) return;
                     BowString? bow = BowHolding(__instance, out string name, out bool local);
-                    if (bow != null) ClearClientArmed(bow); // Volley.Fire never runs here for this shot
+                    if (bow != null) {
+                        if (clientArmed.TryGetValue(bow, out uint armedArrow)) NoteBeamFired(armedArrow);   // for WatcherSkipsKeptArrow
+                        ClearClientArmed(bow); // Volley.Fire never runs here for this shot
+                    }
                     float brightness = SeenBeamRule.TrailBrightness(local, Volley.OtherArcherBrightness);
                     if (seen.Count > 32) seen.Clear();
                     seen[__instance] = new SeenBeam { trail = Trail.Begin(__instance, brightness, follow: false), name = name };

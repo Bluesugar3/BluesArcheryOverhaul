@@ -274,6 +274,7 @@ namespace QuickshotRing {
                 releases[id] = r;
                 releaseBuilds[id] = build;
                 if (server && sky == SkyCode.None) Claims.PutResolved(id, r, ms, build);   // a Skyfall release's relay was put by Skyfall.DecideServer
+                if (server) Telemetry.Shot(id, owner, r, build, ms, sky, test);   // balance telemetry: one row per release (never throws)
                 // Weight: what this arrow carries into its first creature hit (server: stagger, interrupt; clients: the looks).
                 try {
                     if (server) Weight.Arm(id, r, build, owner, bow);

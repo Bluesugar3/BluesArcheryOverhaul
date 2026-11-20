@@ -6,7 +6,7 @@ using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(QuickshotRing.Main), "QuickshotRing", "0.18.0", "dmand")]
+[assembly: MelonInfo(typeof(QuickshotRing.Main), "QuickshotRing", "0.18.3", "dmand")]
 [assembly: MelonGame("Alta", "A Township Tale")]
 
 namespace QuickshotRing {
@@ -108,6 +108,7 @@ namespace QuickshotRing {
             TreeColours.Init();
             Tablet.Init();
             Skyfall.Init(); // Skyfall, the admin skill ([Skyfall]); before Cfg.Ready, which records, migrates and checksums only the categories that exist then
+            Telemetry.Init(); // balance telemetry ([Telemetry], server, not shared)
             Cfg.Ready();
             TimingHost.Refresh(); // G5: after any reset or migration; measures its own overhead once when [Timing] Enabled
             TestTools.Started(); // the request numbers in the file at start-up are never acted on
@@ -136,6 +137,8 @@ namespace QuickshotRing {
                 try { SkyfallServer.Reset(); } // Skyfall: landings still waiting are dropped
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Skyfall: shutdown clean-up failed: {e.Message}"); }
             }
+            try { Telemetry.Shutdown(); } // balance telemetry: the last rows are written (waits at most 2 s for a running write)
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Telemetry: shutdown failed: {e.Message}"); }
             TimingHost.Shutdown(); // G5: the last interval's timing report (never throws)
         }
 
@@ -158,6 +161,7 @@ namespace QuickshotRing {
             TSkyfall = Timing.Section("Main.OnUpdate / Skyfall.Tick (held real arrows, storm records)"),
             TSkyLink = Timing.Section("Main.OnUpdate / SkyfallLink.Tick (signal queue, rejoins, latch)"),
             TSkyServer = Timing.Section("Main.OnUpdate / SkyfallServer.Tick (landings due)"),
+            TTelemetry = Timing.Section("Main.OnUpdate / Telemetry.Tick (hand rows to the writer)"),
             TClientLoad = Timing.Section("Main.OnUpdate / Tree.ClientLoad"),
             TCfgPoll = Timing.Section("Main.OnUpdate / Cfg.Poll (file stamp, reload)"),
             TIcons = Timing.Section("Main.OnUpdate / Tree.PollIcons"),
@@ -216,6 +220,8 @@ namespace QuickshotRing {
             catch (Exception e) { MelonLogger.Error($"[Archery] Skyfall: signal tick failed: {e.Message}"); }
             try { using (Timing.Begin(TSkyServer)) SkyfallServer.Tick(); } // Skyfall, server: landings due (blasts, dome kills, festival care; one count test while none waits)
             catch (Exception e) { MelonLogger.Error($"[Archery] Skyfall: server tick failed: {e.Message}"); }
+            try { using (Timing.Begin(TTelemetry)) Telemetry.Tick(); } // balance telemetry, server: every 5 s the queued rows go to the writer's thread
+            catch (Exception e) { MelonLogger.Error($"[Archery] Telemetry: tick failed: {e.Message}"); }
             using (Timing.Begin(TClientLoad)) Tree.ClientLoad(); // G3: a client loads the archery tree once it has joined (once a second until it is in; nothing after)
             if (Time.unscaledTime >= nextSlowPoll) {
                 nextSlowPoll = Time.unscaledTime + 2f;

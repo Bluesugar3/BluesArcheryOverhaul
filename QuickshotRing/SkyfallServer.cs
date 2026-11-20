@@ -226,7 +226,7 @@ namespace QuickshotRing {
                     var hit = new ImpactHit(damage, cripple, 1f, 1f, null, ImpactType.Explosive, b.Point, Vector3.zero, Vector3.zero, null, null,
                                             b.R.Wielder != null ? b.R.Wielder : null);
                     Hits.Dealing = true;
-                    h.DetectImpact(hit);
+                    using (HitScope.As(DealtBy.Skyfall, b.R.S.ArrowId)) h.DetectImpact(hit); // balance telemetry
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Skyfall: a hit on '{name}' failed: {e.Message}"); continue; }
                 finally { Hits.Dealing = false; }
@@ -257,7 +257,7 @@ namespace QuickshotRing {
             try {
                 var hit = new ImpactHit(SkyfallStrike.Lethal(ph.MaxHealth), 0f, 1f, 1f, null, ImpactType.Explosive, point, Vector3.zero, Vector3.zero, null, null, null);
                 Hits.Dealing = true;
-                ph.DetectImpact(hit);
+                using (HitScope.As(DealtBy.Skyfall, r.S.ArrowId)) ph.DetectImpact(hit); // balance telemetry
             }
             catch (Exception e) { MelonLogger.Warning($"[Archery] Skyfall: the kill on '{Builds.NameOf(p)}' failed: {e.Message}"); }   // the game's death path can throw on the headless server
             finally { Hits.Dealing = false; }
