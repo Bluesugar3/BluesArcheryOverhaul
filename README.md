@@ -1,125 +1,112 @@
-# QuickshotRing
+# Blue's Archery Overhaul
 
-QuickshotRing is an archery mod for **A Township Tale** on PC. It rebuilds the Ranged skill tree at the archery shrine so you can choose what kind of archer you want to be.
+An archery overhaul for **A Township Tale** (PC, MelonLoader). It rebuilds the Ranged skill tree into three paths: **Quick**, **Charge** and **Multi**. You commit to one, and the orbs you buy on the other two change how that one shoots.
 
-There are three kinds:
+Six of the 16 orbs are new: Quickdraw 4, Auto Dock, Burst, Seeking Volley, Ricochet and Shatter. The rest are the game's own, reworked.
 
-- **Quick**: fast snap shots, one after another.
-- **Multi**: volleys of ghost arrows that fly with your own.
-- **Charge**: one heavy arrow that you hold to power up.
+## Skill tree
 
-You pick one as your main path. The orbs you buy on the other two paths aren't wasted: they make your main shot better. The effects are made from the game's own art, so they look like they belong in the game.
-
-## The skill tree
-
-This is the Ranged tree with the mod installed. It has 16 orbs.
+The Ranged tree as it stands at the archery shrine.
 
 ```
-                  QUICK                 CHARGE                MULTI
-             fast snap shots       one heavy arrow      volleys of arrows
-
- Legendary   [ Quickdraw 4 ]        [ Holy Arrow ]      [ Seeking Volley ]
-                    |                     |                     |
- Side orb           +--[ Auto Dock ]      +--[ Shatter ]        +--[ Ricochet ]
-                    |                     |                     |
- Third       [ Quickdraw 3 ]      [ Charge Shot 3 ]         [ Burst ]
-                    |                     |                     |
- Second      [ Quickdraw 2 ]      [ Charge Shot 2 ]       [ Three-Shot ]
-                    |                     |                     |
- First       [ Quickdraw 1 ]      [ Charge Shot 1 ]        [ Two-Shot ]
-
-
- On its own  [ Arrow Gatherer ]
+               Quickdraw 4                  Holy Arrow                Seeking Volley
+                    |                           |                           |
+  Auto Dock         |          Shatter          |                           |          Ricochet
+           '--.     |                 '--.      |                           |  .------'
+               Quickdraw 3                Charge Shot 3                   Burst
+                          \                     |                     /
+                           \                    |                    /
+                            \                   |                   /
+                             Quickdraw 2  Charge Shot 2   Three-Shot
+                                  |             |             |
+                                  |             |             |
+                                  |             |             |
+Arrow Gatherer               Quickdraw 1  Charge Shot 1    Two-Shot
+      |                           |             |             |
+      '---------------------------'-------------+-------------'
+                                                |
+                                              shrine
 ```
 
-How to read it:
+- **Top row:** the three legendaries. You can own one.
+- **Auto Dock, Shatter, Ricochet:** side orbs, each off the third orb of its path.
+- **Arrow Gatherer:** needs nothing and counts toward no path.
 
-- Each column is a **path**. You buy it from the bottom up: every orb needs the one below it.
-- After the third orb of a path you can buy its **side orb**, its **legendary**, or both.
-- The Arrow Gatherer needs nothing and belongs to no path.
+## Main path
 
-## Pick a path
+Your main path is the path where you own the most orbs. Side orbs and the Arrow Gatherer don't count. Only the main path's shot works:
 
-The tree is built so that you specialise. **Your main path is the path where you own the most orbs**, and it decides what your bow does:
+| Main path | Shot | Let go |
+|---|---|---|
+| **Quick** (left) | Snap | within 0.25 s |
+| **Charge** (middle) | Charged shot | after 1 s or more |
+| **Multi** (right) | Volley | after 0.3 s or more |
 
-| Main path | Your shot |
+- **Ties:** you keep your current path. If it isn't one of the tied paths, Charge wins over Quick, and Quick over Multi.
+- **Switching:** an orb that would change your main path shows a pulsing amber ring, and the stone tablet beside the tree lists what you would lose.
+
+## Orbs
+
+Default numbers, with the orb's own path as your main path. Times count from the moment the draw passes about two-thirds. 2x means twice your arrow's damage.
+
+| Orb | Effect |
 |---|---|
-| **Quick** | **Snap shot.** Let go right after you draw, while a gold ring closes on the arrow tip. The arrow hits harder and flies faster. |
-| **Multi** | **Volley.** Hold the draw for a moment and ghost arrows fly with yours: 5 with Two-Shot, 15 with Three-Shot, 30 with Burst. |
-| **Charge** | **Charged shot.** Hold the draw to power up one arrow: up to 6 times the damage, and it staggers what it hits. |
+| **Quickdraw 1** | Snap: 1.25x damage, arrow 10% faster. Less wobble on every shot. |
+| **Quickdraw 2** | Snap 1.5x, 20% faster. |
+| **Quickdraw 3** | Snap 1.75x, 30% faster. |
+| **Quickdraw 4** | Legendary. The snap becomes an instant straight line, 150 m long, through up to 8 creatures: 2.5x to the first, 1.75x to the second, 1.25x to each one after. It stops at anything solid or at a player. |
+| **Auto Dock** | Side orb. While you keep hold of the bow, the next arrow from your quiver nocks itself 0.35 s after each shot. |
+| **Charge Shot 1** | Hold 1 s: 2x damage, a stagger and an interrupt. |
+| **Charge Shot 2** | Hold 1.75 s: 3.5x and a bigger stagger. |
+| **Charge Shot 3** | Hold 2.5 s: 6x and the biggest stagger. |
+| **Holy Arrow** | Legendary. Hold the same draw to 5.5 s: a golden beam at 5 times the arrow's speed that blasts and stuns creatures within 7 m. |
+| **Shatter** | Side orb. A charged hit blasts out behind the creature in a 60° cone, 10 m deep: up to 2x what the hit dealt, full within 3 m, a quarter at the edges. |
+| **Two-Shot** | From 0.3 s: 5 ghost arrows, 15% damage each. |
+| **Three-Shot** | From 1 s: 10 more ghosts, all 15 by 1.4 s, 6% each. |
+| **Burst** | At 1.5 s: 15 pellets, 4% each, 30 m range. |
+| **Seeking Volley** | Legendary. Rest your aim on a creature to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
+| **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage, then once more for half of that. |
+| **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s. |
 
-Only your main path's shot works. A Quick archer doesn't fire volleys, and a Multi archer doesn't charge.
+Stagger and interrupts work on creatures only. An interrupt cancels what the creature is doing where the game allows it: never on Wyrms, and at most once every 3 s per creature.
 
-Good to know:
+## Off-path orbs
 
-- Side orbs and the Arrow Gatherer don't count when the game works out your main path.
-- On a tie you stay on the path you were already on. If you were on none of the tied paths, Charge wins over Quick, and Quick over Multi.
-- Before you buy an orb that would switch your path, the shrine puts a pulsing amber ring on it, and the stone tablet beside the tree tells you what you would lose.
+Orbs outside your main path don't give you their own shot. They add to yours:
 
-## The other paths back up your main path
-
-This is the heart of the mod. An orb you buy outside your main path doesn't give you that path's shot. It adds something to **your** shot instead.
-
-| If your main path is | Quick orbs add | Multi orbs add | Charge orbs add |
+| Main path | Quickdraw 1-3 add | Charge Shot 1-3 add | Two-Shot, Three-Shot, Burst add |
 |---|---|---|---|
-| **Quick** | (your snap shot) | **Needles.** One thin extra arrow per orb flies with every snap. | **Weight.** Your snaps stagger creatures. With two or more orbs they can also interrupt what a creature is doing. |
-| **Multi** | **Speed.** The volley is ready much sooner (with three orbs, a full volley in under half a second) and flies tighter. | (your volley) | **Gold arrows.** Keep holding a full volley and the ghost arrows turn gold, one step per orb. Each step adds damage. |
-| **Charge** | **Speed.** Every charge is ready sooner (12% per orb) and the shot is steadier. | **Heavy arrows.** Two per orb fly beside every charged shot. | (your charged shot) |
+| **Quick** | | **Snap weight.** Snaps stagger, more per orb. From 2 orbs they can interrupt. | **Needles.** 1 thin extra arrow per orb on each snap, 15% damage each. With Quickdraw 4 they are lines too. |
+| **Charge** | **Faster charge.** Stages and Holy Arrow come 12% sooner per orb (3 orbs: Holy Arrow at 3.5 s). Steadier charged shots. | | **Heavy arrows.** 2 per orb beside each charged shot, 15% damage each, not multiplied by the charge. Shatter's blast gains 0.15x per orb. |
+| **Multi** | **Faster volley.** Every volley time is 25% shorter per orb (3 orbs: a full volley by 0.4 s). Per orb, a 15% tighter spread and 15% quicker Seeking locks. | **Hold stages.** Past a full volley, one stage per orb, 0.75 s apart. The ghosts turn gold, and each stage adds 10% ghost and pellet damage and a little stagger. | |
 
-So a Quick archer with Charge orbs shoots fast arrows that knock creatures around, and a Charge archer with all three Multi orbs fires a charged arrow with six heavy arrows beside it.
-
-Two more rules:
-
-- **Side orbs work on any main path.** Auto Dock always works in full. Ricochet and Shatter work at half strength when their path isn't your main one.
-- **You can own only one legendary.** It works only on its own path, and buying it makes that path your main path. You can still try the other two at the shrine. To switch, sell yours first.
-
-## What each orb does
-
-Each orb as it works when its path is your main path.
-
-| Orb | What it does |
-|---|---|
-| **Quickdraw 1, 2, 3** | Snap shots: let go within about a quarter of a second of drawing. Damage goes up to 1.25x, 1.5x and 1.75x, and the arrow gets faster and steadier with each orb. |
-| **Quickdraw 4** (legendary) | Every snap becomes an instant straight line that goes through up to 8 creatures. The first takes 2.5x damage, the ones behind it less. |
-| **Auto Dock** (side orb) | Keep hold of the bow, and after each shot the next arrow from your quiver puts itself on the string. |
-| **Two-Shot** | Hold the draw for a moment and 5 ghost arrows fly with yours. |
-| **Three-Shot** | Hold a little over a second and 10 more ghost arrows join, 15 in all. |
-| **Burst** | Hold a second and a half and 15 small pellets join the ghosts. They only reach 30 metres. |
-| **Seeking Volley** (legendary) | Rest your aim on a creature to lock on to it, up to 4 creatures. Let go and the volley homes in, flying on from one locked creature to the next. |
-| **Ricochet** (side orb) | Ghost arrows and pellets skip once off the ground. An arrow that hits a creature jumps to another one nearby for half its damage, then once more. |
-| **Charge Shot 1, 2, 3** | Hold the draw to charge the arrow: 1 second for 2x damage, 1.75 seconds for 3.5x, 2.5 seconds for 6x. Charged hits stagger creatures. |
-| **Holy Arrow** (legendary) | Keep holding the same draw for 5.5 seconds, then let go: a golden beam that hits hard, and blasts and stuns creatures within 7 metres of where it lands. |
-| **Shatter** (side orb) | When a charged arrow hits a creature, a blast bursts out of its back and hurts the creatures behind it, up to 10 metres away. |
-| **Arrow Gatherer** | Picks up arrows and feathers into your pouch. Arrows you shoot from a quiver come back to it after about 15 seconds. |
+- **Side orbs** work on any main path. Auto Dock always works in full. Ricochet and Shatter work at half strength off their own path.
+- **Legendaries** work only on their own path, and buying one makes that path your main path. To switch legendary, sell yours first.
 
 ## Example builds
 
-Each one uses 8 orbs.
+Eight orbs each.
 
-- **Piercer** (Quick): Quickdraw 1 to 4, Charge Shot 1 to 3, Shatter. Every snap is a line through a row of creatures that staggers each one it passes.
-- **Swarm** (Multi): Two-Shot, Three-Shot, Burst, Seeking Volley, Ricochet, Quickdraw 1 to 3. A full volley in under half a second that homes in on up to 4 creatures, and every hit jumps on to another.
-- **Siege** (Charge): Charge Shot 1 to 3, Holy Arrow, Shatter, Two-Shot, Three-Shot, Burst. A 6x arrow with six heavy arrows beside it and a blast behind whatever it hits. Hold longer for Holy Arrow.
+| Build | Orbs | What you get |
+|---|---|---|
+| **Piercer** (Quick) | Quickdraw 1-4, Charge Shot 1-3, Shatter | Every snap is a line through up to 8 creatures that staggers each one. The first can be interrupted, and Shatter blasts on behind it at half strength. |
+| **Siege** (Charge) | Charge Shot 1-3, Holy Arrow, Shatter, Two-Shot, Three-Shot, Burst | A 2.5 s hold fires a 6x arrow with 6 heavy arrows beside it, and Shatter reaches up to 2.45x the hit. A 5.5 s hold fires Holy Arrow instead, on its own. |
+| **Swarm** (Multi) | Two-Shot, Three-Shot, Burst, Seeking Volley, Ricochet, Quickdraw 1-3 | A 30-arrow volley by 0.4 s with locks in 0.25 to 0.5 s. It homes through up to 4 creatures, and every ghost and pellet hit jumps on. |
 
 ## Install
 
-You need MelonLoader **0.7.3**, and the same `QuickshotRing.dll` on **the server and every player's game**. A player without it only sees plain arrows.
+You need MelonLoader **0.7.3**. The same DLL goes on **the server and every player's game**; a player without it only sees plain arrows.
 
-1. Download `QuickshotRing.dll` from the [Releases](../../releases) page.
+1. Download the DLL from the [Releases](../../releases) page. It is still called `QuickshotRing.dll`, the mod's old name, until the next release.
 2. Close the game and stop the server.
-3. Put the file in the game's `Mods` folder and in the server's `Mods` folder.
+3. Put it in the `Mods` folder of the game and of the server.
 4. Start the server, then the game.
 
-To check that it loaded, open `MelonLoader\Latest.log`. You should see lines that start with `[Archery]`, and one that says `[Archery] Self-check:`. If that line says `FAILED`, don't play on that build.
-
-## Buying and selling orbs
-
-- **Try first.** If the server requires it, hold the orb at the shrine and use it once before you buy it. The tablet says what to do, and why an orb can't be bought.
-- **Sell from the top down.** Unless the server allows it, you can't sell an orb while you own one above it.
-- **Skill cap.** The game limits how many skills you can own across all professions. A full archery build is 14 orbs, so you may have to choose.
+It loaded correctly if `MelonLoader\Latest.log` has a line starting `[Archery] Self-check:`. If that line says `FAILED`, don't play on that build.
 
 ## Skyfall (admins only)
 
-Skyfall is a skill that only a server admin can hand out. It isn't part of the tree. Type these into the server launcher's Console:
+A skill that only a server admin can hand out, from the server launcher's Console. It isn't part of the tree.
 
 ```
 skyfall                   list who has it
@@ -128,33 +115,14 @@ skyfall give all          give it to everyone online
 skyfall take <player>     take it away
 ```
 
-To cast it: draw fully, aim at least 25 degrees up, hold for 1 second, then let go. A sigil opens in the sky, giant arrows rain down in 3 waves, and a huge nail drops in the middle. **Everything it hits dies**, creatures and players, except the caster and players within 3 metres of where the caster let go.
+To cast: draw fully, aim at least 25° up, hold 1 s, let go. A sigil opens in the sky, giant arrows rain down in 3 waves, then a huge nail drops in the middle. **Everything it hits dies**, creatures and players, except the caster and players within 3 m of where the caster let go.
 
 ## Settings
 
-Every number and colour is in `UserData\QuickshotRing.cfg`. Changes are picked up within 2 seconds while the game runs. The one exception is the `[Tree]` switches that add or remove an orb: those need a restart of the server and every game.
+Everything is in `UserData\QuickshotRing.cfg`, and edits apply within 2 s while the game runs. The `[Tree]` switches that add or remove an orb need a restart of the server and every game.
 
-- Settings marked `[shared]` must be the same on the server and on every player's game. To compare, look for the `[Archery] Settings: shared checksum` line in both logs.
-- `[PvP]` decides whether arrows can hurt players. The server's own PvP setting must be on too.
-- `[Log] Level = Debug` gives detailed logs when something goes wrong.
-- To use your own orb icons, put `<Name>.png` in `UserData\QuickshotRing\Icons\`. Name is one of Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
-
-## Known conflicts
-
-- **RevampedSkills.** If the server and a player run different versions of it, the shrine breaks for that player: no buying, no selling. Everyone must run the server's exact list of mods. With RevampedSkills installed, it returns your shot arrows instead of the Arrow Gatherer.
-
-## Building from source
-
-For modders. You need the .NET SDK and your own copy of the game, because the build uses the game's files.
-
-```
-dotnet build QuickshotRing -c Release -p:GameDir="C:\path\to\A Township Tale"
-```
-
-The result is `QuickshotRing\bin\Release\QuickshotRing.dll`. Add `-p:Deploy=true` to copy it into the game's `Mods` folder, and `-p:DeployServer=true -p:ServerDir="C:\path\to\server"` for the server.
-
-To run the tests:
-
-```
-dotnet run --project QuickshotRing.Tests -c Release
-```
+- **`[shared]` settings** must match on the server and every game. Compare the `[Archery] Settings: shared checksum` line in both logs.
+- **`[TreeLayout]`** places each orb at the shrine.
+- **`[PvP]`** decides whether arrows hurt players. The server's own PvP setting must be on too.
+- **`[Log] Level = Debug`** gives detailed logs.
+- **Orb icons:** put `<Name>.png` in `UserData\QuickshotRing\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
