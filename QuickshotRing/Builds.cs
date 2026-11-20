@@ -1,0 +1,368 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using Alta.Networking.Scripts.Player;
+using Alta.Progression.Skills;
+using HarmonyLib;
+using MelonLoader;
+
+namespace QuickshotRing {
+    // Who owns which archery orbs. The server keeps one build per player (owned orbs + the orb being tried out +
+    // the server-only test build), recomputed whenever the game unlocks, sells, tries out or loads an orb.
+    // The build bits carry it to clients: 32 bits at the very end of every bow status message (BowDrawSkill and
+    // its subclasses: Quickdraw, Slowdraw, Lightbeam). The block and its layout are in Build.cs.
+    internal static class Builds {
+        // The player whose skill message is being written or read; only set inside PickupBasedSkill.SendSerializedMessage.
+        static IPlayer? owner;
+        static bool loggedWrite, loggedRead, warnedNoTree, warnedUnknown, loggedMatch, warnedMismatch, loggedFired;
+        static readonly Dictionary<string, string> serverLogged = new Dictionary<string, string>(); // player name -> build text last logged
+        static readonly Dictionary<string, Build> clientCache = new Dictionary<string, Build>();    // player name -> build from the server
+        static readonly Dictionary<PlayerProgressionManager, Build> serverCache = new Dictionary<PlayerProgressionManager, Build>();
+        // Managers whose save is being loaded: their orbs arrive one at a time, so refreshes wait for the end of LoadFrom.
+        static readonly HashSet<PlayerProgressionManager> loading = new HashSet<PlayerProgressionManager>();
+        static readonly HashSet<string> livePatches = new HashSet<string>();
+        const int CacheTrimAt = 64;
+
+        static Builds() {
+            Cfg.Reloaded += () => warnedMismatch = false;
+        }
+
+        internal static string NameOf(IPlayer? p) => p?.UserInfo?.Username ?? "?";
+
+        /// <summary>The key a player's main path is remembered under: the account id, else the username.</summary>
+        internal static string KeyOf(IPlayer? p, string name) { // internal for TestRange (reset, snapshots)
+            int id = p?.UserInfo?.Identifier ?? 0;
+            return id != 0 ? id.ToString() : name;
+        }
+
+        static bool TreeMapped => Tree.Ready && Tree.OrbBySlot.Count > 0;
+
+        // The archery orbs this manager really owns on the Ranged path (no practice, no test build).
+        static List<Orb> RealOwned(PlayerProgressionManager? pm) {
+            var owned = new List<Orb>();
+            // TryGetValue, never the indexer: a player who never earned Ranged experience has no entry yet.
+            if (pm != null && TreeMapped && pm.PathExperiences.TryGetValue(Tree.RangedPath, out PathExperience exp) && exp != null)
+                foreach (uint hash in exp.UnlockedSlots)
+                    if (Tree.OrbBySlot.TryGetValue(hash, out Orb o)) owned.Add(o);
+            return owned;
+        }
+
+        static Orb Practising(PlayerProgressionManager? pm) {
+            SkillOrb? orb = pm != null ? pm.PracticingOrb : null;
+            return orb != null && orb.Slot != null && Tree.OrbBySlot.TryGetValue(orb.Slot.Hash, out Orb po) ? po : Orb.None;
+        }
+
+        // Owned + practising + test build, minus the test build's Without, logged when it changes.
+        static readonly int T_Compute = Timing.Section("Builds.Compute");
+        static Build Compute(PlayerProgressionManager? pm, string name, out List<Orb> owned) {
+            using var _t = Timing.Begin(T_Compute, name);
+            owned = RealOwned(pm);
+            Orb practising = Practising(pm);
+            IReadOnlyList<Orb> extra = TestBuild.ExtraFor(name);
+            IReadOnlyList<Orb> without = TestBuild.WithoutFor(name);
+            Build build = Build.From(TestBuildRule.Combine(owned, practising, extra, without));
+            // The main path: remembered per account, decided only on final builds (a save still loading or an
+            // unmapped tree gives partial counts that must never overwrite the remembered path). An orb being tried
+            // out is not a purchase: like a test build, it is decided in memory only, so trying an orb never moves
+            // the remembered path through the tie rule.
+            string key = KeyOf(pm != null ? pm.Player : null, name);
+            bool tryingOut = practising != Orb.None && !owned.Contains(practising);
+            build = pm != null && TreeMapped && !loading.Contains(pm)
+                ? Paths.Stamp(build, key, extra.Count > 0 || without.Count > 0, name, tryingOut)
+                : Paths.Peek(build, key);
+
+            string extraText = extra.Count > 0 || without.Count > 0
+                ? ", TEST BUILD" + (extra.Count > 0 ? $" +{string.Join("+", extra.Select(o => o.ToString()).ToArray())}" : "")
+                                 + (without.Count > 0 ? $" -{string.Join("-", without.Select(o => o.ToString()).ToArray())}" : "")
+                : "";
+            string text = build + extraText;
+            if (!serverLogged.TryGetValue(name, out string last) || last != text) {
+                serverLogged[name] = text;
+                if (Logs.Summary) MelonLogger.Msg($"[Archery] Build: '{name}' = {build} (owned {owned.Count} archery orbs{(practising != Orb.None ? $", practising {practising}" : "")}){extraText}");
+            }
+            return build;
+        }
+
+        static void Store(PlayerProgressionManager pm, Build build) {
+            serverCache[pm] = build;
+            if (serverCache.Count <= CacheTrimAt) return;
+            foreach (PlayerProgressionManager gone in serverCache.Keys.Where(k => k == null).ToList()) serverCache.Remove(gone);
+        }
+
+        /// <summary>Server: the player's archery build (owned orbs + the orb being tried out + the test build),
+        /// cached per progression manager. <c>default(Build)</c> for null.</summary>
+        internal static Build ServerBuild(Player? p) {
+            if (p == null) return default;
+            PlayerProgressionManager pm = p.ProgressionManager;
+            if (pm != null && serverCache.TryGetValue(pm, out Build cached)) return cached;
+            Build build = Compute(pm, NameOf(p), out _);
+            if (pm != null && TreeMapped && !loading.Contains(pm)) Store(pm, build);
+            return build;
+        }
+
+        /// <summary>Server only, never on the wire: whether the player has this orb in the same set the build is made from (owned +
+        /// the orb being tried out + the test build, minus its Without). For orbs only the server acts on (Auto Dock has no build
+        /// bit; the side-orb bits 16 and 32 stay reserved).</summary>
+        internal static bool ServerHas(Player? p, Orb orb) {
+            if (p == null || !NetworkSceneManager.IsServer) return false;
+            if (NewOrbs.All.Contains(orb) && !Tree.OrbOn(orb)) return false; // switched off: off everywhere, the test build included
+            PlayerProgressionManager pm = p.ProgressionManager;
+            string name = NameOf(p);
+            return TestBuildRule.Combine(RealOwned(pm), Practising(pm), TestBuild.ExtraFor(name), TestBuild.WithoutFor(name)).Contains(orb);
+        }
+
+        /// <summary>Server: the ultimates this manager owns (owned orbs + the test build, no practice).</summary>
+        internal static Ultimates ServerOwnedUltimates(PlayerProgressionManager? pm) {
+            if (pm == null) return Ultimates.None;
+            var all = RealOwned(pm);
+            all.AddRange(TestBuild.ExtraFor(NameOf(pm.Player)));
+            return Build.From(all).Ultimates;
+        }
+
+        /// <summary>Server: recompute this manager's build, bring the test build's game-skill grants in line, log on change.</summary>
+        static readonly int T_Refresh = Timing.Section("Builds.Refresh");
+        internal static void Refresh(PlayerProgressionManager pm) {
+            using var _t = Timing.Begin(T_Refresh);
+            if (!NetworkSceneManager.IsServer || pm == null || loading.Contains(pm)) return;
+            Build build = Compute(pm, NameOf(pm.Player), out List<Orb> owned);
+            if (TreeMapped) Store(pm, build);
+            else serverCache.Remove(pm);
+            TestBuild.Sync(pm, owned);
+        }
+
+        /// <summary>Server, the test build's real purchase (TestTools): hold every refresh of this manager, as while a save loads,
+        /// so the many sales and purchases end in one refresh (<see cref="EndBatch"/>) and the main path is decided once.</summary>
+        internal static void BeginBatch(PlayerProgressionManager pm) {
+            if (pm == null) return;
+            loading.Add(pm);
+            serverCache.Remove(pm);
+        }
+
+        /// <summary>Ends <see cref="BeginBatch"/> with the one refresh (always call it, in a finally).</summary>
+        internal static void EndBatch(PlayerProgressionManager pm) {
+            if (pm == null) return;
+            loading.Remove(pm);
+            Refresh(pm);
+        }
+
+        /// <summary>Settings reloaded: forget every cached build and refresh the known players (and any with test-build grants).</summary>
+        static readonly int T_ReloadAll = Timing.Section("Builds.ReloadAll");
+        internal static void ReloadAll(IEnumerable<PlayerProgressionManager> alsoThese) {
+            using var _t = Timing.Begin(T_ReloadAll);
+            var known = new List<PlayerProgressionManager>(serverCache.Keys);
+            foreach (PlayerProgressionManager pm in alsoThese) if (!known.Contains(pm)) known.Add(pm);
+            serverCache.Clear();
+            foreach (PlayerProgressionManager pm in known) if (pm != null) Refresh(pm);
+        }
+
+        /// <summary>Client: the build the server last sent for this player (<c>default</c> until one arrives).</summary>
+        internal static Build ClientBuild(string? playerName) =>
+            playerName != null && clientCache.TryGetValue(playerName, out Build b) ? b : default;
+
+        /// <summary>Client: the server has sent a build for this player (ClientBuild is not just the default).</summary>
+        internal static bool ClientBuildKnown(string? playerName) => playerName != null && clientCache.ContainsKey(playerName);
+
+        /// <summary>Client: the local player's build, as the server last sent it. Before any bits arrived: the local
+        /// player's own owned orbs (no practice, no test build) with the local file's main path.</summary>
+        internal static Build LocalBuild() {
+            IPlayer? me = Player.Current;
+            string? name = me?.UserInfo?.Username;
+            if (name != null && clientCache.TryGetValue(name, out Build b)) return b;
+            if (me == null || !TreeMapped) return default;
+            Build own = Build.From(RealOwned(me.ProgressionManager));
+            return own.With(Paths.LocalIncumbent(own));
+        }
+
+        /// <summary>Client: the server has sent this client the local player's own build.</summary>
+        internal static bool LocalBuildKnown {
+            get {
+                string? me = Player.Current?.UserInfo?.Username;
+                return me != null && clientCache.ContainsKey(me);
+            }
+        }
+
+        // ---------------------------------------------------------------- server: refresh points
+
+        // G5: the five one-line slot patches below (UnlockSlot, LockSlot, PracticeSlot, EndPractice, PathExperience.LockSlot) all
+        // run through here; the spike line names which one.
+        static readonly int TRefreshed = Timing.Section("patch PlayerProgressionManager slot changes (5 patches) / Builds.Refreshed");
+        static void Refreshed(PlayerProgressionManager? pm, string patch) {
+            using var _t = Timing.Begin(TRefreshed, patch);
+            try {
+                if (!NetworkSceneManager.IsServer || pm == null) return;
+                if (livePatches.Add(patch)) { if (Logs.Summary) MelonLogger.Msg($"[Archery] Build: refresh patch on {patch} is live"); }
+                Refresh(pm);
+            }
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Build: refresh after {patch} failed: {e}"); }
+        }
+
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.UnlockSlot))]
+        static class OnUnlockSlot {
+            [HarmonyPriority(Priority.Last)]
+            static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.UnlockSlot");
+        }
+
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.LockSlot))]
+        static class OnLockSlot {
+            static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.LockSlot");
+        }
+
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.PracticeSlot))]
+        static class OnPracticeSlot {
+            static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.PracticeSlot");
+        }
+
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.EndPractice))]
+        static class OnEndPractice {
+            static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.EndPractice");
+        }
+
+        // Selling reaches PathExperience.LockSlot also from RemoveFreePoints/RemoveSlots, with no manager call.
+        [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.LockSlot))]
+        static class OnPathLockSlot {
+            static void Postfix(PlayerProgressionManager ___targetPlayer) => Refreshed(___targetPlayer, "PathExperience.LockSlot");
+        }
+
+        // UpdateCounts clears the game's skill levels and recounts them from owned slots only: the test build's
+        // granted levels go back on top.
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.UpdateCounts))]
+        static class OnUpdateCounts {
+            static readonly int T = Timing.Section("patch PlayerProgressionManager.UpdateCounts / Builds.OnUpdateCounts");
+            static void Postfix(PlayerProgressionManager __instance) {
+                using var _t = Timing.Begin(T);
+                try { if (NetworkSceneManager.IsServer && __instance != null) TestBuild.Reapply(__instance); }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Build: test build re-apply failed: {e}"); }
+                Refreshed(__instance, "PlayerProgressionManager.UpdateCounts");
+            }
+        }
+
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.LoadFrom))]
+        static class OnLoadFrom {
+            static readonly int TPrefix = Timing.Section("patch PlayerProgressionManager.LoadFrom / Builds.OnLoadFrom prefix");
+            static readonly int TPostfix = Timing.Section("patch PlayerProgressionManager.LoadFrom / Builds.OnLoadFrom postfix");
+            static readonly int TFinalizer = Timing.Section("patch PlayerProgressionManager.LoadFrom / Builds.OnLoadFrom finalizer");
+            static void Prefix(PlayerProgressionManager __instance) {
+                using var _t = Timing.Begin(TPrefix);
+                if (NetworkSceneManager.IsServer && __instance != null) { loading.Add(__instance); serverCache.Remove(__instance); }
+            }
+
+            static void Postfix(PlayerProgressionManager __instance) {
+                using var _t = Timing.Begin(TPostfix);
+                loading.Remove(__instance);
+                Refreshed(__instance, "PlayerProgressionManager.LoadFrom");
+                try {
+                    if (!NetworkSceneManager.IsServer || __instance == null) return;
+                    Ultimates real = Build.From(RealOwned(__instance)).Ultimates; // test build excluded for this line
+                    int count = 0;
+                    for (int bits = (int)real; bits != 0; bits &= bits - 1) count++;
+                    if (count >= 2)
+                        MelonLogger.Error($"[Archery] Build: '{NameOf(__instance.Player)}' OWNS TWO ULTIMATES in the save ({real}); both stay active and the moment of release decides");
+                }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Build: ultimate check after load failed: {e.Message}"); }
+                try { if (NetworkSceneManager.IsServer && __instance != null) LogVolleyLevel(__instance); }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Volley skill: level check after load failed: {e.Message}"); }
+            }
+
+            // Owners of Two-Shot / Three-Shot keep their ghosts only if those slots already pointed at the Volley skill
+            // while the save's slots were read (the tree is edited inside GetProfessionTree, before that).
+            static void LogVolleyLevel(PlayerProgressionManager pm) {
+                string name = NameOf(pm.Player);
+                int level = VolleySkill.Skill != null ? pm.GetLevel(VolleySkill.Skill) : 0;
+                if (level > 0) { if (Logs.Summary) MelonLogger.Msg($"[Archery] Volley skill: level {level} for '{name}' after loading"); }
+                if (!TreeMapped || !pm.PathExperiences.TryGetValue(Tree.RangedPath, out PathExperience exp) || exp == null) return;
+                bool ownsVolleySlot = (Tree.TwoShotSlot != null && exp.UnlockedSlots.Contains(Tree.TwoShotSlot.Hash))
+                                      || (Tree.ThreeShotSlot != null && exp.UnlockedSlots.Contains(Tree.ThreeShotSlot.Hash));
+                if (ownsVolleySlot && level == 0)
+                    MelonLogger.Error($"[Archery] Volley skill: '{name}' owns Two-Shot/Three-Shot slots but the Volley level is 0 (the tree was not re-pointed before the save loaded)");
+            }
+
+            // Runs even when the load throws, so a manager is never left marked as loading.
+            static Exception? Finalizer(Exception? __exception, PlayerProgressionManager __instance) {
+                using var _t = Timing.Begin(TFinalizer);
+                loading.Remove(__instance);
+                return __exception;
+            }
+        }
+
+        [HarmonyPatch(typeof(PickupBasedSkill), nameof(PickupBasedSkill.SendSerializedMessage))]
+        static class Owner {
+            static void Prefix(IPlayer __0) => owner = __0;
+            static void Postfix() => owner = null;
+        }
+
+        // SerializeInternal is the last field of the status message (PickupBasedSkill.SendSerializedMessage), so
+        // our block goes right after the game's own fields.
+        [HarmonyPatch(typeof(PickupBasedSkill), "SerializeInternal")]
+        static class Bits {
+            static readonly int T = Timing.Section("patch PickupBasedSkill.SerializeInternal / Builds.Bits");
+            static void Postfix(PickupBasedSkill __instance, Alta.Serialization.Stream stream, uint ___pickupIdentifier, ToolBasedSkillStatus ___status) {
+                using var _t = Timing.Begin(T);
+                if (!(__instance is BowDrawSkill) || stream == null) return; // both sides know the skill, so writer and reader agree
+                try {
+                    if (NetworkSceneManager.IsServer) {
+                        if (stream.IsWriting && !loggedFired) { loggedFired = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Build bits: status-message postfix fired on the server (writing)"); }
+                        if (stream.IsWriting) Write(stream);
+                    }
+                    else if (stream.IsReading) Read(__instance, stream, ___pickupIdentifier, ___status);
+                }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Build bits: failed: {e}"); }
+            }
+        }
+
+        static readonly int T_Write = Timing.Section("Builds.Write (status bits)");
+        static void Write(Alta.Serialization.Stream stream) {
+            using var _t = Timing.Begin(T_Write);
+            if (!(owner is Player p)) return;
+            if (!Tree.Ready || Tree.OrbBySlot.Count == 0) {
+                if (!warnedNoTree) { warnedNoTree = true; MelonLogger.Warning("[Archery] Build bits: archery tree not injected; sending none"); }
+                return;
+            }
+            Build build = ServerBuild(p);
+            BuildBits.Write(new StreamBits(stream), build, Cfg.SharedShort);
+            if (!loggedWrite) { loggedWrite = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Build bits: status-message patch is live (writing)"); }
+        }
+
+        static readonly int T_Read = Timing.Section("Builds.Read (status bits)");
+        static void Read(PickupBasedSkill skill, Alta.Serialization.Stream stream, uint arrow, ToolBasedSkillStatus status) {
+            using var _t = Timing.Begin(T_Read, arrow);
+            var bits = new StreamBits(stream);
+            WireRead result = BuildBits.TryRead(bits, out Build build, out byte check);
+            if (!loggedRead) { loggedRead = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Build bits: status-message patch is live (reading)"); }
+            string name = NameOf(owner);
+            switch (result) {
+                case WireRead.Ok:
+                    int left = bits.BitsLeft;
+                    if (left >= 8)
+                        MelonLogger.Warning($"[Archery] Build bits: {left} unread bits after the build bits on {skill.name}; the layouts disagree");
+                    if (!clientCache.TryGetValue(name, out Build old) || old != build) {
+                        clientCache[name] = build;
+                        if (Logs.Summary) MelonLogger.Msg($"[Archery] Build: '{name}' is now {build} (from the server)");
+                    }
+                    // The local file follows the server, except while the local player tries an orb out at the shrine:
+                    // that build counts the tried orb, and its path must not be remembered. Checked on every status
+                    // (not only when the build changes): after a purchase the build is the one already seen during the
+                    // try-out, and the first status after it must store the real path. Only the file write is held
+                    // back; the build above is used as before.
+                    if (name == Player.Current?.UserInfo?.Username && !(ShrineView.Open && ShrineView.Held != null)) Paths.FromServer(build.Main);
+                    if ((check & BuildBits.CheckMask) == (Cfg.SharedShort & BuildBits.CheckMask)) {
+                        if (!loggedMatch) { loggedMatch = true; if (Logs.Summary) MelonLogger.Msg($"[Archery] Settings: shared settings match the server (cfg {check:x2})"); }
+                    }
+                    else if (!warnedMismatch) {
+                        warnedMismatch = true;
+                        loggedMatch = false; // once fixed, the next match logs its line again
+                        MelonLogger.Error($"[Archery] Settings: SHARED SETTINGS DIFFER FROM THE SERVER (server {check & BuildBits.CheckMask:x2}, this client {Cfg.SharedShort & BuildBits.CheckMask:x2}). Copy the [shared] settings from the server's QuickshotRing.cfg.");
+                    }
+                    break;
+                case WireRead.Absent:
+                    break;
+
+                default:
+                    if (!warnedUnknown) {
+                        warnedUnknown = true;
+                        MelonLogger.Warning($"[Archery] Build bits: '{name}' {skill.name}/{status} carries bits this version does not understand ({result}); ignored");
+                    }
+                    break;
+            }
+        }
+    }
+}

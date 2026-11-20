@@ -1,0 +1,33 @@
+{
+  "about": "24-orb archery tree (design 'Three Layers, One Crown', rev 2). Positions are ProgressionSlot positions in the shrine's Skill Tree Parent frame: x = depth (towards/away from the player), y = sideways, z = height (metres), exactly what the game spawns orbs at. All orbs share depth -0.05 so the tree is one flat plane facing the player. Hashes are the vanilla/mod slot hashes; empty = new orb, no hash yet. Rebuild the preview with: ub call AgentBridge.ShrineTree.BuildShrineTree -Arg <this file>",
+  "orbs": [
+    { "id": "q1", "name": "Quickdraw 1", "line": "quick", "kind": "main", "hash": "41888", "icon": "Assets/Texture2D/Glyph_Bow_QuickDraw.png", "deps": [], "x": -0.05, "y": -0.42, "z": -0.09 },
+    { "id": "q2", "name": "Quickdraw 2", "line": "quick", "kind": "main", "hash": "32348", "icon": "Assets/Texture2D/Glyph_Bow_QuickDraw_Plus.png", "deps": ["q1"], "x": -0.05, "y": -0.42, "z": 0.16 },
+    { "id": "q3", "name": "Quickdraw 3", "line": "quick", "kind": "main", "hash": "41311", "icon": "Assets/Texture2D/Glyph_Bow_QuickDraw_Plus.png", "deps": ["q2"], "x": -0.05, "y": -0.42, "z": 0.40 },
+    { "id": "q4", "name": "Quickdraw 4", "line": "quick", "kind": "ultimate", "hash": "2718281828", "icon": "Assets/_Preview/Icons/Quickdraw4.png", "deps": ["q3"], "x": -0.05, "y": -0.42, "z": 0.62 },
+    { "id": "sd", "name": "Snap Draw", "line": "quick", "kind": "side", "hash": "", "icon": "", "deps": ["q1"], "x": -0.05, "y": -0.58, "z": 0.035 },
+    { "id": "mk", "name": "Mark", "line": "quick", "kind": "side", "hash": "", "icon": "", "deps": ["q2"], "x": -0.05, "y": -0.58, "z": 0.28 },
+
+    { "id": "vo", "name": "Volley", "line": "multi", "kind": "main", "hash": "32124", "icon": "Assets/_Preview/Icons/TwoShot.png", "deps": [], "x": -0.05, "y": 0.0, "z": -0.09 },
+    { "id": "fv", "name": "Full Volley", "line": "multi", "kind": "main", "hash": "32416", "icon": "Assets/_Preview/Icons/ThreeShot.png", "deps": ["vo"], "x": -0.05, "y": 0.0, "z": 0.16 },
+    { "id": "bu", "name": "Burst", "line": "multi", "kind": "main", "hash": "", "icon": "", "deps": ["fv"], "x": -0.05, "y": 0.0, "z": 0.40 },
+    { "id": "sv", "name": "Seeking Volley", "line": "multi", "kind": "ultimate", "hash": "", "icon": "", "deps": ["bu"], "x": -0.05, "y": 0.0, "z": 0.62 },
+    { "id": "cv", "name": "Converge", "line": "multi", "kind": "side", "hash": "", "icon": "", "deps": ["vo"], "x": -0.05, "y": -0.10, "z": 0.065 },
+    { "id": "ri", "name": "Ricochet", "line": "multi", "kind": "side", "hash": "", "icon": "", "deps": ["fv"], "x": -0.05, "y": 0.10, "z": 0.31 },
+
+    { "id": "c1", "name": "Charge 1", "line": "charge", "kind": "main", "hash": "60535", "icon": "Assets/Texture2D/Glyph_Bow_Slowdraw.png", "deps": [], "x": -0.05, "y": 0.42, "z": -0.09 },
+    { "id": "c2", "name": "Charge 2", "line": "charge", "kind": "main", "hash": "63112", "icon": "Assets/Texture2D/Glyph_Bow_Slowdraw_Plus.png", "deps": ["c1"], "x": -0.05, "y": 0.42, "z": 0.16 },
+    { "id": "c3", "name": "Charge 3", "line": "charge", "kind": "main", "hash": "63178", "icon": "Assets/Texture2D/Glyph_Bow_Slowdraw_Plus.png", "deps": ["c2"], "x": -0.05, "y": 0.42, "z": 0.40 },
+    { "id": "ha", "name": "Holy Arrow", "line": "holy", "kind": "ultimate", "hash": "32504", "icon": "Assets/_Preview/Icons/HolyArrow.png", "deps": ["c3"], "x": -0.05, "y": 0.42, "z": 0.62 },
+    { "id": "br", "name": "Brace", "line": "charge", "kind": "side", "hash": "", "icon": "", "deps": ["c1"], "x": -0.05, "y": 0.58, "z": 0.035 },
+    { "id": "oc", "name": "Overcharge", "line": "charge", "kind": "side", "hash": "", "icon": "", "deps": ["c2"], "x": -0.05, "y": 0.58, "z": 0.28 },
+
+    { "id": "ec", "name": "Echo", "line": "quick|multi", "kind": "bridge", "hash": "", "icon": "", "deps": ["q1", "vo"], "x": -0.05, "y": -0.21, "z": 0.02 },
+    { "id": "tr", "name": "Tracer", "line": "quick|multi", "kind": "bridge", "hash": "", "icon": "", "deps": ["q2", "fv"], "x": -0.05, "y": -0.21, "z": 0.265 },
+    { "id": "gv", "name": "Gold Volley", "line": "multi|charge", "kind": "bridge", "hash": "", "icon": "", "deps": ["vo", "c1"], "x": -0.05, "y": 0.24, "z": 0.0 },
+    { "id": "sh", "name": "Shatter", "line": "multi|charge", "kind": "bridge", "hash": "", "icon": "", "deps": ["fv", "c2"], "x": -0.05, "y": 0.24, "z": 0.245 },
+
+    { "id": "ga", "name": "Gatherer", "line": "gather", "kind": "main", "hash": "37735", "icon": "Assets/Texture2D/Glyph_Gatherer_Arrow.png", "deps": [], "x": -0.05, "y": -0.78, "z": -0.09 },
+    { "id": "qg", "name": "Quiver Gather", "line": "gather", "kind": "main", "hash": "1618033988", "icon": "Assets/_Preview/Icons/QuiverGather.png", "deps": ["ga"], "x": -0.05, "y": -0.78, "z": 0.16 }
+  ]
+}
