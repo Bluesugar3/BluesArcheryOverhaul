@@ -240,6 +240,23 @@ namespace BluesArcheryOverhaul {
             catch (Exception e) { MelonLogger.Warning($"[Archery] Shrine: could not mark {orb} as practised: {e.Message}"); }
         }
 
+        // ponytail: the owner, 2026-11-20 ("for now when you grab it, it completes the tutorial"): grabbing one of the four later
+        // orbs practises it at once, since Ricochet's own practice could not be finished in play (cause not found yet). Their
+        // own-action practice above stays; remove this patch to go back to it.
+        [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.PracticeSlot))]
+        static class PractiseOnGrab {
+            static readonly int T = Timing.Section("patch PlayerProgressionManager.PracticeSlot / Shrine.PractiseOnGrab");
+            static void Postfix(PlayerProgressionManager __instance, SkillOrb orb) {
+                using var _t = Timing.Begin(T);
+                try {
+                    if (!NetworkSceneManager.IsServer || orb == null || orb.Slot == null) return;
+                    if (!Tree.OrbBySlot.TryGetValue(orb.Slot.Hash, out Orb o) || Array.IndexOf(NewOrbs.All, o) < 0) return;
+                    Practise(__instance.Player, o, "grabbing it");
+                }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Shrine: practice on grab failed: {e.Message}"); }
+            }
+        }
+
         /// <summary>Server: the owner has this orb in the shrine's try-out area right now (Shatter: a networked thing there counts as struck; it is practised on the charged release, Volley.Launch).</summary>
         internal static bool Trying(Player? owner, Orb orb) {
             try {
