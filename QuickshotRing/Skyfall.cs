@@ -33,12 +33,11 @@ namespace QuickshotRing {
             blastRadius = null!, nailLength = null!, nailGap = null!, nailSlide = null!, nailDome = null!, nailBlast = null!, nailDamage = null!,
             nailStand = null!, skyDim = null!, skySun = null!, skyFade = null!, skyFadeSeconds = null!, festivalCare = null!;
         static MelonPreferences_Entry<int> waves = null!, arrowsPerWave = null!, maxLiveExplosions = null!;
-        static MelonPreferences_Entry<bool> spectatorTest = null!;
         static SkyfallValues? cache;
         static int entryCount;
 
         /// <summary>The [Skyfall] settings: one entry per SkyfallValues field (key = the field's name; [shared] unless the field is in
-        /// SkyfallValues.LooksOnly) and SpectatorTest (this machine only). Before Cfg.Ready, which records, migrates and checksums only the
+        /// SkyfallValues.LooksOnly). Before Cfg.Ready, which records, migrates and checksums only the
         /// categories that exist then.</summary>
         internal static void Init() {
             var cat = Cfg.Category("Skyfall");
@@ -89,7 +88,6 @@ namespace QuickshotRing {
             skyFade = F(nameof(SkyfallValues.SkyFade), d.SkyFade, "Clients: how far the sky fades while dimmed (0 = not at all; at most 0.95, above which the sky turns black).");
             skyFadeSeconds = F(nameof(SkyfallValues.SkyFadeSeconds), d.SkyFadeSeconds, "Clients: seconds the sky takes to dim, and to come back.");
             festivalCare = F(nameof(SkyfallValues.FestivalCareRadius), d.FestivalCareRadius, "(unused in this build: festival mode was dropped) Festival mode: players whose head is within this many metres of a landing are healed and fed.");
-            spectatorTest = cat.CreateEntry("SpectatorTest", false, description: "Debug, this machine only: the caster's own release also runs through the spectator path, and both landing patterns are logged, so one client can check that a spectator rebuilds the same storm. Off for play.");
             SkyfallSigil.Init(cat); SkyfallHold.Init(cat); SkyfallSky.Init(cat); SkyfallLook.Init(cat); SkyfallNail.Init(cat); // Tasks 10-12: the looks' own entries (colours, sounds, sizes), per client, never [shared]
         }
 
@@ -117,8 +115,8 @@ namespace QuickshotRing {
             }
         }
 
-        /// <summary>[Skyfall] SpectatorTest on this machine (live, never shared).</summary>
-        internal static bool SpectatorTest => spectatorTest != null && spectatorTest.Value;
+        /// <summary>[Kit] SkyfallSpectatorTest on this machine: a play-test kit setting (KitHooks; off without the kit).</summary>
+        internal static bool SpectatorTest => KitHooks.SpectatorTest;
 
         // ---------------------------------------------------------------- who holds it (server) and what this game was told (client)
 
@@ -151,7 +149,7 @@ namespace QuickshotRing {
             }
             public void Write(string name, string text) {
                 using var _t = Timing.Begin(TWriteGrants);
-                TestRange.WriteWhole(PathOf(name), text);
+                Cfg.WriteWhole(PathOf(name), text);
             }
             public bool Retire(string name) {
                 using var _t = Timing.Begin(TRetireGrants);
@@ -218,7 +216,7 @@ namespace QuickshotRing {
         }
 
         static readonly int TSaveGrants = Timing.Section("file Skyfall.SaveGrants");
-        /// <summary>Server: rewrites <see cref="GrantsFile"/> whole (TestRange.WriteWhole: beside it, then moved over it). Null when
+        /// <summary>Server: rewrites <see cref="GrantsFile"/> whole (Cfg.WriteWhole: beside it, then moved over it). Null when
         /// written, else why not, already warned. Refused, writing nothing, while the file cannot be read (SkyfallGrantStore.Save).</summary>
         internal static string? SaveGrants() {
             using var _t = Timing.Begin(TSaveGrants);
@@ -249,7 +247,7 @@ namespace QuickshotRing {
 
         // ---------------------------------------------------------------- the ground under a spot (every machine)
 
-        // Default, Terrain, Ground, GroundOverlay, Wall, TerrainWallOnly: the range's ground (TestRangeBuild.cs:170), whose WorldProbe is private
+        // Default, Terrain, Ground, GroundOverlay, Wall, TerrainWallOnly: the play-test range's ground (BluesArcheryTestKit's TestRangeBuild.cs), whose WorldProbe is private
         internal const int GroundMask = (1 << 0) | (1 << 8) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 19);
         // every ground search (server landings, client domes, the hold's glyph, the Nail) reaches this far below the release (ruling 8)
         internal const float GroundBelowMetres = 80f;
@@ -470,7 +468,7 @@ namespace QuickshotRing {
         }
 
         /// <summary>Shooter, Draws.Release: the request this game put on the wire (Finalise) is its cast, Festival in festival mode,
-        /// over its own wire pose and marks. With [Skyfall] SpectatorTest the same release also runs the spectator's path (what the
+        /// over its own wire pose and marks. With [Kit] SkyfallSpectatorTest the same release also runs the spectator's path (what the
         /// relay would say), both storms are logged, and this game draws the spectator's; IsCast and the hold still follow the request.
         /// No request: a plain shot, the record cleared.</summary>
         internal static SkyCode DecideShooter(NetworkEntity arrow) {

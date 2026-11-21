@@ -130,7 +130,7 @@ namespace QuickshotRing {
             foreach (Orb o in NewOrbs.All) {
                 string name = Lines.Name(o);
                 bool built = NewOrbs.OnByDefault(o);
-                orbOn[o] = Cfg.Shared(costs.CreateEntry(o + "Orb", built, description: $"Put the {name} orb in the archery shrine (server and every client alike; restart both to change). Off: it is not in the shrine and none of its code runs (a [TestBuild] cannot lend it either); a player who bought it gets its skill points back the next time their save loads, and loses the orb." + (built ? "" : " Off by default: parked, or not built yet.")));
+                orbOn[o] = Cfg.Shared(costs.CreateEntry(o + "Orb", built, description: $"Put the {name} orb in the archery shrine (server and every client alike; restart both to change). Off: it is not in the shrine and none of its code runs (the play-test kit's [TestBuild] cannot lend it either); a player who bought it gets its skill points back the next time their save loads, and loses the orb." + (built ? "" : " Off by default: parked, or not built yet.")));
                 orbCost[o] = Cfg.Shared(costs.CreateEntry(o + "Cost", 1, description: $"Skill points for the {name} orb. Changing it after someone bought the orb refunds the wrong amount when they sell it."));
                 orbPlace[o] = Cfg.Shared(layout.CreateEntry(o.ToString(), NewOrbs.DefaultPlace(o), description: $"Where the {name} orb sits: depth, sideways, height."));
             }

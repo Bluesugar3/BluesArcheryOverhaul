@@ -31,6 +31,28 @@ namespace QuickshotRing {
 
         internal static string Folder => Path.Combine(MelonEnvironment.UserDataDirectory, "QuickshotRing");
 
+        /// <summary>H4 (range minor 9): a whole file at once: written beside it, then moved over it (File.Replace), so a reader never
+        /// reads half a file and its open read (FileShare.Delete) never blocks the write; a few tries, then a plain write. Skyfall's
+        /// grant file, and the play-test kit's status files.</summary>
+        internal static void WriteWhole(string file, string text) {
+            Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+            string tmp = file + ".tmp";
+            File.WriteAllText(tmp, text);
+            for (int i = 0; ; i++) {
+                try {
+                    if (File.Exists(file)) File.Replace(tmp, file, null);
+                    else File.Move(tmp, file);
+                    return;
+                }
+                catch (Exception e) when (i < 3 && (e is IOException || e is UnauthorizedAccessException)) { System.Threading.Thread.Sleep(15); }
+                catch (Exception) {
+                    File.WriteAllText(file, text);
+                    try { File.Delete(tmp); } catch { }
+                    return;
+                }
+            }
+        }
+
         internal static MelonPreferences_Category Category(string name) {
             if (path.Length == 0) path = Path.Combine(MelonEnvironment.UserDataDirectory, "QuickshotRing.cfg");
             foreach (MelonPreferences_Category known in categories) if (known.Identifier == name) return known; // two owners of one table
@@ -224,19 +246,14 @@ namespace QuickshotRing {
     /// string is never built when the level is lower.</summary>
     internal static class Logs {
         static MelonPreferences_Entry<string>? level;
-        static MelonPreferences_Entry<bool>? dumpAssets;
         static string warned = "";
 
         internal static bool Summary { get; private set; } = true;
         internal static bool Debug { get; private set; }
 
-        /// <summary>[Log] DumpAssets: write loaded_assets.txt and the material lookups at the first held string (clients).</summary>
-        internal static bool DumpAssets => dumpAssets != null && dumpAssets.Value;
-
         internal static void Init() {
             var cat = Cfg.Category("Log");
             level = cat.CreateEntry("Level", "Summary", description: "How much this machine logs (not shared). Quiet: errors, warnings and the start-up lines. Summary: also one line per release and one per rare change (a build, a sale, a main path, the shrine). Debug: every line, for play-tests (switch it on before a play-test that will be diagnosed from the log).");
-            dumpAssets = cat.CreateEntry("DumpAssets", false, description: "Clients: at the first held bow string, write UserData\\QuickshotRing\\loaded_assets.txt (the game's effects, sounds and materials that can be named in these settings) and log the material lookups. Off by default: it stalls that frame for about a quarter of a second.");
             Refresh();
         }
 

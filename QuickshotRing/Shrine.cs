@@ -193,7 +193,7 @@ namespace QuickshotRing {
                     List<string> also = removed.Where(h => slot == null || h != slot.Hash).Select(h => Label(tree, h)).ToList();
 
                     int counted = ownedCount!(pm);
-                    // Builds.OnUpdateCounts puts the test build's granted levels back on top (TestBuild.Reapply) and
+                    // Builds.OnUpdateCounts puts the test build's granted levels back on top (the play-test kit's TestBuild.Reapply, through KitHooks.Recounted) and
                     // refreshes; calling Reapply here as well would count them twice.
                     pm.UpdateCounts();
                     int owned = ownedCount!(pm);

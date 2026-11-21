@@ -224,7 +224,7 @@ namespace QuickshotRing {
                 if (arrow != null) sky = Skyfall.DecideServer(arrow, owner, ms, claimedMs);
                 r = sky != SkyCode.None ? SkyfallSeam.Neutral : ResolveServer(bow, owner, id);
                 build = Builds.ServerBuild(owner);
-                test = TestBuild.ActiveFor(name);
+                test = Builds.TestBuildFor(name);
                 side = sky != SkyCode.None ? "Release (Skyfall " + sky + ")" : "Release";
             }
             else {

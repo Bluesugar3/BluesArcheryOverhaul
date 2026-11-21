@@ -2,7 +2,7 @@ using Alta.Networking.Scripts.Player;
 using Alta.StatSystem;
 
 namespace QuickshotRing {
-    // Heal and Feed, shared by the play-test range (TestRangeHelpers.cs) and Skyfall's festival mode (SkyfallServer.cs). Server only:
+    // Heal and Feed, shared by the play-test range (BluesArcheryTestKit's TestRangeHelpers.cs) and Skyfall's festival mode (SkyfallServer.cs). Server only:
     // the game syncs both stats from the server. Neither catches: the caller does, per player.
     internal static class PlayerCare {
         /// <summary>Health back to its maximum (food is not touched). Null when done, else why not.</summary>

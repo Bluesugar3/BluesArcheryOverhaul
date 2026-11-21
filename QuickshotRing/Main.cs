@@ -6,7 +6,7 @@ using HarmonyLib;
 using MelonLoader;
 using UnityEngine;
 
-[assembly: MelonInfo(typeof(QuickshotRing.Main), "QuickshotRing", "0.18.3", "dmand")]
+[assembly: MelonInfo(typeof(QuickshotRing.Main), "QuickshotRing", QuickshotRing.Main.Version, "dmand")]
 [assembly: MelonGame("Alta", "A Township Tale")]
 
 namespace QuickshotRing {
@@ -35,8 +35,7 @@ namespace QuickshotRing {
     //   ShrineView.cs, TreeColours.cs   client: the shrine the local player has open, rings and links on its tree
     //   Tablet.cs        client: the floating stone tablet at the shrine that says what the held orb does to the build
     //   Lectern.cs, Preview.cs   Unity-free, unit-tested: the tablet's stone blocks, layout and motion; its wording
-    //   TestBuild.cs     server-only [TestBuild] orb overrides for play-tests
-    //   TestTools.cs     server-only play-test buttons: really buy a preset, spawn and remove standing test creatures
+    //   KitHooks.cs      the few hooks the separate play-test kit (BluesArcheryTestKit: test build, test buttons, the range) sets
     //   Skyfall*.cs      the admin sky-rain skill, given only by console command: settings hub, commands, the quiet signal, the server's storm, the looks; Unity-free rules in SkyfallRules.cs
     //   Builds.cs, Claims.cs, StreamBits.cs   build bits and shot claims on the game's own messages
     //   Hits.cs, Fx.cs, Cfg.cs   raycast + damage, line drawing and game-asset lookup, settings
@@ -45,6 +44,9 @@ namespace QuickshotRing {
     // Skill logic runs on the SERVER. A client only knows (a) its own bow string, every frame it is held
     // (BowString.HeldUpdate) and (b) the status messages the game broadcasts for each skill.
     public class Main : MelonMod {
+        /// <summary>This build's version (tools/stage-build.sh sets it). The play-test kit is compiled against it and refuses to run
+        /// beside any other version.</summary>
+        internal const string Version = "0.18.3";
         internal const float TightRadius = 0.012f; // metres, ring size once "absorbed" into the arrow
         static readonly Color DefaultGold = new Color(1f, 0.78f, 0.2f);
 
@@ -59,7 +61,7 @@ namespace QuickshotRing {
         static BowString? bow;
         static State state;
         static float lastSeen, stateSince;
-        static bool expired, ownsQuickdraw, loggedTimings, loggedDraw;
+        static bool expired, ownsQuickdraw, loggedTimings;
         static readonly RelaxTimer relax = new RelaxTimer(); // the server's DrawGrace rule, so a twitch it ignores does not re-arm the ring
         static BowQuickdraw? quickdraw;
         static readonly Func<BowString, float> GetStrength =
@@ -97,10 +99,7 @@ namespace QuickshotRing {
             Shatter.Init();
             Seek.Init(); // H1: Seeking Volley's [SeekingVolley] settings; H2: its looks' [SeekLook] (SeekerShare is Paths')
             Pvp.Init();
-            TestBuild.Init();
-            TestTools.Init(); // after TestBuild: shares its [TestBuild] Player and reacts after its reload
-            TestRange.Init(); // the play-test range ([TestRange], server only, off by default); after TestTools: reads [TestBuild] Player
-            RangePhoto.Init(); // client only, on request: photos of the range ([RangePhoto] Request)
+            Builds.Init(); // a settings reload refreshes every known build (where the test build's reload was; the test tools are the BluesArcheryTestKit mod)
             Paths.Init();
             Claims.Init();
             Tutorial.Init();
@@ -111,11 +110,7 @@ namespace QuickshotRing {
             Telemetry.Init(); // balance telemetry ([Telemetry], server, not shared)
             Cfg.Ready();
             TimingHost.Refresh(); // G5: after any reset or migration; measures its own overhead once when [Timing] Enabled
-            TestTools.Started(); // the request numbers in the file at start-up are never acted on
-            TestRange.Started(); // the same for the range's request numbers
-            RangePhoto.Started(); // and the photo request
             if (ApplicationManager.IsHeadless) SkyfallCommands.Register(); // Skyfall: the skyfall console module, on the dedicated server only (its own try/catch)
-            TestBuild.OpenMenu(); // client only, once: [TestBuild] MenuOnStart
             VolleySkill.TryRegister("start"); // retried on every scene and at the tree load until it works
             SelfCheck.Run("start-up"); // fixF: every settings-derived value and the tablet's text, once, so a cycle shows here
             Cfg.Reloaded += () => SelfCheck.Run("settings reload"); // subscribed last: runs after every other reload handler
@@ -128,8 +123,6 @@ namespace QuickshotRing {
 
         public override void OnApplicationQuit() {
             using (Timing.Begin(TQuit)) {
-                TestTools.Shutdown();
-                TestRange.Shutdown(); // the play-test range: everything it spawned goes
                 try { AutoDock.Shutdown(); } // fix batch D: the try-out quiver and its arrows never outlive the server
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Auto Dock: shutdown clean-up failed: {e.Message}"); }
                 try { Skyfall.Held.Shutdown(); } // Skyfall: a held real arrow never outlives the server
@@ -153,7 +146,6 @@ namespace QuickshotRing {
             TAutoPoll = Timing.Section("Main.OnUpdate / AutoDock.Poll"),
             TWeight = Timing.Section("Main.OnUpdate / Weight.Tick"),
             TBounce = Timing.Section("Main.OnUpdate / Ricochet.BounceTick (waiting bounces)"),
-            TTestPoll = Timing.Section("Main.OnUpdate / TestTools.Poll"),
             TPump = Timing.Section("Main.OnUpdate / VolleyFx.Pump"),
             TBalance = Timing.Section("Main.OnUpdate / Balance.Frame"),
             TWatch = Timing.Section("Main.OnUpdate / Hits.WatchTick"),
@@ -177,7 +169,7 @@ namespace QuickshotRing {
             TSkySky = Timing.Section("Main.OnLateUpdate / SkyfallSky.Frame"),
             TSkyLook = Timing.Section("Main.OnLateUpdate / SkyfallLook.Tick"),
             TSkyNail = Timing.Section("Main.OnLateUpdate / SkyfallNail.Tick"),
-            TQuit = Timing.Section("Main.OnApplicationQuit / TestTools + AutoDock shutdown"),
+            TQuit = Timing.Section("Main.OnApplicationQuit / AutoDock + Skyfall shutdown"),
             TSkillMessage = Timing.Section("patch PickupBasedSkill.SendSerializedMessage / Main.SkillMessage"),
             TDraw = Timing.Section("patch BowString.HeldUpdate / Main.Draw (the ring)");
 
@@ -202,10 +194,6 @@ namespace QuickshotRing {
             // flies, and a bounce usually comes after the volley's last one; one count test while none waits)
             try { using (Timing.Begin(TBounce)) Ricochet.BounceTick(); }
             catch (Exception e) { MelonLogger.Error($"[Archery] Ricochet: bounce tick failed: {e.Message}"); }
-            try { using (Timing.Begin(TTestPoll)) TestTools.Poll(); } // server: the button window's buy / spawn / clear requests, freezing test creatures
-            catch (Exception e) { MelonLogger.Error($"[Archery] TEST BUILD: poll failed: {e.Message}"); }
-            try { TestRange.Poll(); } // server: the play-test range's requests and ticks (its own timing sections; one bool test while idle)
-            catch (Exception e) { MelonLogger.Error($"[Archery] TEST RANGE: poll failed: {e.Message}"); }
             try { using (Timing.Begin(TPump)) VolleyFx.Pump(); } // the volley's queued haptic pulses and delayed sounds
             catch (Exception e) { MelonLogger.Error($"[Archery] Volley FX: pulse pump failed: {e.Message}"); }
             try { using (Timing.Begin(TBalance)) Balance.Frame(); } // the Balance Ring (clients; returns at once on the server)
@@ -248,8 +236,6 @@ namespace QuickshotRing {
             catch (Exception e) { MelonLogger.Error($"[Archery] Tree colours: frame failed: {e.Message}"); }
             try { using (Timing.Begin(TTablet)) Tablet.Frame(); } // the shrine's floating test tablet (clients)
             catch (Exception e) { MelonLogger.Error($"[Archery] Tablet: frame failed: {e.Message}"); }
-            try { RangePhoto.Frame(); } // client, on request only: one photo of the test range per frame (its own timing section)
-            catch (Exception e) { MelonLogger.Error($"[Archery] Range photo: frame failed: {e.Message}"); }
             try { using (Timing.Begin(TSkyLook)) SkyfallLook.Tick(); } // Skyfall, every storm's look on this machine (sigils, rain, explosions, scorches)
             catch (Exception e) { MelonLogger.Error($"[Archery] Skyfall: storm look failed: {e.Message}"); }
             try { using (Timing.Begin(TSkyNail)) SkyfallNail.Tick(); } // Skyfall, the World-Nail and the sigil's shatter (after the storm look, which hands it the sigil)
@@ -327,10 +313,6 @@ namespace QuickshotRing {
 
                 if (!ownsQuickdraw && Player.Current is Player me && me.ProgressionManager != null)
                     ownsQuickdraw = me.ProgressionManager.SkillUnlocked(skill);
-                if (!loggedDraw && Logs.DumpAssets) { // G2: opt-in ([Log] DumpAssets, off): the list stalled the first held frame ~230 ms
-                    loggedDraw = true;
-                    Fx.DumpAssetsOnce();
-                }
                 if (!ownsQuickdraw) return;
 
                 PickupDock dock = __instance.StringDock;

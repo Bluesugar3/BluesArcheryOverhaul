@@ -27,10 +27,30 @@ namespace QuickshotRing {
             Cfg.Reloaded += () => warnedMismatch = false;
         }
 
+        /// <summary>Start-up (where the test build's own settings reload was subscribed): every settings reload forgets the cached
+        /// builds and refreshes the known players.</summary>
+        internal static void Init() => Cfg.Reloaded += Reload;
+
+        static readonly int T_Reload = Timing.Section("Builds.Reload (settings)");
+        static void Reload() {
+            using var _t = Timing.Begin(T_Reload);
+            try { ReloadAll(noManagers); }
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Build: reload failed: {e}"); }
+        }
+        static readonly PlayerProgressionManager[] noManagers = new PlayerProgressionManager[0];
+
+        // The play-test kit's lent and hidden orbs for this player (KitHooks; none without the kit).
+        static readonly Orb[] noOrbs = new Orb[0];
+        static IReadOnlyList<Orb> Lent(string? name) => KitHooks.Lent?.Invoke(name) ?? noOrbs;
+        static IReadOnlyList<Orb> Hidden(string? name) => KitHooks.Hidden?.Invoke(name) ?? noOrbs;
+
+        /// <summary>Server: the play-test kit lends or hides orbs for this player (telemetry marks the shot as a test build's).</summary>
+        internal static bool TestBuildFor(string? name) => Lent(name).Count > 0 || Hidden(name).Count > 0;
+
         internal static string NameOf(IPlayer? p) => p?.UserInfo?.Username ?? "?";
 
         /// <summary>The key a player's main path is remembered under: the account id, else the username.</summary>
-        internal static string KeyOf(IPlayer? p, string name) { // internal for TestRange (reset, snapshots)
+        internal static string KeyOf(IPlayer? p, string name) { // internal for the play-test kit (reset, snapshots)
             int id = p?.UserInfo?.Identifier ?? 0;
             return id != 0 ? id.ToString() : name;
         }
@@ -58,8 +78,8 @@ namespace QuickshotRing {
             using var _t = Timing.Begin(T_Compute, name);
             owned = RealOwned(pm);
             Orb practising = Practising(pm);
-            IReadOnlyList<Orb> extra = TestBuild.ExtraFor(name);
-            IReadOnlyList<Orb> without = TestBuild.WithoutFor(name);
+            IReadOnlyList<Orb> extra = Lent(name);
+            IReadOnlyList<Orb> without = Hidden(name);
             Build build = Build.From(TestBuildRule.Combine(owned, practising, extra, without));
             // The main path: remembered per account, decided only on final builds (a save still loading or an
             // unmapped tree gives partial counts that must never overwrite the remembered path). An orb being tried
@@ -108,14 +128,14 @@ namespace QuickshotRing {
             if (NewOrbs.All.Contains(orb) && !Tree.OrbOn(orb)) return false; // switched off: off everywhere, the test build included
             PlayerProgressionManager pm = p.ProgressionManager;
             string name = NameOf(p);
-            return TestBuildRule.Combine(RealOwned(pm), Practising(pm), TestBuild.ExtraFor(name), TestBuild.WithoutFor(name)).Contains(orb);
+            return TestBuildRule.Combine(RealOwned(pm), Practising(pm), Lent(name), Hidden(name)).Contains(orb);
         }
 
         /// <summary>Server: the ultimates this manager owns (owned orbs + the test build, no practice).</summary>
         internal static Ultimates ServerOwnedUltimates(PlayerProgressionManager? pm) {
             if (pm == null) return Ultimates.None;
             var all = RealOwned(pm);
-            all.AddRange(TestBuild.ExtraFor(NameOf(pm.Player)));
+            all.AddRange(Lent(NameOf(pm.Player)));
             return Build.From(all).Ultimates;
         }
 
@@ -127,10 +147,10 @@ namespace QuickshotRing {
             Build build = Compute(pm, NameOf(pm.Player), out List<Orb> owned);
             if (TreeMapped) Store(pm, build);
             else serverCache.Remove(pm);
-            TestBuild.Sync(pm, owned);
+            KitHooks.Refreshed?.Invoke(pm, owned); // the play-test kit: its granted game-skill levels and FreePoints
         }
 
-        /// <summary>Server, the test build's real purchase (TestTools): hold every refresh of this manager, as while a save loads,
+        /// <summary>Server, the test build's real purchase (the play-test kit's TestTools): hold every refresh of this manager, as while a save loads,
         /// so the many sales and purchases end in one refresh (<see cref="EndBatch"/>) and the main path is decided once.</summary>
         internal static void BeginBatch(PlayerProgressionManager pm) {
             if (pm == null) return;
@@ -230,7 +250,7 @@ namespace QuickshotRing {
             static readonly int T = Timing.Section("patch PlayerProgressionManager.UpdateCounts / Builds.OnUpdateCounts");
             static void Postfix(PlayerProgressionManager __instance) {
                 using var _t = Timing.Begin(T);
-                try { if (NetworkSceneManager.IsServer && __instance != null) TestBuild.Reapply(__instance); }
+                try { if (NetworkSceneManager.IsServer && __instance != null) KitHooks.Recounted?.Invoke(__instance); } // the play-test kit re-adds its granted levels
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Build: test build re-apply failed: {e}"); }
                 Refreshed(__instance, "PlayerProgressionManager.UpdateCounts");
             }

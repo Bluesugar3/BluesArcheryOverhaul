@@ -181,7 +181,7 @@ namespace QuickshotRing {
             return counts.With(main);
         }
 
-        /// <summary>Server, the play-test range (TestRange: reset, restore): sets the remembered main path of this account (None
+        /// <summary>Server, the play-test range (BluesArcheryTestKit's TestRange: reset, restore): sets the remembered main path of this account (None
         /// forgets it), written at once. Returns the one it had.</summary>
         internal static MainPath SetRemembered(string accountKey, MainPath main) {
             MainPath had = Server.Get(accountKey);
