@@ -173,7 +173,7 @@ namespace BluesArcheryOverhaul {
             if (SkyfallSignal.Differs(check, Cfg.SharedShort)) {
                 if (warnedCheck != check) {
                     warnedCheck = check;
-                    MelonLogger.Error($"[Archery] Skyfall: SHARED SETTINGS DIFFER FROM THE SERVER (server {check:x2}, this client {Cfg.SharedShort:x2}). Copy the [shared] settings from the server's BluesArcheryOverhaul.cfg: until then this game's storms can be drawn differently from everyone else's.");
+                    MelonLogger.Error($"[Archery] Skyfall: SHARED SETTINGS DIFFER FROM THE SERVER (server {check:x2}, this client {Cfg.SharedShort:x2}). This game could not take the server's settings (read the '[Archery] Settings:' lines above): until then this game's storms can be drawn differently from everyone else's.");
                 }
             }
             else {

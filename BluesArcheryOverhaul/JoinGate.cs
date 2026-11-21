@@ -46,6 +46,8 @@ namespace BluesArcheryOverhaul {
         static readonly JoinHellos hellos = new JoinHellos();          // server; every use under lock (hellos)
         static readonly HashSet<string> warnedTexts = new HashSet<string>();
         static ServerHandler? installedOn;
+        /// <summary>The join step is on a real server's join sequence (server-set settings send only then).</summary>
+        internal static bool OnServer { get; private set; }
         static Connection? greetedBy;                                   // client: the server connection whose Here was logged
 
         const MessageType Message = (MessageType)JoinWire.Message;
@@ -90,6 +92,7 @@ namespace BluesArcheryOverhaul {
             installedOn = current;
             if (current.IsDummyLocalServer) return;                     // a client's stand-in server: nobody joins it, and it has no step list
             current.AddConnectionStep(Step);
+            OnServer = true;
             MelonLogger.Msg($"[Archery] Join: check installed on message {JoinWire.Message} ({Values.Check.ToString().ToLowerInvariant()})");
         }
 
@@ -107,7 +110,15 @@ namespace BluesArcheryOverhaul {
         static void ServerRead(Connection connection, Stream stream) {
             using var _t = Timing.Begin(TServerRead);
             try {
-                if (connection == null || JoinWire.ReadHello(new StreamBits(stream), out JoinHello hello) != WireRead.Ok) {
+                if (connection == null) return;
+                // the message is copied off first, so its kind can be looked at: Hello, or (server-set settings) a SettingsAck
+                BitTape tape = BitTape.From(new StreamBits(stream));
+                if (tape.Peek(8) == JoinWire.KindSettingsAck) {
+                    if (JoinWire.ReadSettingsAck(tape, out JoinSettingsAck ack) == WireRead.Ok) ServerSettings.ServerAck(connection, ack);
+                    else if (Logs.Debug) MelonLogger.Msg("[Archery] Join: a damaged settings answer: ignored");
+                    return;
+                }
+                if (JoinWire.ReadHello(tape, out JoinHello hello) != WireRead.Ok) {
                     if (Logs.Debug) MelonLogger.Msg("[Archery] Join: a message on the join number was not a Hello: ignored");
                     return;
                 }
@@ -119,11 +130,12 @@ namespace BluesArcheryOverhaul {
 
         static async Task Step(Connection connection, Action<string> progress) {
             JoinVerdict verdict = default;
-            string reason = "";
+            string reason = "", name = "";
             int id = 0;
-            bool expecting = false;
+            bool expecting = false, sendSettings = false;
+            Settings s = default;
             try {
-                Settings s = Values;
+                s = Values;
                 if (s.Check == JoinCheck.Off) return;                                   // nothing sent
                 id = connection.Identifier;
                 lock (hellos) expecting = hellos.Expect(id);                            // only now is this connection's Hello kept
@@ -146,8 +158,12 @@ namespace BluesArcheryOverhaul {
                 if (connection.IsDisposed) return;                                      // they left: no line, no refusal
 
                 JoinHello? got = answered ? hello : (JoinHello?)null;
-                verdict = JoinRule.Decide(got, JoinWire.Version, OwnVersion, Cfg.SharedChecksum, s.Check, s.SettingsRefuse);
-                string name = JoinRule.Ascii(connection.UserInfo?.Username ?? connection.PlayerName, 40);
+                // Server-set settings: the Hello's checksum is the game's own file, which the server's settings replace next, so it no
+                // longer refuses here ("settings same|DIFFERENT" in the line is that file); [Join] SettingsMismatch judges the game's
+                // answer to the server's settings instead (ServerSettings.AtJoin).
+                verdict = JoinRule.Decide(got, JoinWire.Version, OwnVersion, Cfg.SharedChecksum, s.Check, settingsRefuse: false);
+                sendSettings = answered && hello.Wire == JoinWire.Version && !verdict.Refuse;
+                name = JoinRule.Ascii(connection.UserInfo?.Username ?? connection.PlayerName, 40);
                 string line = JoinRule.Line(name, got, verdict, s.Check, waited);
                 if (verdict.Problem != null) MelonLogger.Warning(answered ? line : $"{line} (no answer in {waited / 1000f:0.#} s)");
                 else if (Logs.Summary) MelonLogger.Msg(line);
@@ -157,6 +173,12 @@ namespace BluesArcheryOverhaul {
                 return;                                                                 // a fault never refuses
             } finally {
                 if (expecting) lock (hellos) hellos.Drop(id);                           // a late Hello is no longer kept
+            }
+            if (sendSettings) {
+                // server-set settings: sent and answered in this step; a fault lets the player in (AtJoin never throws)
+                string? refusal = await ServerSettings.AtJoin(connection, name, s.Seconds, s.SettingsRefuse);
+                if (refusal != null) { verdict.Refuse = true; reason = refusal; }
+                else if (connection.IsDisposed) return;
             }
             if (!verdict.Refuse) return;
 
@@ -198,7 +220,15 @@ namespace BluesArcheryOverhaul {
         static void ClientRead(Connection connection, Stream stream) {
             using var _t = Timing.Begin(TClientRead);
             try {
-                if (connection == null || JoinWire.ReadHere(new StreamBits(stream), out JoinHere here) != WireRead.Ok) {
+                if (connection == null) return;
+                // the message is copied off first, so its kind can be looked at: Here, or (server-set settings) a part of the server's settings
+                BitTape tape = BitTape.From(new StreamBits(stream));
+                if (tape.Peek(8) == JoinWire.KindSettings) {
+                    if (JoinWire.ReadSettings(tape, out JoinSettings part) == WireRead.Ok) ServerSettings.ClientPart(connection, part);
+                    else if (Logs.Debug) MelonLogger.Msg("[Archery] Join: a damaged part of the server's settings: ignored");
+                    return;
+                }
+                if (JoinWire.ReadHere(tape, out JoinHere here) != WireRead.Ok) {
                     if (Logs.Debug) MelonLogger.Msg("[Archery] Join: a message on the join number was not a Here: ignored");
                     return;
                 }

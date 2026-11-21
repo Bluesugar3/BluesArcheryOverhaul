@@ -370,7 +370,7 @@ namespace BluesArcheryOverhaul {
                     else if (!warnedMismatch) {
                         warnedMismatch = true;
                         loggedMatch = false; // once fixed, the next match logs its line again
-                        MelonLogger.Error($"[Archery] Settings: SHARED SETTINGS DIFFER FROM THE SERVER (server {check & BuildBits.CheckMask:x2}, this client {Cfg.SharedShort & BuildBits.CheckMask:x2}). Copy the [shared] settings from the server's BluesArcheryOverhaul.cfg.");
+                        MelonLogger.Error($"[Archery] Settings: SHARED SETTINGS DIFFER FROM THE SERVER (server {check & BuildBits.CheckMask:x2}, this client {Cfg.SharedShort & BuildBits.CheckMask:x2}). This game could not take the server's settings: read the '[Archery] Settings:' and '[Archery] Join:' lines above.");
                     }
                     break;
                 case WireRead.Absent:

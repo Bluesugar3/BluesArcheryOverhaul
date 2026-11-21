@@ -154,6 +154,7 @@ namespace BluesArcheryOverhaul {
             Skyfall.Init(); // Skyfall, the admin skill ([Skyfall]); before Cfg.Ready, which records, migrates and checksums only the categories that exist then
             Telemetry.Init(); // balance telemetry ([Telemetry], server, not shared)
             JoinGate.Init(); // the join gate ([Join], server, not shared)
+            ServerSettings.Init(); // server-set settings: sees MelonLoader's file loads and its quit (no entries of its own)
             Cfg.Ready();
             TimingHost.Refresh(); // G5: after any reset or migration; measures its own overhead once when [Timing] Enabled
             if (ApplicationManager.IsHeadless) SkyfallCommands.Register(); // Skyfall: the skyfall console module, on the dedicated server only (its own try/catch)
@@ -169,6 +170,7 @@ namespace BluesArcheryOverhaul {
 
         public override void OnApplicationQuit() {
             if (Refused) return;
+            ServerSettings.Quit(); // first: a client holding a server's settings puts the player's own back before MelonLoader's quit save (never throws)
             using (Timing.Begin(TQuit)) {
                 try { AutoDock.Shutdown(); } // fix batch D: the try-out quiver and its arrows never outlive the server
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Auto Dock: shutdown clean-up failed: {e.Message}"); }
@@ -260,6 +262,8 @@ namespace BluesArcheryOverhaul {
             catch (Exception e) { MelonLogger.Error($"[Archery] Skyfall: server tick failed: {e.Message}"); }
             try { using (Timing.Begin(TJoin)) JoinGate.Tick(); } // the join gate, server: adds its step to the game's join sequence once (one reference test otherwise)
             catch (Exception e) { MelonLogger.Error($"[Archery] Join: tick failed: {e.Message}"); }
+            try { ServerSettings.Tick(); } // server-set settings: server: parts to send; client: a whole send to apply, leaving the server (one flag test otherwise; its own timing section)
+            catch (Exception e) { MelonLogger.Error($"[Archery] Settings: tick failed: {e.Message}"); }
             try { using (Timing.Begin(TTelemetry)) Telemetry.Tick(); } // balance telemetry, server: every 5 s the queued rows go to the writer's thread
             catch (Exception e) { MelonLogger.Error($"[Archery] Telemetry: tick failed: {e.Message}"); }
             using (Timing.Begin(TClientLoad)) Tree.ClientLoad(); // G3: a client loads the archery tree once it has joined (once a second until it is in; nothing after)

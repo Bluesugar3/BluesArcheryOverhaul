@@ -140,6 +140,18 @@ namespace BluesArcheryOverhaul {
         /// <summary>[Tree] &lt;Orb&gt;Orb: the orb is in the shrine and its code runs (false for an orb that is not one of the later orbs).</summary>
         internal static bool OrbOn(Orb o) => orbOn.TryGetValue(o, out MelonPreferences_Entry<bool> e) && e.Value;
 
+        static string? builtSwitches;
+
+        static string SwitchText() {
+            var sb = new System.Text.StringBuilder();
+            foreach (KeyValuePair<Orb, MelonPreferences_Entry<bool>> kv in orbOn) sb.Append(kv.Key).Append(kv.Value.Value ? '1' : '0');
+            return sb.ToString();
+        }
+
+        /// <summary>Server-set settings: the [Tree] &lt;Orb&gt;Orb switches are read once, when this game run's tree is built (AddNewOrbs);
+        /// true when they differ now from what it was built with (a restart is needed). False before the tree is built.</summary>
+        internal static bool SwitchesChangedSinceBuild => builtSwitches != null && builtSwitches != SwitchText();
+
         /// <summary>The Ranged slot behind an archery orb (reverse of <see cref="OrbBySlot"/>); null when the orb has no slot.</summary>
         internal static ProgressionSlot? SlotOf(Orb orb) => slotByOrb.TryGetValue(orb, out ProgressionSlot s) ? s : null;
 
@@ -403,6 +415,7 @@ namespace BluesArcheryOverhaul {
         // of its own (Seeking Volley: the Volley skill's fourth level), with its parent's try-out.
         // Anything wrong (setting off, a parent missing, an id taken or reserved, the shrine's link cap) leaves that orb out.
         static void AddNewOrbs(ProfessionSkillTree tree, bool volleyIn) {
+            builtSwitches = SwitchText(); // server-set settings: what this game run's tree was built with
             newSlots.Clear();
             foreach (Orb orb in NewOrbs.All) {
                 try { AddNewOrb(tree, orb, volleyIn); }

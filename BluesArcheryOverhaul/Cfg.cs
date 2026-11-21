@@ -20,7 +20,8 @@ namespace BluesArcheryOverhaul {
         static DateTime stamp;
         static float nextPoll;
 
-        /// <summary>Raised after the file changed on disk and the new values are loaded.</summary>
+        /// <summary>Raised after the file changed on disk and the new values are loaded, and on a client after a server's settings were
+        /// set or the player's own were put back (ServerSettings, through <see cref="Changed"/>).</summary>
         internal static event Action? Reloaded;
 
         static readonly List<MelonPreferences_Entry> shared = new List<MelonPreferences_Entry>();
@@ -183,11 +184,16 @@ namespace BluesArcheryOverhaul {
                 // file still locked by the writer; its own watcher thread may have read first) and from then on every load and save
                 // of the file is a silent no-op. Cleared before the load, so this load really reads the file.
                 bool hadError = ClearFileError();
+                // Server-set settings: while a server's settings are held, the player's own values go into the entries first (so a
+                // key the file lacks keeps theirs), the file is read as theirs, and the server's go back in before anything reads them.
+                bool held = ServerSettings.Held;
+                if (held) ServerSettings.BeforeFileLoad();
                 // G2: ONE load. Every category shares one MelonLoader File object (SetFilePath reuses it by path), and
                 // LoadFromFile -> MelonPreferences.LoadFileAndRefreshCategories parses the file once and refreshes every entry of
                 // every category on that File (MelonLoader 0.7.3, decompiled). A load per category re-parsed the 77 KB file 41
                 // times: about 0.8 s of frozen server per settings change.
-                if (categories.Count > 0) categories[0].LoadFromFile(false);
+                try { if (categories.Count > 0) categories[0].LoadFromFile(false); }
+                finally { if (held) ServerSettings.AfterFileLoad(!FileErrorSet()); }
                 if (ClearFileError()) {
                     // fix1 (final-G5 M-1): put MelonLoader's flag back, so MelonLoader still refuses to save over a file it could not
                     // read (its own save at a clean quit would write the old values over the unfixed file). It is cleared only
@@ -206,14 +212,114 @@ namespace BluesArcheryOverhaul {
                 Logs.Refresh();
                 if (Logs.Summary) MelonLogger.Msg("[Archery] Settings reloaded from BluesArcheryOverhaul.cfg");
                 UpdateChecksum(false);
-                // G5: each handler its own timing section, in the multicast's order; an exception still ends the pass at the
-                // handler that threw, as Invoke did (it reaches the catch below)
-                Action? handlers = Reloaded;
-                if (handlers != null)
-                    foreach (Delegate d in handlers.GetInvocationList())
-                        using (Timing.Begin(Timing.On ? HandlerSection(d) : 0)) ((Action)d)();
+                ServerSettings.ServerReloaded(); // server-set settings: a server sends its new values to every game that took them (never throws)
+                RunHandlers();
             }
             catch (Exception e) { MelonLogger.Warning($"[Archery] Could not reload settings: {e.Message}"); }
+        }
+
+        // G5: each handler its own timing section, in the multicast's order; an exception still ends the pass at the handler that
+        // threw, as Invoke did (it reaches the caller's catch)
+        static void RunHandlers() {
+            Action? handlers = Reloaded;
+            if (handlers != null)
+                foreach (Delegate d in handlers.GetInvocationList())
+                    using (Timing.Begin(Timing.On ? HandlerSection(d) : 0)) ((Action)d)();
+        }
+
+        // ---------------------------------------------------------------- server-set settings (ServerSettings.cs)
+
+        /// <summary>Every entry of the mod's file as text: "Section.Name", its value now and its built-in default.</summary>
+        internal static List<SettingEntry> Entries() {
+            var list = new List<SettingEntry>();
+            foreach (MelonPreferences_Category c in categories)
+                foreach (MelonPreferences_Entry e in c.Entries)
+                    list.Add(new SettingEntry { Key = c.Identifier + "." + e.Identifier, Text = SettingsChecksum.Format(e.BoxedValue), Default = DefaultText(e) });
+            return list;
+        }
+
+        static string DefaultText(MelonPreferences_Entry e) {
+            System.Reflection.PropertyInfo? p = e.GetType().GetProperty("DefaultValue");
+            return SettingsChecksum.Format(p?.GetValue(e, null));
+        }
+
+        /// <summary>Sets each "Section.Name" entry from its text, in memory only (the file is not written). Returns how many could not
+        /// be set: no such entry, or a text that does not parse for the entry's type. Never throws.</summary>
+        internal static int SetTexts(List<KeyValuePair<string, string>> texts, List<string>? skippedKeys = null) {
+            var map = new Dictionary<string, MelonPreferences_Entry>(StringComparer.Ordinal);
+            foreach (MelonPreferences_Category c in categories)
+                foreach (MelonPreferences_Entry e in c.Entries) map[c.Identifier + "." + e.Identifier] = e;
+            int skipped = 0;
+            foreach (KeyValuePair<string, string> kv in texts) {
+                bool ok = false;
+                try { ok = map.TryGetValue(kv.Key, out MelonPreferences_Entry e) && TrySetText(e, kv.Value); }
+                catch (Exception) { ok = false; }
+                if (!ok) { skipped++; skippedKeys?.Add(kv.Key); }
+            }
+            return skipped;
+        }
+
+        static bool TrySetText(MelonPreferences_Entry e, string text) {
+            Type t = e.GetReflectedType();
+            var inv = System.Globalization.CultureInfo.InvariantCulture;
+            object value;
+            if (t == typeof(string)) value = text ?? "";
+            else if (t == typeof(float)) { if (!float.TryParse(text, System.Globalization.NumberStyles.Float, inv, out float f)) return false; value = f; }
+            else if (t == typeof(double)) { if (!double.TryParse(text, System.Globalization.NumberStyles.Float, inv, out double d)) return false; value = d; }
+            else if (t == typeof(int)) { if (!int.TryParse(text, System.Globalization.NumberStyles.Integer, inv, out int i)) return false; value = i; }
+            else if (t == typeof(bool)) { if (!bool.TryParse(text, out bool b)) return false; value = b; }
+            else return false;
+            e.BoxedValue = value;
+            return true;
+        }
+
+        /// <summary>After values were set in memory (server-set settings): the checksum and every reload handler, as a reload of the
+        /// file does. Never throws.</summary>
+        internal static void Changed(string why) {
+            try {
+                UpdateChecksum(false);
+                RunHandlers();
+            }
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Settings: a reload handler failed after {why}: {e.Message}"); }
+        }
+
+        /// <summary>Server-set settings: MelonLoader's own saves of the file on (true) or off (false), through its File's internal
+        /// ShouldSave (MelonLoader 0.7.3: File.Save writes nothing while it is false; every save of the file, the quit save and any
+        /// mod's MelonPreferences.Save() included, goes through File.Save). False when it could not be set. Never throws.</summary>
+        internal static bool SetFileSaving(bool on) {
+            try {
+                if (categories.Count == 0) return false;
+                categoryFile ??= AccessTools.Field(typeof(MelonPreferences_Category), "File");
+                object? file = categoryFile?.GetValue(categories[0]);
+                if (file == null) return false;
+                fileShouldSave ??= AccessTools.Field(file.GetType(), "ShouldSave");
+                if (fileShouldSave == null || fileShouldSave.FieldType != typeof(bool)) return false;
+                fileShouldSave.SetValue(file, on);
+                return (bool)fileShouldSave.GetValue(file) == on;
+            }
+            catch (Exception) { return false; }
+        }
+
+        static System.Reflection.FieldInfo? fileShouldSave;
+
+        /// <summary>Server-set settings: stops MelonLoader's own watcher of the file (it reloads the file on a thread-pool thread, with
+        /// none of the mod's handlers). It is not started again in this game run: the mod's own 2-second poll reloads the file anyway.</summary>
+        internal static void StopFileWatcher() {
+            try { if (categories.Count > 0) categories[0].DestroyFileWatcher(); }
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Settings: could not stop MelonLoader's watcher of {FileName} ({e.Message}); an edit is still undone at the next poll"); }
+        }
+
+        /// <summary>Whether MelonLoader's read-error flag is set now (read only; false when it cannot be seen).</summary>
+        static bool FileErrorSet() {
+            try {
+                if (fileErrorUnknown || categories.Count == 0) return false;
+                categoryFile ??= AccessTools.Field(typeof(MelonPreferences_Category), "File");
+                object? file = categoryFile?.GetValue(categories[0]);
+                if (file == null) return false;
+                fileWasError ??= AccessTools.Field(file.GetType(), "_waserror");
+                return fileWasError != null && fileWasError.FieldType == typeof(bool) && (bool)fileWasError.GetValue(file);
+            }
+            catch (Exception) { return false; }
         }
 
         /// <summary>G5: "reload handler Owner.Method" for a Reloaded subscriber (a lambda is named after the class that wrote it).</summary>
