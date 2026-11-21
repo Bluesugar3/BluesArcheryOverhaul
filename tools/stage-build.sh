@@ -31,7 +31,9 @@ DLL=BluesArcheryOverhaul/bin/Release/BluesArcheryOverhaul.dll; KIT=BluesArcheryT
 # 3. stage it (built aside, then swapped in, so a waiting installer never sees half a build)
 N="$I/staged.new"; rm -rf "$N"; mkdir -p "$N"
 cp "$DLL" "$N/BluesArcheryOverhaul.dll" && cp "$KIT" "$N/BluesArcheryTestKit.dll" && cp BluesArcheryTestKit/tools/TestBuildMenu.ps1 "$N/" && cp "BluesArcheryTestKit/tools/Test Build Menu.cmd" "$N/" || { echo "STAGE FAILED: copy"; exit 4; }
-[ -f "$I/post-install.sh" ] && mv "$I/post-install.sh" "$N/post-install.sh"   # optional one-off settings step for this build
+# optional one-off settings steps: this build's, after the one of a build that was replaced before it installed (it has not run yet)
+[ -f "$I/staged/post-install.sh" ] && { cat "$I/staged/post-install.sh"; echo; } > "$N/post-install.sh"
+[ -f "$I/post-install.sh" ] && { cat "$I/post-install.sh" >> "$N/post-install.sh" && rm -f "$I/post-install.sh"; }
 MD5=$(md5sum "$N/BluesArcheryOverhaul.dll" | cut -c1-32); KMD5=$(md5sum "$N/BluesArcheryTestKit.dll" | cut -c1-32)
 { echo "version=$VER"; echo "md5=$MD5"; echo "kitmd5=$KMD5"; echo "friends=$FRIENDS"; echo "changed=$CHANGED"; echo "test=$TEST"; echo "tests=$T; kit $TK"; echo "staged=$(date '+%Y-%m-%d %H:%M:%S')"; } > "$N/manifest.txt"
 rm -rf "$I/staged.old"; [ -d "$I/staged" ] && mv "$I/staged" "$I/staged.old"; mv "$N" "$I/staged"; rm -rf "$I/staged.old"
