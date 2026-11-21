@@ -12,29 +12,35 @@ namespace BluesArcheryOverhaul {
     // Balance telemetry, server only (the owner, 2026-11-19: "Have it keep logs of all arrows shot, skills used and damage delt, so after
     // a day of playtest we can take all that information and graph it to visualize if some skills are to op"; design
     // docs/superpowers/specs/2026-11-19-balance-telemetry-design.md). Every release the server decides (Draws.Release -> Shot) and every
-    // hit of archery damage go to UserData\BluesArcheryOverhaul\telemetry\ as two CSV files a day; tools/telemetry_report.py draws them.
+    // hit of archery damage are compiled into per-day statistics as they happen (TelemetryStats; since 0.19.5, the owner: "It should all
+    // be compiled immediately so it stays relatively small"), one small file per server run per day in UserData\BluesArcheryOverhaul\
+    // telemetry\; [Telemetry] KeepRows also writes the old row files (shots-v1-<day>.csv, hits-v1-<day>.csv) for troubleshooting.
+    // tools/telemetry_report.py draws either.
     //
     // Every hit on the server passes HealthObject.ReceiveDamage (PlayerHealth reaches it through base, after the PvP gate, invincibility
     // and its multipliers), so one prefix/postfix sees them all and reads what really came off the health bar. The mod's own damage
     // sites open a HitScope (TelemetryRules.cs) naming their source; without one a tool on an arrow is the real arrow, a tool or wielder
     // that is a known Holy beam is the beam or its blast, and anything else is not archery and is left alone. The hooks only append a
-    // struct; TelemetryLog writes on a background thread every FlushSeconds (the owner's condition: no performance issues).
+    // struct or add to numbers; the statistics file is written on a background thread every StatsSeconds and the rows (KeepRows) every
+    // FlushSeconds (the owner's condition: no performance issues).
     internal static class Telemetry {
-        const float FlushSeconds = 5f, WarnSeconds = 600f;
+        const float FlushSeconds = 5f, StatsSeconds = 60f, WarnSeconds = 600f;
 
-        static MelonPreferences_Entry<bool>? enabled;
+        static MelonPreferences_Entry<bool>? enabled, keepRows;
         static MelonPreferences_Entry<int>? minFreeMb;
         static TelemetryLog? log;
+        static TelemetryStats? stats;
         static readonly ShotIndex index = new ShotIndex();
         static readonly string session = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
-        static float nextFlush, lastProblemWarn = float.MinValue, lastDropWarn = float.MinValue;
+        static float nextFlush, nextStats, lastProblemWarn = float.MinValue, lastStatsWarn = float.MinValue, lastDropWarn = float.MinValue;
         static long droppedSaid;
         static bool saidStart, warnedHit, warnedShot;
 
         internal static void Init() {
             var cat = Cfg.Category("Telemetry");
-            enabled = cat.CreateEntry("Enabled", true, description: "Server (not shared). Records every bow release and every hit of archery damage (what really came off the target's health, kills, damage to players) to UserData\\BluesArcheryOverhaul\\telemetry\\ as shots-v1-<day>.csv and hits-v1-<day>.csv, one pair per server-local day, for the balance graphs of tools/telemetry_report.py (python -I tools/telemetry_report.py). The game's thread only queues a small record; a background thread writes every 5 s. Re-read live. Off: nothing is recorded (one check per hit).");
-            minFreeMb = cat.CreateEntry("MinFreeMb", 2048, description: "Server (not shared). The low-disk stop: while the drive that holds the telemetry folder has less than this many MB free, nothing is recorded (the rows are dropped, and the log says so at most every 10 minutes), so weeks of logs can never fill the server's disk. Old days are never deleted: the balance report compiles all of them. 0 = no check. Re-read live.");
+            enabled = cat.CreateEntry("Enabled", true, description: "Server (not shared). Compiles every bow release and every hit of archery damage (what really came off the target's health, kills, damage to players) into small per-day statistics as they happen: one file per server run per server-local day, stats-v1-<day>-<session>.csv in UserData\\BluesArcheryOverhaul\\telemetry\\, rewritten whole about once a minute, for the balance graphs of tools/telemetry_report.py (python -I tools/telemetry_report.py). No per-shot file unless KeepRows is on. The game's thread only adds to numbers; a background thread writes. Re-read live. Off: nothing is recorded (one check per hit).");
+            keepRows = cat.CreateEntry("KeepRows", false, description: "Server (not shared). For troubleshooting: also writes one row per shot and per hit (shots-v1-<day>.csv and hits-v1-<day>.csv, as before 0.19.5), which grow without end on a busy server (about 1 GB a month); the report can read them with --rows and check them against the statistics with --compare. Re-read live.");
+            minFreeMb = cat.CreateEntry("MinFreeMb", 2048, description: "Server (not shared). The low-disk stop: while the drive that holds the telemetry folder has less than this many MB free, no telemetry file is written (the statistics wait in memory and are written once there is room; KeepRows' rows are dropped), and the log says so at most every 10 minutes, so weeks of logs can never fill the server's disk. Old days are never deleted: the balance report compiles all of them. 0 = no check. Re-read live.");
         }
 
         // [Telemetry] MinFreeMb as bytes for the writer's low-disk stop (0 = no check)
@@ -42,12 +48,21 @@ namespace BluesArcheryOverhaul {
 
         static bool On => enabled != null && enabled.Value && NetworkSceneManager.IsServer;
 
+        static bool KeepRows => keepRows != null && keepRows.Value;
+
         static double Now => Time.realtimeSinceStartup;
 
         static readonly string Version = typeof(Main).Assembly.GetCustomAttribute<MelonInfoAttribute>()?.Version ?? "?";
 
+        static string Folder => Path.Combine(Cfg.Folder, "telemetry");
+
         // created on first use, on the server, so a client never makes the folder
-        static TelemetryLog Log => log ??= new TelemetryLog(Path.Combine(Cfg.Folder, "telemetry"), session);
+        static TelemetryLog Log => log ??= new TelemetryLog(Folder, session);
+        static TelemetryStats Stats => stats ??= new TelemetryStats(Folder, session, Version);
+
+        // every shot and hit row: into the statistics, and to the row writer only with KeepRows
+        static void Record(in ShotRow r) { Stats.Add(in r); if (KeepRows) Log.Add(in r); }
+        static void Record(in HitRow r) { Stats.Add(in r); if (KeepRows) Log.Add(in r); }
 
         static void Once(ref bool said, string what) {
             if (said) return;
@@ -66,7 +81,7 @@ namespace BluesArcheryOverhaul {
                 int locks = Claims.LocksOf(arrow, false).Count; // the server's kept Seeking Volley locks (none: 0)
                 int shot = index.Next();
                 index.Put(arrow, account, name, shot, Now);
-                Log.Add(ShotRow.Of(DateTime.UtcNow.Ticks, shot, arrow, name, account, r, ms, locks, sky, build, test, Version, Cfg.SharedChecksum));
+                Record(ShotRow.Of(DateTime.UtcNow.Ticks, shot, arrow, name, account, r, ms, locks, sky, build, test, Version, Cfg.SharedChecksum));
             }
             catch (Exception e) { Once(ref warnedShot, "recording a shot failed: " + e.Message); }
         }
@@ -83,16 +98,24 @@ namespace BluesArcheryOverhaul {
             catch (Exception ex) { Once(ref warnedShot, "linking a Holy beam to its arrow failed: " + ex.Message); }
         }
 
-        /// <summary>Server, every frame from Main.OnUpdate (before the headless return): every FlushSeconds the queued rows go to the
-        /// writer's thread; the writer's problems and dropped rows are said at most once every WarnSeconds.</summary>
+        /// <summary>Server, every frame from Main.OnUpdate (before the headless return): every FlushSeconds the shots older than
+        /// TelemetryStats.CloseSeconds close and the rows (KeepRows) go to the writer's thread; every StatsSeconds the statistics are
+        /// copied and written on the worker; the writers' problems and dropped rows are said at most once every WarnSeconds.</summary>
         internal static void Tick() {
-            if (log == null && !On) return;
+            if (log == null && stats == null && !On) return;
             float now = Time.unscaledTime;
             if (now < nextFlush) return;
             nextFlush = now + FlushSeconds;
             if (!saidStart && On) {
                 saidStart = true;
-                if (Logs.Summary) MelonLogger.Msg($"[Archery] Telemetry: recording every shot and archery hit to {Path.Combine(Cfg.Folder, "telemetry")} (session {session}); graphs: python -I tools/telemetry_report.py");
+                if (Logs.Summary) MelonLogger.Msg($"[Archery] Telemetry: compiling every shot and archery hit into statistics in {Folder} (session {session}, written about once a minute; [Telemetry] KeepRows {(KeepRows ? "on: the per-shot row files too" : "off: no per-shot files")}); graphs: python -I tools/telemetry_report.py");
+            }
+            if (stats != null) {
+                stats.MinFreeBytes = MinFreeBytes; // re-read live
+                stats.Tick(DateTime.UtcNow.Ticks);
+                if (now >= nextStats && stats.Flush(true)) nextStats = now + StatsSeconds;
+                string? said = stats.TakeProblem();
+                if (said != null && now - lastStatsWarn >= WarnSeconds) { lastStatsWarn = now; MelonLogger.Warning("[Archery] Telemetry: statistics: " + said); }
             }
             if (log == null) return;
             log.MinFreeBytes = MinFreeBytes; // re-read live
@@ -106,8 +129,18 @@ namespace BluesArcheryOverhaul {
             }
         }
 
-        /// <summary>Server quit: the last rows are written here, after any running write (at most 2 s).</summary>
+        /// <summary>Server quit: every open shot closes and the statistics, then the last rows, are written here, each after any running
+        /// write (at most 2 s).</summary>
         internal static void Shutdown() {
+            if (stats != null) {
+                try {
+                    stats.CloseAll();
+                    if (!stats.WaitIdle(2000) || !stats.Flush(false)) MelonLogger.Warning("[Archery] Telemetry: the statistics writer was still busy at quit; the last minute is lost");
+                    string? problem = stats.TakeProblem();
+                    if (problem != null) MelonLogger.Warning("[Archery] Telemetry: statistics: " + problem);
+                }
+                catch (Exception e) { MelonLogger.Warning("[Archery] Telemetry: writing the last statistics failed: " + e.Message); }
+            }
             if (log == null) return;
             try {
                 if (!log.WaitIdle(2000) || !log.Flush(false)) MelonLogger.Warning("[Archery] Telemetry: the writer was still busy at quit; the last rows are lost");
@@ -202,7 +235,7 @@ namespace BluesArcheryOverhaul {
                     }
                     SpectralMix mix = __state.Mix;
                     float total = mix.Total;
-                    if (!(total > 0f)) { Log.Add(row); return; }
+                    if (!(total > 0f)) { Record(row); return; }
                     // a batched spectral hit: one row per kind of arrow in it, each its share; the kill on the largest share only
                     DealtBy largest = mix.Largest;
                     Part(row, DealtBy.Ghost, mix.Ghost / total, killed && largest == DealtBy.Ghost);
@@ -216,7 +249,7 @@ namespace BluesArcheryOverhaul {
             static void Part(HitRow row, DealtBy kind, float share, bool killed) {
                 if (!(share > 0f)) return;
                 row.Source = kind; row.Raw *= share; row.Dealt *= share; row.Cripple *= share; row.Killed = killed;
-                Log.Add(row);
+                Record(row);
             }
         }
     }
