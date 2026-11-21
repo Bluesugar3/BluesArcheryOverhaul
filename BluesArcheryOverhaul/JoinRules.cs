@@ -52,6 +52,17 @@ namespace BluesArcheryOverhaul {
     /// <summary>The joining game's answer: what it runs, its shared-settings checksum (Cfg.SharedChecksum) and its platform.</summary>
     internal struct JoinHello { public int Wire; public ModVersion Version; public uint Check; public JoinPlatform Platform; }
 
+    /// <summary>Server to a game, one part of a send of the server's settings (SettingsSync.Pack, split by SettingsSync.Split). Parts
+    /// of one send share Sequence, Parts and Check (the server's SettingsSync.Check).</summary>
+    internal struct JoinSettings { public int Wire; public ModVersion Version; public int Sequence, Part, Parts; public uint Check; public byte[] Payload; }
+
+    /// <summary>The game's answer to a whole send: the check it has after applying, whether a start-only setting differs from what this
+    /// game run started with (a restart is needed), and how many values it could not take.</summary>
+    internal struct JoinSettingsAck { public int Wire; public ModVersion Version; public int Sequence; public uint Check; public bool RestartNeeded; public int Skipped; }
+
+    /// <summary>What the server makes of a game's answer to its settings.</summary>
+    internal enum JoinSettingsVerdict { Pass, Log, Refuse }
+
     internal static class JoinWire {
         /// <summary>THE wire number. Raise it on every build friends need: a change to the build block, the shot claim, the set of
         /// [shared] settings, or shooter-side behaviour that must match (the judgement tools/stage-build.sh asks for with
@@ -70,10 +81,17 @@ namespace BluesArcheryOverhaul {
         public const int RefusedResult = 60;
 
         public const uint KindHere = 1, KindHello = 2;
+        /// <summary>Server-set settings (2026-11-20): one part of the server's settings (server to game), and the game's answer.</summary>
+        public const uint KindSettings = 3, KindSettingsAck = 4;
         const int KindBits = 8, WireBits = 16, PartBits = 10, CheckBits = 32, PlatformBits = 2;
+        const int SequenceBits = 16, PartIndexBits = 8, PartCountBits = 8, LengthBits = 10, RestartBits = 1, SkippedBits = 12;
         public const int HereBits = KindBits + WireBits + 3 * PartBits;                    // 54
         public const int HelloBits = HereBits + CheckBits + PlatformBits;                  // 88
+        /// <summary>A Settings part before its payload bytes: 54 + 74.</summary>
+        public const int SettingsHeadBits = HereBits + SequenceBits + PartIndexBits + PartCountBits + CheckBits + LengthBits;
+        public const int SettingsAckBits = HereBits + SequenceBits + CheckBits + RestartBits + SkippedBits;   // 54 + 61
         const int MaxWire = (1 << WireBits) - 1;
+        const int MaxSkipped = (1 << SkippedBits) - 1;
 
         static void WriteHead(IBitWriter w, uint kind, int wire, ModVersion v) {
             w.Write(kind, KindBits);
@@ -111,6 +129,54 @@ namespace BluesArcheryOverhaul {
             h.Check = r.Read(CheckBits);
             uint p = r.Read(PlatformBits);
             h.Platform = p == 0 ? JoinPlatform.Pc : p == 1 ? JoinPlatform.Quest : JoinPlatform.Unknown;
+            return WireRead.Ok;
+        }
+
+        /// <summary>The head, then sequence 16 bits, part 8, parts 8, check 32, payload length 10 and the payload's bytes. A payload
+        /// longer than SettingsSync.MaxPartBytes is the caller's mistake: only its first MaxPartBytes bytes are written.</summary>
+        public static void WriteSettings(IBitWriter w, JoinSettings s) {
+            WriteHead(w, KindSettings, s.Wire, s.Version);
+            byte[] payload = s.Payload ?? new byte[0];
+            int n = Math.Min(payload.Length, SettingsSync.MaxPartBytes);
+            w.Write((uint)s.Sequence & 0xFFFFu, SequenceBits);
+            w.Write((uint)s.Part & 0xFFu, PartIndexBits);
+            w.Write((uint)s.Parts & 0xFFu, PartCountBits);
+            w.Write(s.Check, CheckBits);
+            w.Write((uint)n, LengthBits);
+            for (int i = 0; i < n; i++) w.Write(payload[i], 8);
+        }
+
+        public static WireRead ReadSettings(IBitReader r, out JoinSettings s) {
+            s = new JoinSettings { Payload = new byte[0] };
+            if (!ReadHead(r, KindSettings, SettingsHeadBits, out s.Wire, out s.Version)) return WireRead.Malformed;
+            s.Sequence = (int)r.Read(SequenceBits);
+            s.Part = (int)r.Read(PartIndexBits);
+            s.Parts = (int)r.Read(PartCountBits);
+            s.Check = r.Read(CheckBits);
+            int n = (int)r.Read(LengthBits);
+            if (n > SettingsSync.MaxPartBytes || r.BitsLeft < n * 8) return WireRead.Malformed;
+            var payload = new byte[n];
+            for (int i = 0; i < n; i++) payload[i] = (byte)r.Read(8);
+            s.Payload = payload;
+            return WireRead.Ok;
+        }
+
+        /// <summary>The head, then sequence 16 bits, check 32, restart 1, skipped 12 (held to 4095).</summary>
+        public static void WriteSettingsAck(IBitWriter w, JoinSettingsAck a) {
+            WriteHead(w, KindSettingsAck, a.Wire, a.Version);
+            w.Write((uint)a.Sequence & 0xFFFFu, SequenceBits);
+            w.Write(a.Check, CheckBits);
+            w.Write(a.RestartNeeded ? 1u : 0u, RestartBits);
+            w.Write((uint)(a.Skipped < 0 ? 0 : a.Skipped > MaxSkipped ? MaxSkipped : a.Skipped), SkippedBits);
+        }
+
+        public static WireRead ReadSettingsAck(IBitReader r, out JoinSettingsAck a) {
+            a = new JoinSettingsAck();
+            if (!ReadHead(r, KindSettingsAck, SettingsAckBits, out a.Wire, out a.Version)) return WireRead.Malformed;
+            a.Sequence = (int)r.Read(SequenceBits);
+            a.Check = r.Read(CheckBits);
+            a.RestartNeeded = r.Read(RestartBits) != 0;
+            a.Skipped = (int)r.Read(SkippedBits);
             return WireRead.Ok;
         }
     }
@@ -160,6 +226,17 @@ namespace BluesArcheryOverhaul {
             }
             v.Refuse = v.Problem != null && check == JoinCheck.Refuse;
             return v;
+        }
+
+        /// <summary>Server-set settings: what the server makes of a game's answer to its settings (<paramref name="ack"/> null: no
+        /// answer in time). Pass when the game's check after applying is the server's and no restart is needed; otherwise Log, or
+        /// Refuse under [Join] SettingsMismatch = refuse, with <paramref name="text"/> for the player and the log ("" on a pass).</summary>
+        public static JoinSettingsVerdict SettingsDecision(uint serverCheck, JoinSettingsAck? ack, bool refuse, out string text) {
+            if (ack == null) text = $"Your {ModName} did not take this server's settings in time. Join again.";
+            else if (ack.Value.Check != serverCheck) text = $"Your {ModName} {ack.Value.Version} could not take this server's settings (other built-in values). Install the server's copy, then join again.";
+            else if (ack.Value.RestartNeeded) text = $"This server's settings switch {ModName} orbs on or off: restart the game, then join again.";
+            else { text = ""; return JoinSettingsVerdict.Pass; }
+            return refuse ? JoinSettingsVerdict.Refuse : JoinSettingsVerdict.Log;
         }
 
         /// <summary>The server's one log line for a join. <paramref name="name"/> must already be bounded (Ascii).
