@@ -83,7 +83,7 @@ namespace BluesArcheryOverhaul {
             shatterSeconds = F("ShatterSeconds", 2.8f, "how long its runes fall.");
             shatterKick = F("ShatterKick", 4f, "metres per second the runes are thrown outward.");
             shatterGravity = F("ShatterGravity", 6f, "how fast they fall (metres per second, each second).");
-            shatterSound = S("ShatterSound", "Tower Completion;Shrine Training Complete Sounds", "the swell as the sigil shatters (the first of these the game has loaded).");
+            shatterSound = S("ShatterSound", "Tower Completion;Shrine Training Complete Sounds", "unused: the shatter plays no sound since 0.19.1.");
             crumbleEffect = S("CrumbleEffect", "Large Smoke Puff", "the puffs it crumbles into.");
             crumbleScale = F("CrumbleScale", 3f, "their size (each of its parts scaled).");
             crumbleStep = F("CrumbleStepSeconds", 0.25f, "seconds between puffs, top to bottom.");
@@ -221,7 +221,7 @@ namespace BluesArcheryOverhaul {
                 case 2: Fx.FindEffect(Name(slam, "Turabada Ground Slam Large Effect")); break;
                 case 3: Fx.FindEffect(Name(crumbleEffect, "Large Smoke Puff")); break;
                 case 4: Fx.FindSound(Name(appearSound, "Lightbeam Shot Impact Sounds")); break;
-                case 5: Fx.FindSound(Name(shatterSound, "Tower Completion;Shrine Training Complete Sounds")); break;
+                case 5: break;                                              // was the shatter sound (removed)
                 case 6: Fx.FindSound(Name(crumbleSound, "Boulder Breaking Sounds")); break;
                 default: warmStep = -1; break;                               // done until the next warm-up
             }
@@ -744,7 +744,7 @@ namespace BluesArcheryOverhaul {
                 r.RimTurn[i] = 360f * LookSeed.Unit(id, i, 75);
             }
             sky.Release();
-            VolleyFx.Play(Name(shatterSound, "Tower Completion;Shrine Training Complete Sounds"), centre);
+            // the shatter plays no sound (owner, 2026-11-20: the Tower Completion swell removed)
         }
 
         // the falling runes (each frame: gravity, then the step) and the rim's broken rings; placed from the shatter's own frame on
