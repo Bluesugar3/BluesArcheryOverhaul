@@ -143,6 +143,7 @@ Expected: `0 Warning(s)`, `0 Error(s)`; `ALL PASS`: the PC build is unchanged.
     <Compile Include="Spike.cs" />
     <Compile Include="..\BluesArcheryOverhaul\JoinRules.cs" />
     <Compile Include="..\BluesArcheryOverhaul\Build.cs" />
+    <Compile Include="..\BluesArcheryOverhaul\SettingsSync.cs" />
     <Reference Include="$(QuestReferences)\Il2CppAssemblies\*.dll;$(QuestReferences)\net8\*.dll" Private="false" />
   </ItemGroup>
   <Target Name="CheckQuestReferences" BeforeTargets="ResolveReferences" Condition="!Exists('$(QuestReferences)\net8\MelonLoader.dll')">
@@ -151,7 +152,7 @@ Expected: `0 Warning(s)`, `0 Error(s)`; `ALL PASS`: the PC build is unchanged.
 </Project>
 ```
 
-If `Build.cs` needs another Unity-free file to compile, link that file too; never copy or edit a rule file for the spike.
+Since 0.19.6 `JoinRules.cs` needs `SettingsSync.cs` beside it (the server-set settings: message kinds 3 and 4 on the same message number). The spike answers Hello only, not Settings: the server then treats it as a settings mismatch, which under the default `[Join] SettingsMismatch = log` lets it in after waiting `AnswerSeconds` with one warning line. That 5 s wait and warning are expected in Task 4; answering Settings is the port's job. If `Build.cs` needs another Unity-free file to compile, link that file too; never copy or edit a rule file for the spike.
 
 - [ ] **Step 4: `Spike.cs`**: one `MelonMod` (`[assembly: MelonInfo(typeof(BluesArcheryOverhaul.Spike), "QuestSpike", "0.0.1", "Blue")]`, `[assembly: MelonGame("Alta", "Att_Quest")]`) and six probes. Every probe is in its own try/catch and logs exactly one line when it first succeeds or fails, `[QuestSpike] PROBE <n> <name>: PASS <detail>` or `... FAIL <exception type and message>`; `OnInitializeMelon` logs `[QuestSpike] started` and, 60 s after the first scene, `[QuestSpike] SUMMARY` listing every probe not yet reported as `NOT RUN`.
 
@@ -203,7 +204,7 @@ adb pull /sdcard/Android/data/com.Alta.ATownshipTale/files/MelonLoader/com.Alta.
 grep -a "QuestSpike" C:/ATTUnity/QuestRefs/run1-Latest.log
 ```
 
-Expected: `[QuestSpike] started`, six `PROBE` lines, `SUMMARY` with nothing `NOT RUN`. Server log expected: `[Archery] Join: <name> passed (client X, wire N, Quest, settings DIFFERENT, answered in N ms)` (the settings differ because the spike sends no checksum; that is expected).
+Expected: `[QuestSpike] started`, six `PROBE` lines, `SUMMARY` with nothing `NOT RUN`. Server log expected: the join line for a passed game, naming `Quest` as the platform (its exact wording is the installed build's; since 0.19.6 expect also one warning that the game did not answer the server's settings, and a join about 5 s slower).
 
 - [ ] **Step 3: Work each FAIL** (at most three attempts each: fix, rebuild, push, rerun the part that failed). A probe still failing after three is written up with what was tried.
 
