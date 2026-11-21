@@ -47,8 +47,6 @@ namespace QuickshotRing {
         internal static bool Enabled => enabled != null && enabled.Value;
         internal static Color BackColour => Cfg.Colour(backColour, DefaultBack);
         internal static Color FrontColour => Cfg.Colour(frontColour, DefaultFront);
-        internal static float TrailSeconds => trailSeconds.Value;
-        internal static float TrailWidth => trailWidth.Value;
         internal static string HitEffect => hitEffect.Value;
         internal static string Charge2HitEffect => charge2HitEffect.Value;
         internal static string GroundEffect => groundEffect.Value;
@@ -154,7 +152,7 @@ namespace QuickshotRing {
             public readonly float[] strandThumpAt = { -1f, -1f, -1f };      // Time.time of stage k's thump (its strand's pulse); -1 = not yet
             public float strandTaperShare = float.NaN;                       // the taper the strands' width curve was built for
             public StrandKnots? knots;                                       // the knots at the head, one per completed stage; the stage-3 head glow
-            public Vector3 back, lit, offset;
+            public Vector3 back, lit;
             public HolyWindUp? windUp;      // Holy Arrow's wind-up (a Charge main with Holy Arrow), from stage 3
             public bool windUpDone;         // the wind-up ran and stopped (or failed to start): not again on this draw
             public Helix helix;             // this frame's strand geometry (DrawStrands), which the wind-up's motes ride on
@@ -443,7 +441,7 @@ namespace QuickshotRing {
                 Vector3 side = toCam - fwd * Vector3.Dot(toCam, fwd);
                 if (side.sqrMagnitude > 1e-8f) offset = side.normalized * (f.radius + CameraClearance);
             }
-            f.back = back + offset; f.lit = lit + offset; f.offset = offset;
+            f.back = back + offset; f.lit = lit + offset;
             float baseShare = Mathf.Clamp01(fraction.Value);
             // With the wind-up the strands' span shortens toward the head over the gather ([HolyWindUp] StrandSqueeze: the whole
             // spiral packs into the front of the arrow, in step with the core's squeeze), the braid tightens on top of that, and

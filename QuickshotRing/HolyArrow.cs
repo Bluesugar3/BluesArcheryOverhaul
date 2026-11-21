@@ -710,7 +710,7 @@ namespace QuickshotRing {
             LineRenderer line = null!;
             readonly List<Vector3> path = new List<Vector3>();
             readonly List<Vector3> jitter = new List<Vector3>();
-            float length, sinceFork, endedAt = -1f, nextRoll, brightness = 1f, born;
+            float sinceFork, endedAt = -1f, nextRoll, brightness = 1f, born;
             // false for another archer's beam: the spectator's copy never really flies (the fired message carries velocity 0,
             // it stays on the bow), so the trail does not follow it; it is drawn from the start point to EndAt's landing.
             bool follow = true;
@@ -744,7 +744,6 @@ namespace QuickshotRing {
                 if (d > 0.05f) {
                     int steps = follow ? 1 : Mathf.Clamp(Mathf.CeilToInt(d / 0.6f), 1, 200);
                     for (int i = 1; i <= steps; i++) { path.Add(Vector3.Lerp(last, point, (float)i / steps)); jitter.Add(Vector3.zero); }
-                    length += d;
                 }
                 endedAt = Time.time;
             }
@@ -775,7 +774,6 @@ namespace QuickshotRing {
                         float d = Vector3.Distance(p, last);
                         if (d >= 0.6f) {
                             path.Add(p); jitter.Add(Vector3.zero);
-                            length += d;
                             float every = Mathf.Max(0.5f, forkEvery.Value); // 0 or less = no forks
                             if (forkEvery.Value > 0f) for (sinceFork += d; sinceFork >= every; sinceFork -= every)
                                 Fx.Bolt(p, p + UnityEngine.Random.onUnitSphere * 0.5f, 0.08f, 0.2f, trailWidth.Value * 0.6f,

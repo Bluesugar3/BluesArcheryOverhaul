@@ -71,7 +71,6 @@ namespace QuickshotRing {
             public Stat? Pool;
             public StatHandler? OnPool;
             public GameObject Go = null!;
-            public GameObject? Quad;
             public Material? QuadMat;
             public LineRenderer Arc = null!;
             public float Radius, Shown, LastHit, FlickerAt = -1f;
@@ -134,7 +133,6 @@ namespace QuickshotRing {
                 mr.sharedMaterial = r.QuadMat;
                 mr.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
                 mr.receiveShadows = false;
-                r.Quad = q;
             }
             var arcGo = new GameObject("Arc");
             arcGo.transform.SetParent(r.Go.transform, false);

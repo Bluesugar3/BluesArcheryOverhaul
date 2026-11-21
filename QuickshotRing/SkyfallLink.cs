@@ -21,7 +21,7 @@ namespace QuickshotRing {
     //     every frame while the player is online; after SkyfallOutbox.GiveUpSeconds it is warned once and still waits. A player who
     //     goes offline is dropped from the queue; their next join is a rejoin.
     //   To whom: that holder only (or the player just taken from, who is told "does not hold"). Never anyone else.
-    //   On the client: a postfix on PlayerTextMessage.Serialize latches it (Skyfall.LocalHolds, LocalFestival, LocalCheck, and
+    //   On the client: a postfix on PlayerTextMessage.Serialize latches it (Skyfall.LocalHolds, LocalFestival and
     //     LocalTakenAt on a take) and a prefix on PlayerMessageDisplay.Display swallows every QSR_SKYFALL_ text, so nothing ever shows
     //     on screen. The latch is dropped when this game leaves the server (Player.Current changes away from a player).
     internal static class SkyfallLink {
@@ -129,7 +129,6 @@ namespace QuickshotRing {
             if (!ReferenceEquals(now, lastPlayer) && lastPlayer != null) {
                 bool held = Skyfall.LocalHolds;
                 Skyfall.LocalHolds = Skyfall.LocalFestival = false;
-                Skyfall.LocalCheck = 0;
                 Skyfall.LocalTakenAt = -1f;
                 warnedCheck = -1;   // the next server's check is compared afresh
                 if (held && Logs.Summary) MelonLogger.Msg("[Archery] Skyfall: left the server; this game holds Skyfall again only when a server says so");
@@ -167,7 +166,6 @@ namespace QuickshotRing {
             bool wasHolds = Skyfall.LocalHolds, wasFestival = Skyfall.LocalFestival;
             Skyfall.LocalHolds = holds;
             Skyfall.LocalFestival = festival;
-            Skyfall.LocalCheck = check;
             if (wasHolds && !holds) Skyfall.LocalTakenAt = Time.time;   // taken: the caster's storm fizzles (Task 11 watches this)
             if ((holds != wasHolds || festival != wasFestival) && Logs.Summary)
                 MelonLogger.Msg($"[Archery] Skyfall: this game {(holds ? "holds" : "no longer holds")} Skyfall (festival mode {(festival ? "on" : "off")})");

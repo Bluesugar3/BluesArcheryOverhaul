@@ -175,7 +175,6 @@ namespace QuickshotRing {
             }
             start = hit.point + hit.normal * 0.02f;
             dir = new Vector3((float)dx, (float)dy, (float)dz);
-            rec.Skips++;
             if (rec.SkipLogs++ < LogsPerRelease)
                 { if (Logs.Debug) MelonLogger.Msg(Inv($"[Archery] Ricochet: arrow {release} spectral {index} skipped off '{hit.collider.name}' at {Targets.P(hit.point)}, came in at {RicochetRule.HitDegrees(step.x, step.y, step.z, hit.normal.x, hit.normal.y, hit.normal.z):0} degrees{(NetworkSceneManager.IsServer ? "" : " (looks)")}")); }
             return true;

@@ -54,7 +54,7 @@ namespace QuickshotRing {
             public ShotPose Aim;
             public float Held, LastFrame, AimedSince = -1f, EndedAt = -1f, Presence;
             public bool Sounded, Armed, WasAimed, Tried, GroundTried, HasCentre;
-            public float SoundedAt = -1f, ArmedAt = -1f;
+            public float ArmedAt = -1f;
             public readonly SkyfallSigil.Sigil?[] Rings = new SkyfallSigil.Sigil?[3];
             public SkyfallSigil.Sigil? Sky, Ground;
             public uint Seed;
@@ -91,11 +91,6 @@ namespace QuickshotRing {
 
         /// <summary>The hold on this string ends (released, the arrow left, or no Frame for 0.25 s): its looks fade out and its sky dim
         /// is released at once.</summary>
-        internal static void End(BowString bow) {
-            if (!ReferenceEquals(bow, null) && holds.TryGetValue(bow, out Hold h)) End(h);
-            else SkyfallSky.Undim(SkyfallSky.HoldKey);
-        }
-
         static void End(Hold h) {
             if (h.EndedAt < 0f) h.EndedAt = Time.time;
             SkyfallSky.Undim(SkyfallSky.HoldKey);
@@ -185,7 +180,7 @@ namespace QuickshotRing {
             if (aimed && !h.Sounded) {                                            // the hum, once a stretch and at most once every 3 s
                 h.Sounded = true;
                 if (now - lastSoundAt >= SoundGapSeconds) {
-                    lastSoundAt = h.SoundedAt = now;
+                    lastSoundAt = now;
                     VolleyFx.Play(holdSound?.Value ?? "", tip);
                 }
             }

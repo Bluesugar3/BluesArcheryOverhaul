@@ -120,11 +120,10 @@ namespace QuickshotRing {
 
         // ---------------------------------------------------------------- who holds it (server) and what this game was told (client)
 
-        /// <summary>Clients: the latch, what the server's last quiet signal said (holds, festival mode, its shared-settings check).
+        /// <summary>Clients: the latch, what the server's last quiet signal said (holds, festival mode).
         /// Written only by SkyfallLink: set by the message, cleared when this game leaves the server. <see cref="LocalTakenAt"/> is
         /// <c>Time.time</c> when a "does not hold" signal followed a "holds" one (the caster's storm fizzles on a take), -1 when none.</summary>
         internal static bool LocalHolds, LocalFestival;
-        internal static byte LocalCheck;
         internal static float LocalTakenAt = -1f;
 
         /// <summary>Server: festival mode for storms cast from now on. Memory only; starts off. Dormant: the <c>skyfall festival</c>
@@ -554,7 +553,7 @@ namespace QuickshotRing {
             if (Logs.Debug) MelonLogger.Msg($"[Archery] Skyfall: arrow {id} held ({(server ? "server" : caster ? "own" : "seen")})");
         }
 
-        sealed class StormRecord { public SkyStorm Storm = null!; public bool Caster; public float BusyUntil; }
+        sealed class StormRecord { public SkyStorm Storm = null!; public float BusyUntil; }
         static readonly Dictionary<uint, StormRecord> storms = new Dictionary<uint, StormRecord>();
         static readonly List<uint> stormScratch = new List<uint>();
 
@@ -564,7 +563,7 @@ namespace QuickshotRing {
         internal static void Begin(SkyStorm storm, bool caster) {
             using var _t = Timing.Begin(TBegin);
             if (storm == null) return;
-            storms[storm.ArrowId] = new StormRecord { Storm = storm, Caster = caster, BusyUntil = SkyfallSeam.BusyUntil(storm.StartTime, Values, NetworkSceneManager.IsServer) };
+            storms[storm.ArrowId] = new StormRecord { Storm = storm, BusyUntil = SkyfallSeam.BusyUntil(storm.StartTime, Values, NetworkSceneManager.IsServer) };
             try { if (NetworkSceneManager.IsServer && (storm.Code == SkyCode.Skyfall || storm.Code == SkyCode.Festival)) SkyfallServer.Start(storm); } // the server's landings; a fizzle has none (Skyfall.Held destroys its arrow)
             catch (Exception e) { MelonLogger.Error($"[Archery] Skyfall: server storm start failed: {e.Message}"); }
             try { if (!NetworkSceneManager.IsServer && !ApplicationManager.IsHeadless) SkyfallLook.Start(storm, caster); } // fizzles too: the puff

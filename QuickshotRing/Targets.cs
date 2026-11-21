@@ -213,7 +213,7 @@ namespace QuickshotRing {
             public uint RealHit;                                            // the creature the real arrow struck (0 = none yet)
             public readonly HashSet<uint> Struck = new HashSet<uint>();     // creatures this release struck (spectral, real or a jump)
             public readonly JumpLedger Jumps = new JumpLedger();            // every machine: the jumps each struck creature has passed on (play-test 7: every landed arrow jumps)
-            public int Clicks, Skips, SkipLogs, JumpSounds, JumpLogs, Arcs;
+            public int Clicks, SkipLogs, JumpSounds, JumpLogs, Arcs;
             public BowString? Bow;                                          // clients, looks only: the bow it left (the shooter's bow-hand thump at a shatter)
             // Shatter (batch 4, a Charge side orb since 4b; a blast since play-test 7): whether this release can shatter (None:
             // nothing), whether its real arrow shatters (a charged arrow), the pellets its look draws, the multi-arrow orbs that
@@ -353,7 +353,6 @@ namespace QuickshotRing {
             return h != null ? $"'{h.name}' ({id})" : id.ToString(CultureInfo.InvariantCulture);
         }
 
-        internal static string F2(float v) => v.ToString("0.0#", CultureInfo.InvariantCulture);
         internal static string P(Vector3 v) => Inv($"({v.x:0.00}, {v.y:0.00}, {v.z:0.00})");
     }
 }

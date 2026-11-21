@@ -77,12 +77,9 @@ namespace QuickshotRing {
 
         /// <summary>H4 (H23-review-opus minor 1): a homing arrow's cast passes through a creature's shells (the non-body colliders
         /// Seek.BodyOf leaves out: a Turabada's 'Block Players' pillar), but only those that belong to a creature (Seek.CreatureShell):
-        /// a world collider on the same layer still stops it.</summary>
-        internal static bool CastPastShells(Vector3 from, Vector3 direction, float maxDistance, out RaycastHit hit, Transform? a, Transform? b, Transform? c) =>
-            CastCore(from, direction, maxDistance, out hit, a, b, c, null, true);
-
-        /// <summary>H5: as above, also past every collider under the transforms in <paramref name="past"/> (null entries are skipped): a
-        /// chaining homing arrow's cast passes through the creatures it has already struck (Seek.StruckRoots), never a world collider.</summary>
+        /// a world collider on the same layer still stops it. H5: also past every collider under the transforms in
+        /// <paramref name="past"/> (null entries are skipped): a chaining homing arrow's cast passes through the creatures it has
+        /// already struck (Seek.StruckRoots), never a world collider.</summary>
         internal static bool CastPastShells(Vector3 from, Vector3 direction, float maxDistance, out RaycastHit hit, Transform? a, Transform? b, Transform? c, Transform?[]? past) =>
             CastCore(from, direction, maxDistance, out hit, a, b, c, past, true);
 

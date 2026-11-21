@@ -344,7 +344,7 @@ namespace QuickshotRing {
                 if (q == null) {
                     loose.RemoveAll(x => !x.Alive);
                     if (loose.Count >= LooseCap) { Full("loose piece", LooseCap); return null; }
-                    q = new Quad(Host(), true);
+                    q = new Quad(Host());
                     loose.Add(q);
                 }
                 q.Setup(tex, blend, LooseMeanderInner);
@@ -389,7 +389,7 @@ namespace QuickshotRing {
                 loose.RemoveAll(x => !x.Alive);
                 int target = Math.Min(want, LooseCap);
                 for (int i = 0; i < perCall && loose.Count < target; i++) {
-                    var q = new Quad(Host(), true);
+                    var q = new Quad(Host());
                     q.Setup(Tex.Combat, Blend.Both, LooseMeanderInner);   // its under child too
                     q.Take();
                     q.Release();
@@ -398,12 +398,6 @@ namespace QuickshotRing {
                 return loose.Count >= target;
             }
             catch (Exception e) { Fail(e); return true; }
-        }
-
-        /// <summary>Releases every sigil and loose piece. The pooled objects stay (DontDestroyOnLoad).</summary>
-        internal static void Clear() {
-            foreach (List<Sigil> pool in sigils) foreach (Sigil s in pool) if (s.Busy) s.Release();
-            foreach (Quad q in loose) if (q.Busy) q.Release();
         }
 
         /// <summary>SelfCheck, clients only (0 when headless or before Init): SigilSpin gives the sky sigil's 6 bands their numbers
@@ -456,7 +450,6 @@ namespace QuickshotRing {
             float annulusInner = -1f;
             int cell = -2;                                                  // the UVs shown: -1 the whole texture, row * 8 + col a sheet cell
             Blend blend;
-            internal readonly bool LoosePiece;
             internal Tex Tex { get; private set; }
 
             internal Transform T => go.transform;
@@ -466,8 +459,7 @@ namespace QuickshotRing {
             internal Color Painted => painted;
             internal bool Usable => mr.sharedMaterial != null;
 
-            internal Quad(Transform parent, bool loosePiece) {
-                LoosePiece = loosePiece;
+            internal Quad(Transform parent) {
                 go = new GameObject("Skyfall Quad");
                 Layer(go);
                 go.transform.SetParent(parent, false);
@@ -636,8 +628,6 @@ namespace QuickshotRing {
             int runeIndex;
             bool accent;
 
-            internal Transform Root => root.transform;
-            internal int Bands => bands.Length;
             internal bool Busy { get; private set; }
             internal bool Alive => root != null;
 
@@ -697,7 +687,7 @@ namespace QuickshotRing {
             // ---- the composition helpers: a piece at angle th (degrees) and radius share r round its band, flat, its top outward
 
             Part Add(int band, Tex tex, Blend blend, float side, float r, float th, Hue hue, Hue accentHue, float alpha, bool rune, bool accentOnly, float meanderInner = 0f) {
-                var q = new Quad(bands[band].T, false);
+                var q = new Quad(bands[band].T);
                 q.Setup(tex, blend, meanderInner);
                 float rad = th * Mathf.Deg2Rad;
                 q.Place(new Vector3(Mathf.Sin(rad) * r, 0f, Mathf.Cos(rad) * r), Quaternion.AngleAxis(th, Vector3.up) * Quaternion.Euler(90f, 0f, 0f), side);

@@ -334,7 +334,7 @@ namespace QuickshotRing {
 
             sealed class Landing {
                 public float first;
-                public int landed, sounds;
+                public int sounds;
                 public bool flashed, charged, green;
                 public readonly List<float> xs = new List<float>(), ys = new List<float>(), zs = new List<float>();
             }
@@ -356,7 +356,6 @@ namespace QuickshotRing {
                     if (releases.Count >= Cap) releases.Clear();
                     releases[release] = l = new Landing { first = Time.time };
                 }
-                l.landed++;
                 l.charged |= charged;
                 l.green |= green;
                 if (!sparks) { /* the heavy arrow's hit effect stands in */ }

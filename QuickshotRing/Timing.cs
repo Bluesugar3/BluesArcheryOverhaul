@@ -32,7 +32,6 @@ namespace QuickshotRing {
 
         internal static readonly long Frequency = Stopwatch.Frequency;
         internal const int BucketCount = 5;
-        internal static readonly string[] BucketNames = { "<0.1", "0.1-1", "1-5", "5-20", ">20" };
         internal const int MaxDepth = 64;
         internal const long NoNumber = -1;
 
