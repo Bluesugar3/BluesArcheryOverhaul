@@ -95,14 +95,17 @@ Eight orbs each.
 
 ## Install
 
-You need MelonLoader **0.7.3**. The same DLL goes on **the server and every player's game**; a player without it only sees plain arrows.
+You need MelonLoader **0.7.3**. The same `BluesArcheryOverhaul.dll` goes on **the server and every player's game**.
 
-1. Download the DLL from the [Releases](../../releases) page. It is still called `QuickshotRing.dll`, the mod's old name, until the next release.
+1. Download `BluesArcheryOverhaul.dll` from the [Releases](../../releases) page.
 2. Close the game and stop the server.
 3. Put it in the `Mods` folder of the game and of the server.
 4. Start the server, then the game.
 
 It loaded correctly if `MelonLoader\Latest.log` has a line starting `[Archery] Self-check:`. If that line says `FAILED`, don't play on that build.
+
+- **Joining:** by default the server turns away a game that has no matching copy of the mod, and tells the player why. `[Join] Check` on the server sets this: `refuse`, `log` (let everyone in and only log it) or `off`.
+- **Updating from QuickshotRing** (the mod's name up to 0.18.3): delete `QuickshotRing.dll` from both `Mods` folders. With both files present the new one refuses to start. Your settings are copied to the new names on first start, and the old files are left alone.
 
 ## Skyfall (admins only)
 
@@ -119,10 +122,19 @@ To cast: draw fully, aim at least 25° up, hold 1 s, let go. A sigil opens in th
 
 ## Settings
 
-Everything is in `UserData\QuickshotRing.cfg`, and edits apply within 2 s while the game runs. The `[Tree]` switches that add or remove an orb need a restart of the server and every game.
+Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s while the game runs. The `[Tree]` switches that add or remove an orb need a restart of the server and every game.
 
 - **`[shared]` settings** must match on the server and every game. Compare the `[Archery] Settings: shared checksum` line in both logs.
 - **`[TreeLayout]`** places each orb at the shrine.
 - **`[PvP]`** decides whether arrows hurt players. The server's own PvP setting must be on too.
 - **`[Log] Level = Debug`** gives detailed logs.
-- **Orb icons:** put `<Name>.png` in `UserData\QuickshotRing\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
+- **Orb icons:** put `<Name>.png` in `UserData\BluesArcheryOverhaul\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
+
+## Balance statistics (server)
+
+The server keeps running statistics of archery so you can see which skills are too strong. It is on by default, runs on the server only, and sends nothing anywhere.
+
+- **What it keeps:** per day, per player and per kind of shot: shots, damage to creatures, kills, damage to players, time spent and what dealt the damage. Player names are in the files. No single shot is stored.
+- **Where:** `UserData\BluesArcheryOverhaul\telemetry\` on the server, one small `stats-v1-<day>-<run>.csv` per day and server run, rewritten about once a minute. A very busy month is about 3 MB. Old days are never deleted.
+- **The page:** `python -I tools/telemetry_report.py <that folder>` (Python 3, this repository's `tools` folder) compiles every day into one page: damage per shot and per minute for each skill, kills, and a flag on any skill at 1.5 times the median or more.
+- **Settings**, in `[Telemetry]` on the server: `Enabled = false` turns it off. `MinFreeMb` (2048) stops the file being written while the drive has less free space than that.
