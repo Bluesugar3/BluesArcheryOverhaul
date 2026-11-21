@@ -34,6 +34,7 @@ namespace BluesArcheryOverhaul {
     //       Seek.Homes/ClaimLocks read Seek.Values.FlightSeconds). Evaluated by the Seek.Values line below as before.
     //   Skyfall.Values (the admin skill) -> its own [Skyfall] entries only (a leaf, cached per load); Skyfall.Check -> Skyfall.Values, SkyfallPattern (Unity-free)
     //   Skyfall looks: SkyfallSigil, SkyfallHold, SkyfallSky (Task 10), SkyfallLook (Task 11), SkyfallNail (Task 12) -> their own look entries in [Skyfall] and Skyfall.Values (a leaf); SkyfallCurves and SkyDial are Unity-free functions
+    //   JoinGate.Values (the join gate) -> its own [Join] entries only (a leaf, read again on every use); the join step -> JoinGate.Values, Cfg.SharedChecksum
     //   Leaves: Paths.Values, Weight.Values, Steady.Values, Tree.Stages/ChargeDamageTable/HolySeconds/*Seconds, Volley.InnerShare/
     //           OuterShare/RelaxGrace, Quickdraw4.PierceShares, Shatter.MetresSetting, Targets.DummyNames, HolyArrow.BlastCripple, Seek.Values,
     //           Burst's and Claims' numbers, Skyfall.Values.
@@ -70,6 +71,7 @@ namespace BluesArcheryOverhaul {
                 sink = Targets.DummyNames; sets++;
                 sink = GoldHold.Check(); sets++; // G4: every ring's look at every hold stage with the settings just loaded (its own entries only)
                 sink = SeekLook.Check(); sets++; // H2: the lock cage's poses and the homing looks' numbers (its own entries only; nothing on the server)
+                sink = JoinGate.Values; sets++; // the join gate: its own [Join] entries only (a leaf)
                 sink = Skyfall.Values; sets++; // Skyfall: its own [Skyfall] entries only (a leaf, cached per load)
                 sink = Skyfall.Check(); sets++; // Skyfall: every SkyfallValues field has its entry; the pattern and its end with the settings just loaded
                 sink = SkyfallSigil.Check() + SkyfallHold.Check() + SkyfallSky.Check() + SkyfallLook.Check() + SkyfallNail.Check(); sets++; // Skyfall looks (clients; 0 on the server): spins, unfold, hold rings, the dial's numbers, the storm's fall and scorch curves, the World-Nail's slide, bands and roll
