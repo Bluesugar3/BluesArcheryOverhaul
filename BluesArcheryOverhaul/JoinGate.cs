@@ -20,8 +20,10 @@ namespace BluesArcheryOverhaul {
     // How it sits in the game (read in _decomp, 2026-11-20):
     //   - ServerHandler's public constructor sets Current and creates connectionSteps before it returns, so a non-null Current seen
     //     from OnUpdate can take a step (the private one, a client's dummy local server, has no step list: Tick skips it). UserPrerequisites runs every step for each joining connection (after the server's "allowed, doing
-    //     prerequisites" reply); a step that throws fails the prerequisites, and the game then sends its own "Failed join
-    //     prerequisites." refusal and drops the connection. The joining game keeps the FIRST refusal it gets, so ours goes out first.
+    //     prerequisites" reply); a step that throws, or a connection dropped during a step, fails the prerequisites, and the game
+    //     then sends its own "Failed join prerequisites." refusal (with a join result the joining game retries 24 times) and drops
+    //     the connection. So a refusal here sends ours, flushes, waits 2 s and drops the connection itself, as the game's
+    //     PlayerDenied does: the game's own text can then not be sent. Throwing from the step is only the fallback.
     //   - ConfirmJoinMessage is internal: its layout is written by hand (bool allowed, bool doing prerequisites, the join-result
     //     integer, then for a refusal the error text as an ASCII string).
     //   - A join result the game does not define (JoinWire.RefusedResult) is shown as "Unknown connection error 60, please contact
@@ -33,8 +35,11 @@ namespace BluesArcheryOverhaul {
     //   Message numbers seen in the other mods installed here (2026-11-20): 18 SyncLib, 32 TavernLib (roles), 9 TavernLib (the
     //     game's own RequestJoin). ArmorRestored uses 137. RevampedSkills, attbullshit2 and BluesInGameStringTool set no handler.
     //
-    // A fault in the gate never refuses anyone: only a decided refusal fails the join step. The step's code after an await is not
-    // promised to run on the main thread, so it touches no Unity object and no Timing section.
+    // A fault in the gate never refuses anyone: only a decided refusal fails the join step. The step keeps to Connection calls and
+    // the log: no Unity object, no Timing section (review 2026-11-20: its continuations do run on the main thread here, since the
+    // game's receive runs in Update and TavernLib's filter finishes synchronously on the pass path; the rule stays anyway).
+    // A Hello is kept only while its connection's step waits (JoinHellos.Expect/Drop): the handler is on every connection from
+    // ConnectionCreated, before any account check.
     internal static class JoinGate {
         static MelonPreferences_Entry<string> check = null!, settingsMismatch = null!;
         static MelonPreferences_Entry<float> answerSeconds = null!;
@@ -106,16 +111,26 @@ namespace BluesArcheryOverhaul {
                     if (Logs.Debug) MelonLogger.Msg("[Archery] Join: a message on the join number was not a Hello: ignored");
                     return;
                 }
-                lock (hellos) hellos.Put(connection.Identifier, hello);
+                bool kept;
+                lock (hellos) kept = hellos.Put(connection.Identifier, hello);          // kept only while that connection's step waits
+                if (!kept && Logs.Debug) MelonLogger.Msg("[Archery] Join: a Hello no join step was waiting for: ignored");
             } catch (Exception e) { MelonLogger.Error($"[Archery] Join: reading a joining game's answer failed: {e.Message}"); }
         }
 
         static async Task Step(Connection connection, Action<string> progress) {
             JoinVerdict verdict = default;
             string reason = "";
+            int id = 0;
+            bool expecting = false;
             try {
                 Settings s = Values;
                 if (s.Check == JoinCheck.Off) return;                                   // nothing sent
+                id = connection.Identifier;
+                lock (hellos) expecting = hellos.Expect(id);                            // only now is this connection's Hello kept
+                if (!expecting) {
+                    MelonLogger.Error($"[Archery] Join: {JoinHellos.Max} joins are being checked at once, so this one is let in unchecked");
+                    return;
+                }
                 var here = new JoinHere { Wire = JoinWire.Version, Version = OwnVersion };
                 connection.Send(null, Message, (c, stream) => JoinWire.WriteHere(new StreamBits(stream), here));
 
@@ -123,30 +138,35 @@ namespace BluesArcheryOverhaul {
                 bool answered = false;
                 int waited = 0, limit = (int)(s.Seconds * 1000f);
                 while (!connection.IsDisposed) {
-                    lock (hellos) answered = hellos.Take(connection.Identifier, out hello);
+                    lock (hellos) answered = hellos.Take(id, out hello);
                     if (answered || waited >= limit) break;
                     await Task.Delay(100);
                     waited += 100;
                 }
-                if (connection.IsDisposed) { lock (hellos) hellos.Drop(connection.Identifier); return; }   // they left: no line, no refusal
+                if (connection.IsDisposed) return;                                      // they left: no line, no refusal
 
                 JoinHello? got = answered ? hello : (JoinHello?)null;
                 verdict = JoinRule.Decide(got, JoinWire.Version, OwnVersion, Cfg.SharedChecksum, s.Check, s.SettingsRefuse);
                 string name = JoinRule.Ascii(connection.UserInfo?.Username ?? connection.PlayerName, 40);
-                string line = JoinRule.Line(name, got, verdict, s.Check);
+                string line = JoinRule.Line(name, got, verdict, s.Check, waited);
                 if (verdict.Problem != null) MelonLogger.Warning(answered ? line : $"{line} (no answer in {waited / 1000f:0.#} s)");
                 else if (Logs.Summary) MelonLogger.Msg(line);
                 reason = verdict.Problem ?? "";
             } catch (Exception e) {
                 MelonLogger.Error($"[Archery] Join: the check itself failed, so the player is let in: {e}");
                 return;                                                                 // a fault never refuses
+            } finally {
+                if (expecting) lock (hellos) hellos.Drop(id);                           // a late Hello is no longer kept
             }
             if (!verdict.Refuse) return;
 
-            // A decided refusal. Ours must reach the joining game before the game's own "Failed join prerequisites.".
+            // A decided refusal, the way the game refuses (ServerPlayerConnectionHandlerOld.PlayerDenied): the text, a flush, a pause,
+            // then the connection is dropped here. The game's step loop sees the dropped connection and fails the join; its own
+            // "Failed join prerequisites." cannot be sent on it, so the joining game only ever gets ours. (That one carries a join
+            // result the joining game retries 24 times; ours, JoinWire.RefusedResult, is not retried.)
             try {
                 string text = JoinRule.Ascii(reason, 160);
-                connection.Send(null, MessageType.RequestJoinResponse, (c, stream) => {
+                bool sent = connection.Send(null, MessageType.RequestJoinResponse, (c, stream) => {
                     bool allowed = false, prerequisites = false;
                     int result = JoinWire.RefusedResult;
                     stream.SerializeBool(ref allowed);
@@ -154,10 +174,12 @@ namespace BluesArcheryOverhaul {
                     stream.SerializeInteger(ref result);
                     stream.SerializeString(ref text);
                 });
+                if (!sent) MelonLogger.Warning("[Archery] Join: the refusal text could not be sent (the connection is closing); the player is dropped without it");
                 connection.FlushPacketManagers();
-                await Task.Delay(500);
-            } catch (Exception e) { MelonLogger.Error($"[Archery] Join: could not send the refusal text: {e.Message}"); }
-            throw new InvalidOperationException(JoinRule.ModName + " refused the join: " + reason);
+                await Task.Delay(2000);
+                if (!connection.IsDisposed) connection.Socket.DestroyConnection(connection, isFlushing: true);
+            } catch (Exception e) { MelonLogger.Error($"[Archery] Join: refusing went wrong ({e.Message}); the game's own refusal follows"); }
+            if (!connection.IsDisposed) throw new InvalidOperationException(JoinRule.ModName + " refused the join: " + reason);   // the fallback
         }
 
         // ---------------------------------------------------------------- client

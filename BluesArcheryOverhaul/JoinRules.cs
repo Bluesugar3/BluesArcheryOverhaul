@@ -162,14 +162,16 @@ namespace BluesArcheryOverhaul {
             return v;
         }
 
-        /// <summary>The server's one log line for a join. <paramref name="name"/> must already be bounded (Ascii).</summary>
-        public static string Line(string name, JoinHello? hello, JoinVerdict verdict, JoinCheck check) {
+        /// <summary>The server's one log line for a join. <paramref name="name"/> must already be bounded (Ascii).
+        /// <paramref name="answeredMs"/>: how long the answer took, shown on a pass so log mode tells how near a slow game is to
+        /// [Join] AnswerSeconds before refuse is switched on.</summary>
+        public static string Line(string name, JoinHello? hello, JoinVerdict verdict, JoinCheck check, int answeredMs) {
             if (verdict.Problem != null)
                 return $"[Archery] Join: {name} {(verdict.Refuse ? "refused" : "would be refused (log only)")}: {verdict.Problem}";
             if (hello == null) return $"[Archery] Join: {name} passed";
             JoinHello h = hello.Value;
             string platform = h.Platform == JoinPlatform.Pc ? "PC" : h.Platform == JoinPlatform.Quest ? "Quest" : "?";
-            return $"[Archery] Join: {name} passed (client {h.Version}, wire {h.Wire}, {platform}, settings {(verdict.SettingsDiffer ? "DIFFERENT" : "same")})";
+            return $"[Archery] Join: {name} passed (client {h.Version}, wire {h.Wire}, {platform}, settings {(verdict.SettingsDiffer ? "DIFFERENT" : "same")}, answered in {answeredMs} ms)";
         }
 
         /// <summary>Text held to printable ASCII (anything else becomes '?') and to <paramref name="max"/> characters: the refusal
@@ -185,18 +187,26 @@ namespace BluesArcheryOverhaul {
         }
     }
 
-    /// <summary>The server's Hellos waiting for their join step, by connection. Never more than <see cref="Max"/>: a full table is
-    /// cleared before the next answer goes in (a flood of answers costs the waiting joins one retry, not memory). Not thread-safe:
-    /// its one user (JoinGate) locks it.</summary>
+    /// <summary>The server's Hellos waiting for their join step, by connection. An answer is kept only while that connection's step
+    /// waits for it (<see cref="Expect"/> ... <see cref="Drop"/>): the handler is set on every connection before the game's account
+    /// check, so anything else could fill the table. At most <see cref="Max"/> steps wait at once; one more is told no (and its
+    /// player is let in: a fault never refuses). Not thread-safe: its one user (JoinGate) locks it.</summary>
     internal sealed class JoinHellos {
         public const int Max = 256;
+        readonly HashSet<int> expected = new HashSet<int>();
         readonly Dictionary<int, JoinHello> waiting = new Dictionary<int, JoinHello>();
 
         public int Count => waiting.Count;
+        public int Expected => expected.Count;
 
-        public void Put(int connection, JoinHello hello) {
-            if (waiting.Count >= Max && !waiting.ContainsKey(connection)) waiting.Clear();
+        /// <summary>This connection's step starts waiting. False when Max steps wait already.</summary>
+        public bool Expect(int connection) => expected.Contains(connection) || (expected.Count < Max && expected.Add(connection));
+
+        /// <summary>False (ignored) unless that connection's step is waiting.</summary>
+        public bool Put(int connection, JoinHello hello) {
+            if (!expected.Contains(connection)) return false;
             waiting[connection] = hello;
+            return true;
         }
 
         public bool Take(int connection, out JoinHello hello) {
@@ -205,6 +215,7 @@ namespace BluesArcheryOverhaul {
             return true;
         }
 
-        public void Drop(int connection) => waiting.Remove(connection);
+        /// <summary>The step is over: nothing more is kept for this connection.</summary>
+        public void Drop(int connection) { expected.Remove(connection); waiting.Remove(connection); }
     }
 }

@@ -15,6 +15,15 @@ case "$VER" in [0-9]*.[0-9]*.[0-9]*) ;; *) echo "STAGE FAILED: '$VER' is not a v
 # 1. the version every log line of this build will show (the play-test kit takes the same version from it when it is built)
 sed -i -E "s/(internal const string Version = \")[^\"]+(\")/\1$VER\2/" BluesArcheryOverhaul/Main.cs
 grep -q "internal const string Version = \"$VER\"" BluesArcheryOverhaul/Main.cs || { echo "STAGE FAILED: could not set the version in Main.cs"; exit 2; }
+# 1b. the join gate's wire number goes up with every build friends need: a game on another number is refused at the door, so a
+#     mismatched pair cannot play together unnoticed (JoinWire.Version in JoinRules.cs)
+if [ "$FRIENDS" = yes ]; then
+  W=$(sed -n -E 's/^ *public const int Version = ([0-9]+);.*/\1/p' BluesArcheryOverhaul/JoinRules.cs | head -1)
+  case "$W" in ""|*[!0-9]*) echo "STAGE FAILED: could not read the join gate's wire number in JoinRules.cs"; exit 2;; esac
+  sed -i -E "s/^( *public const int Version = )$W;/\\1$((W+1));/" BluesArcheryOverhaul/JoinRules.cs
+  grep -q "public const int Version = $((W+1));" BluesArcheryOverhaul/JoinRules.cs || { echo "STAGE FAILED: could not raise the join gate's wire number"; exit 2; }
+  echo "join gate wire number: $W -> $((W+1))"
+fi
 
 # 2. the gate: both test runners, then a clean rebuild of the mod and of the play-test kit
 T=$(dotnet run --project BluesArcheryOverhaul.Tests -c Release 2>&1 | tail -1)
@@ -32,8 +41,9 @@ DLL=BluesArcheryOverhaul/bin/Release/BluesArcheryOverhaul.dll; KIT=BluesArcheryT
 N="$I/staged.new"; rm -rf "$N"; mkdir -p "$N"
 cp "$DLL" "$N/BluesArcheryOverhaul.dll" && cp "$KIT" "$N/BluesArcheryTestKit.dll" && cp BluesArcheryTestKit/tools/TestBuildMenu.ps1 "$N/" && cp "BluesArcheryTestKit/tools/Test Build Menu.cmd" "$N/" || { echo "STAGE FAILED: copy"; exit 4; }
 # optional one-off settings steps: this build's, after the one of a build that was replaced before it installed (it has not run yet)
-[ -f "$I/staged/post-install.sh" ] && { cat "$I/staged/post-install.sh"; echo; } > "$N/post-install.sh"
-[ -f "$I/post-install.sh" ] && { cat "$I/post-install.sh" >> "$N/post-install.sh" && rm -f "$I/post-install.sh"; }
+# (each in its own subshell, so an exit or a cd in one cannot skip or misplace the next)
+[ -f "$I/staged/post-install.sh" ] && { echo "("; cat "$I/staged/post-install.sh"; echo; echo ")"; } > "$N/post-install.sh"
+[ -f "$I/post-install.sh" ] && { { echo "("; cat "$I/post-install.sh"; echo; echo ")"; } >> "$N/post-install.sh" && rm -f "$I/post-install.sh"; }
 MD5=$(md5sum "$N/BluesArcheryOverhaul.dll" | cut -c1-32); KMD5=$(md5sum "$N/BluesArcheryTestKit.dll" | cut -c1-32)
 { echo "version=$VER"; echo "md5=$MD5"; echo "kitmd5=$KMD5"; echo "friends=$FRIENDS"; echo "changed=$CHANGED"; echo "test=$TEST"; echo "tests=$T; kit $TK"; echo "staged=$(date '+%Y-%m-%d %H:%M:%S')"; } > "$N/manifest.txt"
 rm -rf "$I/staged.old"; [ -d "$I/staged" ] && mv "$I/staged" "$I/staged.old"; mv "$N" "$I/staged"; rm -rf "$I/staged.old"
