@@ -17,6 +17,7 @@
 - The APK's assemblies are private build inputs, like the ripped Unity project: they live in `C:\ATTUnity\QuestRefs`, never in the repo, never shared.
 - On the headset, touch only `Android/data/com.Alta.ATownshipTale/files/MelonLoader/com.Alta.ATownshipTale/Mods/` (one file, `Spike.Quest.dll`) and read logs. Never repatch the APK, never clear the game's data (that wipes the saved login).
 - Nothing the PC game or the server plays may change. The only change outside the spike's own folder is the condition in `Directory.Build.props` (Task 3), which leaves every existing project's build exactly as it is.
+- This session does the Quest port only (the owner's split of 2026-11-20). The PC mod, the join gate, staging, installing, the install scripts, `CLAUDE.md`, the README and pushing belong to the session "Private GitHub page and mod documentation": never stage, install or push from here; a change the port needs in those is asked of that session. Tell that session before changing the server's `Mods` or settings (Tasks 2 and 4), and check `tools/.install/waiting.pid`: do not move files in a `Mods` folder while an install is waiting. Task 5's `CLAUDE.md` section is sent to that session to add.
 - Downloads need the owner's yes at the time: Android platform-tools (Task 1). Nothing else is downloaded.
 - Back up before changing the server: its `UserData`, its `Mods`, and its world save folder (Task 2 says where).
 - The server's `[Join] Check` is the owner's setting: every step that changes it says so and puts it back.
