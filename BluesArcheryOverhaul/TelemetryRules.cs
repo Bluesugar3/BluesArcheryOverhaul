@@ -316,7 +316,9 @@ namespace BluesArcheryOverhaul {
     /// issues"). The game's thread only appends rows to a list (Add) and every few seconds swaps the lists for the worker's empty ones
     /// (Flush); the worker formats and appends, so the game never waits on the disk. While a write runs the next hand-over is refused and
     /// the rows wait. Text that cannot be appended (a file held open by OneDrive or Excel) is kept and tried again on every later write; a
-    /// file that reaches maxFileBytes stops growing; at most maxRows wait. Nothing here throws out of Add, Flush or the worker.</summary>
+    /// file that reaches maxFileBytes stops growing; at most maxRows wait. Old days are never deleted (the balance report compiles weeks
+    /// of them), so the low-disk stop (MinFreeBytes) keeps the logging from ever filling the server's drive. Nothing here throws out of
+    /// Add, Flush or the worker.</summary>
     internal sealed class TelemetryLog {
         /// <summary>Tests only: the worker waits this long before it writes.</summary>
         internal static int TestDelayMs { get; set; }
@@ -342,6 +344,16 @@ namespace BluesArcheryOverhaul {
         volatile int carried;
         long dropped;
         string? problem;
+        long minFreeBytes, freeSeen = long.MaxValue;
+        int freeAtTick;
+        bool freeAsked, freeFailed;
+
+        /// <summary>The low-disk stop: while the drive that holds the folder has less than this free, nothing is written and the rows
+        /// handed over are dropped (counted, and said as a problem). 0 = no check. Set from [Telemetry] MinFreeMb; read by the writer.</summary>
+        internal long MinFreeBytes { get => Interlocked.Read(ref minFreeBytes); set => Interlocked.Exchange(ref minFreeBytes, value); }
+        /// <summary>Tests only: stands in for the drive's free space, and how often it is asked (the server asks every 30 s).</summary>
+        internal Func<long>? FreeProbe { get; set; }
+        internal int FreeAskMs { get; set; } = 30000;
 
         internal TelemetryLog(string folder, string session, long maxFileBytes = 256L << 20, int maxRows = 100000) {
             this.folder = folder; this.session = session; this.maxFileBytes = maxFileBytes; this.maxRows = maxRows;
@@ -391,12 +403,39 @@ namespace BluesArcheryOverhaul {
             catch (Exception e) { Say("formatting rows failed (" + e.Message + ")"); }
             finally { outShots.Clear(); outHits.Clear(); }
             try {
+                if (carry.Count > 0 && LowDisk(out long free)) {
+                    int rows = 0;
+                    foreach (Carry c in carry.Values) rows += c.Rows;
+                    Interlocked.Add(ref dropped, rows);
+                    carry.Clear(); carryChars = 0;
+                    Say("the drive has " + (free >> 20) + " MB free, under the " + (MinFreeBytes >> 20) + " MB of [Telemetry] MinFreeMb: nothing is recorded until there is more room (" + rows + " rows dropped)");
+                    return;
+                }
                 if (carry.Count > 0) Directory.CreateDirectory(folder);
                 paths.Clear(); paths.AddRange(carry.Keys);
                 foreach (string path in paths) Emit(path);
             }
             catch (Exception e) { Say("writing failed (" + e.Message + "); the rows are kept for the next try"); }
             finally { carried = carry.Count; writing = false; }
+        }
+
+        // The low-disk stop: the folder's drive has less free than MinFreeBytes. Asked at most once every FreeAskMs, on the writer's thread;
+        // a drive that cannot be asked (said once) counts as having room.
+        bool LowDisk(out long free) {
+            free = freeSeen;
+            long min = MinFreeBytes;
+            if (min <= 0) return false;
+            int now = Environment.TickCount;
+            if (!freeAsked || unchecked(now - freeAtTick) >= FreeAskMs) {
+                freeAsked = true; freeAtTick = now;
+                try { freeSeen = FreeProbe != null ? FreeProbe() : new DriveInfo(Path.GetPathRoot(Path.GetFullPath(folder))!).AvailableFreeSpace; }
+                catch (Exception e) {
+                    freeSeen = long.MaxValue;
+                    if (!freeFailed) { freeFailed = true; Say("the drive's free space cannot be read (" + e.Message + "): the low-disk stop is off"); }
+                }
+                free = freeSeen;
+            }
+            return free < min;
         }
 
         // Formats the handed-over rows of one kind into text per file (one file per local day; rows are in time order, so a day's rows

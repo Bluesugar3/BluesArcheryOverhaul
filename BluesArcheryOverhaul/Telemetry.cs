@@ -23,6 +23,7 @@ namespace BluesArcheryOverhaul {
         const float FlushSeconds = 5f, WarnSeconds = 600f;
 
         static MelonPreferences_Entry<bool>? enabled;
+        static MelonPreferences_Entry<int>? minFreeMb;
         static TelemetryLog? log;
         static readonly ShotIndex index = new ShotIndex();
         static readonly string session = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
@@ -33,7 +34,11 @@ namespace BluesArcheryOverhaul {
         internal static void Init() {
             var cat = Cfg.Category("Telemetry");
             enabled = cat.CreateEntry("Enabled", true, description: "Server (not shared). Records every bow release and every hit of archery damage (what really came off the target's health, kills, damage to players) to UserData\\BluesArcheryOverhaul\\telemetry\\ as shots-v1-<day>.csv and hits-v1-<day>.csv, one pair per server-local day, for the balance graphs of tools/telemetry_report.py (python -I tools/telemetry_report.py). The game's thread only queues a small record; a background thread writes every 5 s. Re-read live. Off: nothing is recorded (one check per hit).");
+            minFreeMb = cat.CreateEntry("MinFreeMb", 2048, description: "Server (not shared). The low-disk stop: while the drive that holds the telemetry folder has less than this many MB free, nothing is recorded (the rows are dropped, and the log says so at most every 10 minutes), so weeks of logs can never fill the server's disk. Old days are never deleted: the balance report compiles all of them. 0 = no check. Re-read live.");
         }
+
+        // [Telemetry] MinFreeMb as bytes for the writer's low-disk stop (0 = no check)
+        static long MinFreeBytes => minFreeMb != null && minFreeMb.Value > 0 ? (long)minFreeMb.Value << 20 : 0L;
 
         static bool On => enabled != null && enabled.Value && NetworkSceneManager.IsServer;
 
@@ -90,13 +95,14 @@ namespace BluesArcheryOverhaul {
                 if (Logs.Summary) MelonLogger.Msg($"[Archery] Telemetry: recording every shot and archery hit to {Path.Combine(Cfg.Folder, "telemetry")} (session {session}); graphs: python -I tools/telemetry_report.py");
             }
             if (log == null) return;
+            log.MinFreeBytes = MinFreeBytes; // re-read live
             log.Flush(true);
             string? problem = log.TakeProblem();
             if (problem != null && now - lastProblemWarn >= WarnSeconds) { lastProblemWarn = now; MelonLogger.Warning("[Archery] Telemetry: " + problem); }
             long dropped = log.Dropped;
             if (dropped > droppedSaid && now - lastDropWarn >= WarnSeconds) {
                 lastDropWarn = now; droppedSaid = dropped;
-                MelonLogger.Warning($"[Archery] Telemetry: {dropped} rows dropped so far (the queue was full or a day's file reached its size limit)");
+                MelonLogger.Warning($"[Archery] Telemetry: {dropped} rows dropped so far (the queue was full, a day's file reached its size limit, or the drive was low on space)");
             }
         }
 

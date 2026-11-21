@@ -1,23 +1,27 @@
-"""Balance report for Blue's Archery Overhaul's telemetry: one self-contained HTML page of charts from a play-test day.
+"""Balance report for Blue's Archery Overhaul's telemetry: one self-contained HTML page of charts, compiled from every day logged.
 
 The dedicated server writes UserData\\BluesArcheryOverhaul\\telemetry\\shots-v1-<day>.csv and hits-v1-<day>.csv (Telemetry.cs; up to 0.18.3 the folder was QuickshotRing\\telemetry, which stays where it was: pass it to read those days). This reads
 them and draws, per skill: shots, damage per shot, sustained damage per minute, kills, where the damage comes from, and the same
 per player and per main path, so a skill that is too strong stands out.
 
-    python -I tools/telemetry_report.py                     # the server's newest day, opens the page
-    python -I tools/telemetry_report.py --day 2026-11-19     # that day
-    python -I tools/telemetry_report.py --all                # every day in the folder
+    python -I tools/telemetry_report.py                     # every day in the server's folder, compiled into one page
+    python -I tools/telemetry_report.py --day 2026-11-19     # that day only
     python -I tools/telemetry_report.py <folder or files>    # other data (a copy, a friend's server)
     python -I tools/telemetry_report.py --selftest           # checks the numbers on a tiny made-up day
 
 Stdlib only. "Damage" is what really came off creatures' health (armour, protection and overkill already out); damage to players
 is its own column; Skyfall (the admin skill) is shown but kept out of every comparison.
+
+The rows are compiled as they are read and none is kept, so weeks of a busy server are fine (measured on 30 days of 100,000 shots
+a day, 10 million rows: see CLAUDE.md).
 """
 import argparse
+import array
 import csv
 import datetime as dt
 import glob
 import html
+import itertools
 import os
 import re
 import statistics
@@ -31,7 +35,9 @@ SHOT_COLUMNS = ("time,session,shot,arrow,player,account,kind,ult,ghosts,pellets,
 HIT_COLUMNS = "time,session,shot,player,source,target,target_id,victim,raw,dealt,cripple,killed,max_health".split(",")
 SKYFALL = ("Skyfall", "Skyfall (fizzled)")
 FLAG_AT = 1.5          # a skill at this many times the median damage per minute is flagged
-BIN_MINUTES = 5        # the timeline's columns
+BIN_MINUTES = 5        # the timeline's columns for a day; a longer stretch gets wider ones (BIN_CHOICES)
+BIN_CHOICES = (5, 15, 30, 60, 180, 360, 720, 1440)
+MAX_COLUMNS = 300      # the most columns the timeline draws (a day in 5-minute steps is 288)
 
 # where damage comes from, folded to eight groups (the chart palette has eight hues; anything else is "Other")
 SOURCE_GROUPS = [
@@ -57,7 +63,14 @@ def find_files(paths):
             found += glob.glob(os.path.join(p, "shots-v1-*.csv")) + glob.glob(os.path.join(p, "hits-v1-*.csv"))
         elif os.path.isfile(p):
             found.append(p)
-    return sorted(set(found))
+    return sorted(set(found), key=written_order)
+
+
+def written_order(path):
+    """Files in the order the server wrote them: by day, and a full day's parts after its first file (-2, -3, ... -10)."""
+    name = os.path.basename(path)
+    m = re.search(r"-v1-(\d{4}-\d{2}-\d{2})(?:-(\d+))?\.csv$", name)
+    return (name.split("-v1-")[0], m.group(1), int(m.group(2) or 1), path) if m else (name, "", 0, path)
 
 
 def day_of(path):
@@ -67,16 +80,17 @@ def day_of(path):
 
 
 def read_rows(path, columns):
+    """One file's rows, one at a time: none is kept."""
     with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.DictReader(f)
         missing = [c for c in columns if c not in (reader.fieldnames or [])]
         if missing:
             raise SystemExit(f"{path}: missing columns {missing} (a newer or older layout?)")
-        return list(reader)
+        yield from reader
 
 
 def read_day(paths, day=None, all_days=False):
-    """(shots, hits, days): the rows of one day (the newest unless given) or of every day."""
+    """(shots, hits, days): the rows of one day (the newest unless given) or of every day, each read as it is asked for."""
     files = find_files(paths)
     days = sorted({day_of(f) for f in files})
     if not days:
@@ -86,14 +100,9 @@ def read_day(paths, day=None, all_days=False):
         if want not in days:
             raise SystemExit(f"no data for {want}; days found: {', '.join(days)}")
         days = [want]
-    shots, hits = [], []
-    for f in files:
-        if day_of(f) not in days:
-            continue
-        if os.path.basename(f).startswith("shots-"):
-            shots += read_rows(f, SHOT_COLUMNS)
-        else:
-            hits += read_rows(f, HIT_COLUMNS)
+    chosen = [f for f in files if day_of(f) in days]
+    shots = (row for f in chosen if os.path.basename(f).startswith("shots-") for row in read_rows(f, SHOT_COLUMNS))
+    hits = (row for f in chosen if not os.path.basename(f).startswith("shots-") for row in read_rows(f, HIT_COLUMNS))
     return shots, hits, days
 
 
@@ -105,7 +114,10 @@ def num(v, default=0.0):
 
 
 def when(v):
-    return dt.datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
+    try:
+        return dt.datetime.fromisoformat(v)   # the server's own format, several times faster than strptime
+    except ValueError:
+        return dt.datetime.strptime(v, "%Y-%m-%d %H:%M:%S.%f")
 
 
 # ------------------------------------------------------------------------------------------------------------------- skills
@@ -150,88 +162,134 @@ def p90(values):
 
 
 def analyze(shots, hits, gap_cap=15.0, min_shots=20, include_test=False, version=None):
-    """Everything the page and the summary show. A shot's cost is the time since that player's previous shot in the same session,
-    at most gap_cap (a player's first shot costs gap_cap), so damage per minute counts a skill's pace: a long hold costs its time,
-    Auto Dock's and Quickdraw's speed pay off."""
-    skipped, test_shots, tunings = set(), 0, {}
-    by_key = {}
+    """Everything the page and the summary show, compiled while the rows are read: no row is kept, only four numbers per shot (a hit
+    names its shot, and the median needs each shot's damage), so weeks of a busy server fit in memory. Give it the shots first, then
+    the hits. A shot's cost is the time since that player's previous shot in the same session, at most gap_cap (a player's first shot
+    costs gap_cap), so damage per minute counts a skill's pace: a long hold costs its time, Auto Dock's and Quickdraw's speed pay off."""
+    # ponytail: a session's shots are taken in file order, which is the order the server wrote them (time order); a row that is out of
+    # order costs 0 s instead of being sorted into place. Sort each lane by time again if files of several servers are ever merged.
+    groups = [name for name, _ in SOURCE_GROUPS] + ["Other"]
+    G = len(groups)
+    group_at = {g: i for i, g in enumerate(groups)}
+    SKIP = -1
+    slots = {}                               # session -> array: shot number -> that shot's index + 1, SKIP (left out), 0 (no such shot)
+    keys, key_at = [], {}                    # the kinds of shot seen: (skill, player, main)
+    kind, dealt, cost, pvp = array.array("i"), array.array("d"), array.array("d"), array.array("d")   # per shot
+    k_kills, k_pvp_kills, k_held, k_held_n, k_sources = [], [], [], [], array.array("d")              # per kind of shot
+    last = {}                                # (session, archer) -> when that archer last shot
+    test_shots, tunings, sessions, archers = 0, {}, set(), set()
     for row in shots:
-        if row["test"] == "1" and not include_test:   # a test build's borrowed orbs: not what players own
+        session = row["session"]
+        n = int(num(row["shot"]))
+        slot = slots.get(session)
+        if slot is None:
+            slot = slots[session] = array.array("i")
+        if n >= len(slot):
+            slot.extend(itertools.repeat(0, n + 1 - len(slot)))
+        left_out = bool(version) and row["version"] != version
+        if str(row["test"]) == "1" and not include_test:   # a test build's borrowed orbs: not what players own
             test_shots += 1
-            skipped.add((row["session"], row["shot"]))
-            continue
-        if version and row["version"] != version:
-            skipped.add((row["session"], row["shot"]))
+            left_out = True
+        if left_out:
+            if n > 0:
+                slot[n] = SKIP
             continue
         tune = (row["version"], row["settings"])
         tunings[tune] = tunings.get(tune, 0) + 1
-        s = dict(row)
-        s["_t"], s["_skill"] = when(s["time"]), skill_of(s)
-        s["_dealt"], s["_kills"], s["_pvp"], s["_pvp_kills"], s["_sources"] = 0.0, 0, 0.0, 0, {}
-        by_key[(s["session"], s["shot"])] = s
+        t = when(row["time"])
+        lane = (session, row["account"] if row["account"] not in ("", "0") else row["player"])
+        prev = last.get(lane)
+        cost.append(gap_cap if prev is None else min(max((t - prev).total_seconds(), 0.0), gap_cap))
+        if prev is None or t > prev:
+            last[lane] = t
+        key = (skill_of(row), row["player"], row["main"])
+        at = key_at.get(key)
+        if at is None:
+            at = key_at[key] = len(keys)
+            keys.append(key)
+            k_kills.append(0)
+            k_pvp_kills.append(0)
+            k_held.append(0.0)
+            k_held_n.append(0)
+            k_sources.extend(itertools.repeat(0.0, G))
+        if n > 0:
+            slot[n] = len(kind) + 1
+        kind.append(at)
+        dealt.append(0.0)
+        pvp.append(0.0)
+        if row["ms"] != "":
+            k_held[at] += num(row["ms"]) / 1000.0
+            k_held_n[at] += 1
+        sessions.add(session)
+        archers.add(row["player"])
 
-    lanes = {}
-    for s in by_key.values():
-        who = s["account"] if s["account"] not in ("", "0") else s["player"]
-        lanes.setdefault((s["session"], who), []).append(s)
-    for lane in lanes.values():
-        lane.sort(key=lambda s: s["_t"])
-        prev = None
-        for s in lane:
-            s["_cost"] = gap_cap if prev is None else min(max((s["_t"] - prev).total_seconds(), 0.0), gap_cap)
-            prev = s["_t"]
-
-    unattributed, things, mods, bins = {"hits": 0, "damage": 0.0}, 0, 0, {}
+    skyfall = [key[0] in SKYFALL for key in keys]
+    unattributed, things, mods, bins, hit_rows = {"hits": 0, "damage": 0.0}, 0, 0, {}, 0
     for h in hits:
-        if (h["session"], h["shot"]) in skipped:
+        hit_rows += 1
+        n = int(num(h["shot"]))
+        slot = slots.get(h["session"])
+        ref = slot[n] if slot is not None and 0 < n < len(slot) else 0
+        if ref == SKIP:
             continue
-        dealt, killed, victim = num(h["dealt"]), h["killed"] == "1", h["victim"]
+        amount, killed, victim = num(h["dealt"]), str(h["killed"]) == "1", h["victim"]
         if h["source"] == "mod":
             mods += 1
         if victim == "thing":
             things += 1
             continue
-        s = by_key.get((h["session"], h["shot"])) if h["shot"] not in ("", "0") else None
+        i = ref - 1
         if victim == "player":
-            if s is not None:
-                s["_pvp"] += dealt
-                s["_pvp_kills"] += killed
+            if ref:
+                pvp[i] += amount
+                k_pvp_kills[kind[i]] += killed
             continue
-        if s is None:
+        if not ref:
             unattributed["hits"] += 1
-            unattributed["damage"] += dealt
+            unattributed["damage"] += amount
         else:
-            s["_dealt"] += dealt
-            s["_kills"] += killed
-            group = GROUP_OF.get(h["source"], "Other")
-            s["_sources"][group] = s["_sources"].get(group, 0.0) + dealt
-        if s is None or s["_skill"] not in SKYFALL:
-            t = when(h["time"])
-            b = t.replace(minute=t.minute - t.minute % BIN_MINUTES, second=0, microsecond=0)
-            bins[b] = bins.get(b, 0.0) + dealt
+            dealt[i] += amount
+            k_kills[kind[i]] += killed
+            k_sources[kind[i] * G + group_at[GROUP_OF.get(h["source"], "Other")]] += amount
+        if not ref or not skyfall[kind[i]]:
+            v = h["time"]                    # "2026-11-19 18:07:31.250" -> its 5-minute step "2026-11-19 18:05"
+            try:
+                minute = int(v[14:16])
+            except ValueError:
+                v = when(v).strftime("%Y-%m-%d %H:%M")
+                minute = int(v[14:16])
+            step = v[:14] + "%02d" % (minute - minute % BIN_MINUTES)
+            bins[step] = bins.get(step, 0.0) + amount
 
-    def tally(table, key, s):
-        k = table.setdefault(key, {"shots": 0, "players": set(), "damage": 0.0, "per_shot": [], "cost": 0.0, "kills": 0, "held": [],
-                                   "pvp_damage": 0.0, "pvp_kills": 0, "sources": {}})
-        k["shots"] += 1
-        k["players"].add(s["player"])
-        k["damage"] += s["_dealt"]
-        k["per_shot"].append(s["_dealt"])
-        k["cost"] += s["_cost"]
-        k["kills"] += s["_kills"]
-        k["pvp_damage"] += s["_pvp"]
-        k["pvp_kills"] += s["_pvp_kills"]
-        if s["ms"] != "":
-            k["held"].append(num(s["ms"]) / 1000.0)
-        for g, v in s["_sources"].items():
-            k["sources"][g] = k["sources"].get(g, 0.0) + v
+    def table_row():
+        return {"shots": 0, "players": set(), "damage": 0.0, "per_shot": array.array("d"), "cost": 0.0, "kills": 0,
+                "held_sum": 0.0, "held_n": 0, "pvp_damage": 0.0, "pvp_kills": 0, "sources": {}}
 
     skills, players, mains = {}, {}, {}
-    for s in by_key.values():
-        tally(skills, s["_skill"], s)
-        tally(players, (s["player"], s["_skill"]), s)
-        if s["_skill"] not in SKYFALL:
-            tally(mains, s["main"], s)
+    into = []                                # per kind of shot: the rows of the three tables it counts in
+    for at, (skill, player, main) in enumerate(keys):
+        rows = [skills.setdefault(skill, table_row()), players.setdefault((player, skill), table_row())]
+        if skill not in SKYFALL:
+            rows.append(mains.setdefault(main, table_row()))
+        into.append(rows)
+        for k in rows:
+            k["players"].add(player)
+            k["kills"] += k_kills[at]
+            k["pvp_kills"] += k_pvp_kills[at]
+            k["held_sum"] += k_held[at]
+            k["held_n"] += k_held_n[at]
+            for g in range(G):
+                v = k_sources[at * G + g]
+                if v:
+                    k["sources"][groups[g]] = k["sources"].get(groups[g], 0.0) + v
+    for i in range(len(kind)):               # in the order shot
+        d, c, p = dealt[i], cost[i], pvp[i]
+        for k in into[kind[i]]:
+            k["shots"] += 1
+            k["damage"] += d
+            k["per_shot"].append(d)
+            k["cost"] += c
+            k["pvp_damage"] += p
 
     for table in (skills, players, mains):
         for k in table.values():
@@ -241,7 +299,8 @@ def analyze(shots, hits, gap_cap=15.0, min_shots=20, include_test=False, version
             k["per_shot_p90"] = p90(k["per_shot"])
             k["dpm"] = 60.0 * k["damage"] / k["cost"] if k["cost"] > 0 else 0.0
             k["kills_per_100"] = 100.0 * k["kills"] / k["shots"]
-            k["held_mean"] = statistics.fmean(k["held"]) if k["held"] else None
+            k["held_mean"] = k["held_sum"] / k["held_n"] if k["held_n"] else None
+            del k["per_shot"]                # the three numbers above are all the page uses
 
     eligible = [k["dpm"] for name, k in skills.items() if name not in SKYFALL and k["shots"] >= min_shots]
     median = statistics.median(eligible) if len(eligible) >= 2 else None
@@ -249,16 +308,27 @@ def analyze(shots, hits, gap_cap=15.0, min_shots=20, include_test=False, version
         k["x_median"] = k["dpm"] / median if median and name not in SKYFALL else None
         k["flag"] = k["x_median"] is not None and k["x_median"] >= FLAG_AT
 
-    timeline = []
+    # the timeline: 5-minute steps for a day, wider ones for a longer stretch so it stays at most MAX_COLUMNS columns
+    timeline, step_minutes = [], BIN_MINUTES
     if bins:
-        b, last = min(bins), max(bins)
-        while b <= last:
-            timeline.append((b, bins.get(b, 0.0) / BIN_MINUTES))
-            b += dt.timedelta(minutes=BIN_MINUTES)
-    return {"skills": skills, "players": players, "mains": mains, "median_dpm": median, "timeline": timeline,
-            "unattributed": unattributed, "things": things, "test_shots": test_shots, "tunings": tunings, "mods": mods, "shots": len(by_key), "hits": len(hits),
-            "gap_cap": gap_cap, "min_shots": min_shots,
-            "sessions": sorted({s["session"] for s in by_key.values()}), "archers": sorted({s["player"] for s in by_key.values()})}
+        steps = {dt.datetime.strptime(k, "%Y-%m-%d %H:%M"): v for k, v in bins.items()}
+        span = (max(steps) - min(steps)).total_seconds() / 60.0 + BIN_MINUTES
+        step_minutes = next((m for m in BIN_CHOICES if span / m <= MAX_COLUMNS), BIN_CHOICES[-1])
+        if step_minutes != BIN_MINUTES:
+            wide = {}
+            for t in sorted(steps):
+                minute = t.hour * 60 + t.minute
+                at = t.replace(hour=0, minute=0) + dt.timedelta(minutes=minute - minute % step_minutes)
+                wide[at] = wide.get(at, 0.0) + steps[t]
+            steps = wide
+        b, end = min(steps), max(steps)
+        while b <= end:
+            timeline.append((b, steps.get(b, 0.0) / step_minutes))
+            b += dt.timedelta(minutes=step_minutes)
+    return {"skills": skills, "players": players, "mains": mains, "median_dpm": median, "timeline": timeline, "step_minutes": step_minutes,
+            "unattributed": unattributed, "things": things, "test_shots": test_shots, "tunings": tunings, "mods": mods,
+            "shots": len(kind), "hits": hit_rows, "gap_cap": gap_cap, "min_shots": min_shots,
+            "sessions": sorted(sessions), "archers": sorted(archers)}
 
 
 def ranked(skills):
@@ -390,8 +460,8 @@ def stacked_chart(rows, groups):
     return "".join(out)
 
 
-def column_chart(points, multi_day):
-    """Columns over time. points: [(datetime, value)]."""
+def column_chart(points, multi_day, step_minutes=BIN_MINUTES):
+    """Columns over time. points: [(datetime, value)], one per step_minutes."""
     top_pad, axis_h, left = 12, 26, 56
     plot_w, plot_h = W - left - 16, 180
     tk = ticks(max([v for _, v in points] + [0]))
@@ -409,9 +479,10 @@ def column_chart(points, multi_day):
     for i, (t, v) in enumerate(points):
         cx = left + i * slot + (slot - cw) / 2
         hgt = plot_h * (v / vmax if vmax else 0)
-        when_text = t.strftime("%m-%d %H:%M" if multi_day else "%H:%M")
-        end_text = (t + dt.timedelta(minutes=BIN_MINUTES)).strftime("%H:%M")
-        out.append(f'<g class="mark" tabindex="0" data-tip="{esc(when_text)}–{esc(end_text)}" data-val="{esc(fmt(v))} damage per minute">'
+        whole_day = step_minutes >= 1440
+        when_text = t.strftime("%m-%d" if whole_day else "%m-%d %H:%M" if multi_day else "%H:%M")
+        tip = when_text if whole_day else when_text + "–" + (t + dt.timedelta(minutes=step_minutes)).strftime("%H:%M")
+        out.append(f'<g class="mark" tabindex="0" data-tip="{esc(tip)}" data-val="{esc(fmt(v))} damage per minute">'
                    f'<rect class="hit" x="{left + i * slot:.1f}" y="{top_pad}" width="{slot:.1f}" height="{plot_h}"/>'
                    + (f'<path class="bar" d="{column_path(cx, yb, cw, hgt)}"/>' if hgt >= 0.5 else "") + "</g>")
         if i % every == 0:
@@ -541,8 +612,11 @@ def render(r, meta):
                        ["Main path", "Damage per minute", "Damage per shot", "Shots"],
                        [(n, fmt(k["dpm"]), fmt(k["per_shot_mean"]), k["shots"]) for n, k in mains]))
     if r["timeline"]:
-        figs.append(figure("Damage per minute over the day", f"All archery damage to creatures in {BIN_MINUTES}-minute steps (Skyfall left out).",
-                           column_chart(r["timeline"], len(days) > 1),
+        m = r["step_minutes"]
+        step_text = f"{m}-minute" if m < 60 else f"{m // 60}-hour" if m < 1440 else "one-day"
+        figs.append(figure("Damage per minute over the day" if len(days) == 1 else "Damage per minute over time",
+                           f"All archery damage to creatures in {step_text} steps (Skyfall left out).",
+                           column_chart(r["timeline"], len(days) > 1, m),
                            ["From", "Damage per minute"], [(t.strftime("%Y-%m-%d %H:%M"), fmt(v)) for t, v in r["timeline"]]))
 
     # per player x skill
@@ -693,8 +767,8 @@ def selftest():
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Blue's Archery Overhaul balance report from the server's telemetry CSVs.")
     ap.add_argument("paths", nargs="*", help=f"folders or files (default: {SERVER_DATA})")
-    ap.add_argument("--day", help="YYYY-MM-DD (default: the newest day found)")
-    ap.add_argument("--all", action="store_true", help="every day found")
+    ap.add_argument("--day", help="YYYY-MM-DD: that day only (default: every day found, compiled together)")
+    ap.add_argument("--all", action="store_true", help="every day found (the default; kept so older commands still work)")
     ap.add_argument("--out", help="the page to write (default: report-<day>.html beside the data)")
     ap.add_argument("--gap-cap", type=float, default=15.0, help="seconds: the most a gap between one player's shots counts (default 15)")
     ap.add_argument("--min-shots", type=int, default=20, help="a skill needs this many shots to count toward the median (default 20)")
@@ -706,7 +780,7 @@ def main(argv=None):
     if a.selftest:
         return selftest()
     paths = a.paths or [SERVER_DATA]
-    shots, hits, days = read_day(paths, a.day, a.all)
+    shots, hits, days = read_day(paths, a.day, not a.day)
     r = analyze(shots, hits, a.gap_cap, a.min_shots, a.include_test, a.version)
     folder = paths[0] if os.path.isdir(paths[0]) else os.path.dirname(os.path.abspath(paths[0]))
     out = a.out or os.path.join(folder, f"report-{days[0] if len(days) == 1 else days[0] + '_to_' + days[-1]}.html")
