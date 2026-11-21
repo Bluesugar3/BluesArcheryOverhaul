@@ -49,9 +49,7 @@ namespace BluesArcheryOverhaul {
 
         // ---------------------------------------------------------------- server: tracking
 
-        static bool loggedRevamped;
-
-        /// <summary>RevampedSkills returns arrows itself: Quiver Gather stands down while it is loaded.</summary>
+        /// <summary>Only for the progression log line: Quiver Gather runs whether or not RevampedSkills is loaded (the owner, 2026-11-20).</summary>
         internal static bool RevampedSkillsLoaded {
             get {
                 try {
@@ -74,10 +72,6 @@ namespace BluesArcheryOverhaul {
                     PlayerController owner = interactor.Controller != null ? interactor.Controller.PlayerController : null!;
                     AutoDock.NoteQuiver(owner, dock); // the quiver this player last drew from by hand (whether or not Quiver Gather is on)
                     if (!enabled.Value) return;
-                    if (RevampedSkillsLoaded) {
-                        if (!loggedRevamped) { loggedRevamped = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Quiver: RevampedSkills is loaded; Quiver Gather stands down and RevampedSkills returns arrows"); }
-                        return;
-                    }
                     if (owner == null || !Builds.ServerBuild(owner.NetworkPlayer).QuiverGather) return;
 
                     uint id = pickup.Entity.Identifier;
@@ -197,7 +191,7 @@ namespace BluesArcheryOverhaul {
         /// patch above skips) is tracked like a hand-drawn one, so it returns. False when Quiver Gather does not apply.</summary>
         internal static bool TrackAutoDocked(Pickup pickup, PickupDock quiver, PlayerController owner) {
             if (!NetworkSceneManager.IsServer || !enabled.Value || pickup == null || pickup.Entity == null || quiver == null || owner == null) return false;
-            if (RevampedSkillsLoaded || !Builds.ServerBuild(owner.NetworkPlayer).QuiverGather) return false;
+            if (!Builds.ServerBuild(owner.NetworkPlayer).QuiverGather) return false;
 
             uint id = pickup.Entity.Identifier;
             tracked[id] = new Tracked { pickup = pickup, quiver = quiver, owner = owner };
