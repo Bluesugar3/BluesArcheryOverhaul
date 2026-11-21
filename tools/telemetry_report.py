@@ -1,6 +1,6 @@
-"""Balance report for QuickshotRing's telemetry: one self-contained HTML page of charts from a play-test day.
+"""Balance report for Blue's Archery Overhaul's telemetry: one self-contained HTML page of charts from a play-test day.
 
-The dedicated server writes UserData\\QuickshotRing\\telemetry\\shots-v1-<day>.csv and hits-v1-<day>.csv (Telemetry.cs). This reads
+The dedicated server writes UserData\\BluesArcheryOverhaul\\telemetry\\shots-v1-<day>.csv and hits-v1-<day>.csv (Telemetry.cs; up to 0.18.3 the folder was QuickshotRing\\telemetry, which stays where it was: pass it to read those days). This reads
 them and draws, per skill: shots, damage per shot, sustained damage per minute, kills, where the damage comes from, and the same
 per player and per main path, so a skill that is too strong stands out.
 
@@ -25,7 +25,7 @@ import sys
 import tempfile
 import webbrowser
 
-SERVER_DATA = r"C:\Users\dmand\OneDrive\Desktop\A Township Tale(server\UserData\QuickshotRing\telemetry"
+SERVER_DATA = r"C:\Users\dmand\OneDrive\Desktop\A Township Tale(server\UserData\BluesArcheryOverhaul\telemetry"
 SHOT_COLUMNS = ("time,session,shot,arrow,player,account,kind,ult,ghosts,pellets,needles,tier,hold,ms,locks,sky,main,quick,volley,"
                 "charge,ults,ricochet,shatter,gatherer,test,version,settings").split(",")
 HIT_COLUMNS = "time,session,shot,player,source,target,target_id,victim,raw,dealt,cripple,killed,max_health".split(",")
@@ -570,8 +570,8 @@ def render(r, meta):
         notes.append(f"{r['mods']} hit(s) came from a damage site the telemetry does not know (source 'mod'): tell Claude, it is a gap in the recording.")
     day_text = days[0] if len(days) == 1 else f"{days[0]} to {days[-1]}"
     return ("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-            f"<title>QuickshotRing balance</title><style>{CSS}</style></head><body><main>"
-            f"<header><h1>QuickshotRing balance, {esc(day_text)}</h1><p>{esc(notes[0])} Hover or tab to a bar for its numbers; every chart has a table.</p></header>"
+            f"<title>Blue's Archery Overhaul balance</title><style>{CSS}</style></head><body><main>"
+            f"<header><h1>Blue's Archery Overhaul balance, {esc(day_text)}</h1><p>{esc(notes[0])} Hover or tab to a bar for its numbers; every chart has a table.</p></header>"
             + table + "".join(figs) + ptable
             + '<section><h2>Notes</h2>' + "".join(f'<p class="notes">{esc(n)}</p>' for n in notes[1:])
             + f'<p class="notes">Data: {esc(meta.get("source", ""))}</p></section>'
@@ -691,7 +691,7 @@ def selftest():
 # ------------------------------------------------------------------------------------------------------------------- main
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="QuickshotRing balance report from the server's telemetry CSVs.")
+    ap = argparse.ArgumentParser(description="Blue's Archery Overhaul balance report from the server's telemetry CSVs.")
     ap.add_argument("paths", nargs="*", help=f"folders or files (default: {SERVER_DATA})")
     ap.add_argument("--day", help="YYYY-MM-DD (default: the newest day found)")
     ap.add_argument("--all", action="store_true", help="every day found")
