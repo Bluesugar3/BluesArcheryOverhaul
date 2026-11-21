@@ -25,8 +25,8 @@ namespace BluesArcheryOverhaul {
         internal static int TestDelayMs { get; set; }
 
         const string Header = "#,Blue's Archery Overhaul balance statistics,v1,gap_cap_s,15,step,0.5,session,";
-        const string SHeader = "#S,day,player,account,kind,ult,ghosts,pellets,needles,tier,hold,locks,sky,main,quick,volley,charge,ults,ricochet,shatter,gatherer,test,version,settings,"
-                             + "shots,cost_s,damage,kills,pvp_damage,pvp_kills,held_ms,held_n,"
+        const string SHeader = "#S,day,player,account,kind,ult,ghosts,pellets,needles,tier,hold,locks,sky,main,quick,volley,charge,ults,ricochet,shatter,gatherer,test,version,settings,arrow_kind,"
+                             + "shots,cost_s,damage,kills,pvp_damage,pvp_kills,held_ms,held_n,arrow_power,"
                              + "by_arrow,by_ghost,by_pellet,by_needle,by_core,by_line,by_ricochet,by_shatter,by_holybeam,by_holyblast,by_weight,by_skyfall,by_mod";
         const string DHeader = "#D,day,kind,ult,ghosts,pellets,locks,tier,sky,main,quick,test,version,settings,shots,zero,steps";
         const string THeader = "#T,day,hour,version,damage";
@@ -39,7 +39,7 @@ namespace BluesArcheryOverhaul {
         // ---------------------------------------------------------------- the keys: the columns written, exactly as TelemetryCsv.Shot writes them
 
         struct SKey : IEquatable<SKey> {
-            public string Player, Version;
+            public string Player, Version, Arrow;   // Arrow: what was shot (ShotRow.ArrowKind)
             public int Account, Ghosts, Pellets, Needles, Tier, Hold, Locks, Quick, Volley, Charge;
             public ShotKind Kind; public UltimateUse Ult; public SkyCode Sky; public MainPath Main; public Ultimates Ults;
             public bool Ricochet, Shatter, Gatherer, Test;
@@ -48,7 +48,7 @@ namespace BluesArcheryOverhaul {
             public static SKey Of(in ShotRow r) {
                 Build b = r.Build;
                 return new SKey {
-                    Player = r.Player ?? "", Version = r.Version ?? "", Account = r.Account, Ghosts = r.Ghosts, Pellets = r.Pellets, Needles = r.Needles,
+                    Player = r.Player ?? "", Version = r.Version ?? "", Arrow = r.ArrowKind ?? "", Account = r.Account, Ghosts = r.Ghosts, Pellets = r.Pellets, Needles = r.Needles,
                     Tier = r.Tier, Hold = r.Hold, Locks = r.Locks, Quick = b.Quick, Volley = b.Volley, Charge = b.Charge,
                     Kind = r.Kind, Ult = r.Ult, Sky = r.Sky, Main = b.Main, Ults = b.Ultimates,
                     Ricochet = (b.Sides & SideOrbs.Ricochet) != 0, Shatter = (b.Bridges & Bridges.Shatter) != 0, Gatherer = b.QuiverGather, Test = r.Test,
@@ -60,7 +60,8 @@ namespace BluesArcheryOverhaul {
                 Account == o.Account && Ghosts == o.Ghosts && Pellets == o.Pellets && Needles == o.Needles && Tier == o.Tier && Hold == o.Hold
                 && Locks == o.Locks && Quick == o.Quick && Volley == o.Volley && Charge == o.Charge && Kind == o.Kind && Ult == o.Ult && Sky == o.Sky
                 && Main == o.Main && Ults == o.Ults && Ricochet == o.Ricochet && Shatter == o.Shatter && Gatherer == o.Gatherer && Test == o.Test
-                && Settings == o.Settings && string.Equals(Player, o.Player, StringComparison.Ordinal) && string.Equals(Version, o.Version, StringComparison.Ordinal);
+                && Settings == o.Settings && string.Equals(Player, o.Player, StringComparison.Ordinal) && string.Equals(Version, o.Version, StringComparison.Ordinal)
+                && string.Equals(Arrow, o.Arrow, StringComparison.Ordinal);
 
             public override bool Equals(object? o) => o is SKey k && Equals(k);
 
@@ -71,6 +72,7 @@ namespace BluesArcheryOverhaul {
                     h = h * 31 + Tier; h = h * 31 + Hold; h = h * 31 + Locks; h = h * 31 + (int)Sky; h = h * 31 + (int)Main;
                     h = h * 31 + Quick * 16 + Volley * 4 + Charge; h = h * 31 + (int)Ults;
                     h = h * 31 + (Ricochet ? 1 : 0) + (Shatter ? 2 : 0) + (Gatherer ? 4 : 0) + (Test ? 8 : 0);
+                    h = h * 31 + StringComparer.Ordinal.GetHashCode(Arrow ?? "");
                     return h * 31 + (int)Settings;
                 }
             }
@@ -85,6 +87,7 @@ namespace BluesArcheryOverhaul {
                 sb.Append(','); TelemetryCsv.Ults(sb, Ults);
                 TelemetryCsv.Bit(sb, Ricochet); TelemetryCsv.Bit(sb, Shatter); TelemetryCsv.Bit(sb, Gatherer); TelemetryCsv.Bit(sb, Test);
                 sb.Append(','); TelemetryCsv.Field(sb, Version); sb.Append(',').Append(Settings.ToString("x8", Inv));
+                sb.Append(','); TelemetryCsv.Field(sb, Arrow);
             }
         }
 
@@ -133,7 +136,7 @@ namespace BluesArcheryOverhaul {
         sealed class SLine {
             public SKey Key;
             public long Shots, Kills, PvpKills, HeldMs, HeldN;
-            public double Cost, Damage, Pvp;
+            public double Cost, Damage, Pvp, Power;   // Power: the shots' arrows' own damage ratings, added up
             public double[] By = new double[Sources];
             public SLine Clone() { var c = (SLine)MemberwiseClone(); c.By = (double[])By.Clone(); return c; }
         }
@@ -287,6 +290,7 @@ namespace BluesArcheryOverhaul {
                 }
                 else { s.Cost += GapCapSeconds; lastShot[lane] = r.Utc; }
                 if (r.Ms >= 0) { s.HeldMs += r.Ms; s.HeldN++; }
+                s.Power += Math.Max(0.0, Finite(r.Power));
                 day.Changes++;
                 var o = new OpenShot {
                     Utc = r.Utc, Day = day, S = s, D = DKey.Of(in key), Version = key.Version, Test = r.Test,
@@ -472,7 +476,7 @@ namespace BluesArcheryOverhaul {
                 sb.Append('S').Append(',').Append(day);
                 s.Key.Write(sb);
                 TelemetryCsv.Int(sb, s.Shots); Num(sb, s.Cost); Num(sb, s.Damage); TelemetryCsv.Int(sb, s.Kills); Num(sb, s.Pvp); TelemetryCsv.Int(sb, s.PvpKills);
-                TelemetryCsv.Int(sb, s.HeldMs); TelemetryCsv.Int(sb, s.HeldN);
+                TelemetryCsv.Int(sb, s.HeldMs); TelemetryCsv.Int(sb, s.HeldN); Num(sb, s.Power);
                 for (int i = 0; i < Sources; i++) Num(sb, s.By[i]);
                 sb.Append('\n');
             }

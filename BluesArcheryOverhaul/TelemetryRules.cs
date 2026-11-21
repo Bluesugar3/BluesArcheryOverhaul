@@ -35,6 +35,11 @@ namespace BluesArcheryOverhaul {
         /// never mixes two tunings (a public server's days).</summary>
         public string Version;
         public uint Settings;
+        /// <summary>What was shot (0.19.8): the arrow's kind (its own name, then each attached part that deals damage, its head) and its
+        /// damage rating with no skill multiplier (Hits.Power: the strongest hit one of its parts can deal). Kept by the statistics
+        /// only (TelemetryStats: arrow_kind, arrow_power); the row files do not write them.</summary>
+        public string ArrowKind;
+        public float Power;
 
         /// <summary><paramref name="ms"/> null (unknown) is written as an empty field; the plan's echo slot carries a Quick main's needles.</summary>
         public static ShotRow Of(long utc, int shot, uint arrow, string player, int account, Resolution r, int? ms, int locks, SkyCode sky, Build build, bool test,
@@ -170,6 +175,16 @@ namespace BluesArcheryOverhaul {
             string n = name!.Trim();
             while (n.EndsWith("(Clone)", StringComparison.Ordinal)) n = n.Substring(0, n.Length - "(Clone)".Length).TrimEnd();
             return n.Length > 0 ? n : "?";
+        }
+
+        /// <summary>An item's kind from its object's name: without "(Clone)" and without the "5090 - " the game puts in front of an
+        /// entity's name; "?" for none.</summary>
+        internal static string KindName(string? name) {
+            string n = CleanName(name);
+            int i = 0;
+            while (i < n.Length && n[i] >= '0' && n[i] <= '9') i++;
+            if (i > 0 && i + 3 <= n.Length && n[i] == ' ' && n[i + 1] == '-' && n[i + 2] == ' ') n = CleanName(n.Substring(i + 3));
+            return n;
         }
     }
 

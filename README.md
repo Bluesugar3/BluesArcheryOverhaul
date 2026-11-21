@@ -136,7 +136,7 @@ Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s
 
 The server keeps running statistics of archery so you can see which skills are too strong. It is on by default, runs on the server only, and sends nothing anywhere.
 
-- **What it keeps:** per day, per player and per kind of shot: shots, damage to creatures, kills, damage to players, time spent and what dealt the damage. Player names are in the files. No single shot is stored.
+- **What it keeps:** per day, per player and per kind of shot: shots, damage to creatures, kills, damage to players, time spent, what dealt the damage, and which arrows were shot. Player names are in the files. No single shot is stored.
 - **Where:** `UserData\BluesArcheryOverhaul\telemetry\` on the server, one small `stats-v1-<day>-<run>.csv` per day and server run, rewritten about once a minute. A very busy month is about 3 MB. Old days are never deleted.
-- **The page:** `python -I tools/telemetry_report.py <that folder>` (Python 3, this repository's `tools` folder) compiles every day into one page: damage per shot and per minute for each skill, kills, and a flag on any skill at 1.5 times the median or more.
+- **The page:** `python -I tools/telemetry_report.py <that folder>` (Python 3, this repository's `tools` folder) compiles every day into one page: damage per shot and per minute for each skill, each skill's damage as a multiple of a plain hit with the same arrows, kills, and a flag on any skill at 1.5 times the median or more. On Windows, double-click `tools\Balance report.cmd`.
 - **Settings**, in `[Telemetry]` on the server: `Enabled = false` turns it off. `MinFreeMb` (2048) stops the file being written while the drive has less free space than that.

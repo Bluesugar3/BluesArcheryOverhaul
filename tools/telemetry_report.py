@@ -348,6 +348,7 @@ def analyze(shots, hits, gap_cap=15.0, min_shots=20, include_test=False, version
             k["dpm"] = 60.0 * k["damage"] / k["cost"] if k["cost"] > 0 else 0.0
             k["kills_per_100"] = 100.0 * k["kills"] / k["shots"]
             k["held_mean"] = k["held_sum"] / k["held_n"] if k["held_n"] else None
+            k["power"], k["x_plain"] = 0.0, None   # the row files do not say what was shot
             del k["per_shot"]                # the three numbers above are all the page uses
 
     eligible = [k["dpm"] for name, k in skills.items() if name not in SKYFALL and k["shots"] >= min_shots]
@@ -376,7 +377,7 @@ def analyze(shots, hits, gap_cap=15.0, min_shots=20, include_test=False, version
     return {"skills": skills, "players": players, "mains": mains, "median_dpm": median, "timeline": timeline, "step_minutes": step_minutes,
             "unattributed": unattributed, "things": things, "test_shots": test_shots, "tunings": tunings, "mods": mods,
             "shots": len(kind), "hits": hit_rows, "gap_cap": gap_cap, "min_shots": min_shots,
-            "sessions": sorted(sessions), "archers": sorted(archers)}
+            "sessions": sorted(sessions), "archers": sorted(archers), "arrows": {}}
 
 
 def tally_rank(tally, k):
@@ -407,9 +408,9 @@ def read_stats(paths, day=None, min_shots=20, include_test=False, version=None):
 
     def table_row():
         return {"shots": 0, "players": set(), "damage": 0.0, "cost": 0.0, "kills": 0, "held_sum": 0.0, "held_n": 0,
-                "pvp_damage": 0.0, "pvp_kills": 0, "sources": {}}
+                "pvp_damage": 0.0, "pvp_kills": 0, "sources": {}, "power": 0.0}
 
-    skills, players, mains, tallies = {}, {}, {}, {}
+    skills, players, mains, tallies, arrows = {}, {}, {}, {}, {}
     hours, tunings, sessions, archers = {}, {}, set(), set()
     unattributed, things, mods, hit_rows, test_shots, shots = {"hits": 0, "damage": 0.0}, 0, 0, 0, 0, 0
     gap_caps = set()
@@ -448,8 +449,14 @@ def read_stats(paths, day=None, min_shots=20, include_test=False, version=None):
                 rows = [skills.setdefault(skill, table_row()), players.setdefault((player, skill), table_row())]
                 if skill not in SKYFALL:
                     rows.append(mains.setdefault(line["main"], table_row()))
+                power = num(line.get("arrow_power"))   # files from before 0.19.8 have no arrow columns: no rating, kind "?"
+                a = arrows.setdefault(line.get("arrow_kind") or "?", {"shots": 0, "power": 0.0, "damage": 0.0})
+                a["shots"] += n
+                a["power"] += power
+                a["damage"] += num(line["damage"])
                 for k in rows:
                     k["shots"] += n
+                    k["power"] += power
                     k["players"].add(player)
                     k["damage"] += num(line["damage"])
                     k["cost"] += num(line["cost_s"])
@@ -494,6 +501,8 @@ def read_stats(paths, day=None, min_shots=20, include_test=False, version=None):
             k["dpm"] = 60.0 * k["damage"] / k["cost"] if k["cost"] > 0 else 0.0
             k["kills_per_100"] = 100.0 * k["kills"] / k["shots"] if k["shots"] else 0.0
             k["held_mean"] = k["held_sum"] / k["held_n"] if k["held_n"] else None
+            # damage as a multiple of one plain hit with the same arrows: what was dealt over the arrows' own damage ratings
+            k["x_plain"] = k["damage"] / k["power"] if k["power"] > 0 else None
 
     eligible = [k["dpm"] for name, k in skills.items() if name not in SKYFALL and k["shots"] >= min_shots]
     median = statistics.median(eligible) if len(eligible) >= 2 else None
@@ -518,7 +527,7 @@ def read_stats(paths, day=None, min_shots=20, include_test=False, version=None):
     return ({"skills": skills, "players": players, "mains": mains, "median_dpm": median, "timeline": timeline, "step_minutes": step_minutes,
              "unattributed": unattributed, "things": things, "test_shots": test_shots, "tunings": tunings, "mods": mods,
              "shots": shots, "hits": hit_rows, "gap_cap": max(gap_caps) if gap_caps else 15.0, "min_shots": min_shots,
-             "sessions": sorted(sessions), "archers": sorted(archers)}, days)
+             "sessions": sorted(sessions), "archers": sorted(archers), "arrows": arrows}, days)
 
 
 HOUR_CHOICES = (60, 180, 360, 720, 1440)
@@ -812,18 +821,23 @@ def render(r, meta):
         return f"⚠ {k['x_median']:.1f}× median" if k["flag"] else ""
 
     # the skill table
-    head = ["Skill", "Shots", "Archers", "Per shot", "Median", "Best 10%", "Per minute", "vs median", "Kills", "Kills / 100",
+    def plain_text(k):
+        return f"{k['x_plain']:.2f}×" if k.get("x_plain") is not None else "–"
+
+    head = ["Skill", "Shots", "Archers", "Per shot", "× plain hit", "Median", "Best 10%", "Per minute", "vs median", "Kills", "Kills / 100",
             "Held (s)", "To players"]
     trs = []
     for n, k in order:
         vs = (f'<span class="pill">{esc(flag_text(k))}</span>' if k["flag"]
               else esc(f"{k['x_median']:.2f}×") if k["x_median"] is not None else "–")
-        cells = [esc(n), k["shots"], k["players"], esc(fmt(k["per_shot_mean"])), esc(fmt(k["per_shot_median"])),
+        cells = [esc(n), k["shots"], k["players"], esc(fmt(k["per_shot_mean"])), esc(plain_text(k)), esc(fmt(k["per_shot_median"])),
                  esc(fmt(k["per_shot_p90"])), esc(fmt(k["dpm"])), vs, k["kills"], esc(fmt(k["kills_per_100"])),
                  esc(fmt(k["held_mean"])), esc(fmt(k["pvp_damage"]))]
         trs.append("<tr>" + "".join(f"<td>{c}</td>" for c in cells) + "</tr>")
     table = ('<section><h2>Every skill</h2><p class="notes">Ranked by damage per minute. Damage is what came off creatures\' health: '
              'per shot (average, median, best 10% of shots), per minute, and to players apart; held is seconds past the 68% pull. '
+             '× plain hit is that damage over the damage rating of the arrows that were shot, so a skill compares fairly whatever '
+             'arrows its archers use (1× is one plain hit of the same arrow at full effect; armour lowers every skill alike). '
              f'A skill at {FLAG_AT}× the median or more is flagged ⚠ (median {esc(fmt(median))} per minute over the skills with at '
              f'least {r["min_shots"]} shots; Skyfall left out).</p><div class="wrap"><table><thead><tr>'
              + "".join(f"<th>{esc(c)}</th>" for c in head) + "</tr></thead><tbody>" + "".join(trs) + "</tbody></table></div></section>")
@@ -874,10 +888,19 @@ def render(r, meta):
     prow = sorted(r["players"].items(), key=lambda kv: (kv[0][0].lower(), -kv[1]["dpm"]))
     ptable = ('<section><h2>Each archer, by skill</h2><p class="notes">One strong archer can make a skill look strong: compare the same skill '
               'across archers.</p><div class="wrap"><table><thead><tr><th>Archer</th><th class="tl">Skill</th><th>Shots</th><th>Damage per shot</th>'
-              '<th>Damage per minute</th><th>Kills</th></tr></thead><tbody>'
+              '<th>× plain hit</th><th>Damage per minute</th><th>Kills</th></tr></thead><tbody>'
               + "".join(f"<tr><td>{esc(p)}</td><td class=\"tl\">{esc(sk)}</td><td>{k['shots']}</td><td>{esc(fmt(k['per_shot_mean']))}</td>"
-                        f"<td>{esc(fmt(k['dpm']))}</td><td>{k['kills']}</td></tr>" for (p, sk), k in prow)
+                        f"<td>{esc(plain_text(k))}</td><td>{esc(fmt(k['dpm']))}</td><td>{k['kills']}</td></tr>" for (p, sk), k in prow)
               + "</tbody></table></div></section>")
+    if r.get("arrows"):
+        arow = sorted(r["arrows"].items(), key=lambda kv: -kv[1]["shots"])
+        ptable += ('<section><h2>Arrows shot</h2><p class="notes">What was on the string. The damage rating is the strongest hit the arrow '
+                   'can deal on its own, with no skill.</p><div class="wrap"><table><thead><tr><th>Arrow</th><th>Shots</th>'
+                   '<th>Damage rating</th><th>Damage dealt</th></tr></thead><tbody>'
+                   + "".join(f"<tr><td>{esc(name)}</td><td>{a['shots']}</td>"
+                             f"<td>{esc(fmt(a['power'] / a['shots'] if a['shots'] and a['power'] > 0 else None))}</td>"
+                             f"<td>{esc(fmt(a['damage']))}</td></tr>" for name, a in arow)
+                   + "</tbody></table></div></section>")
 
     tunes = sorted(r["tunings"].items(), key=lambda kv: -kv[1])
     tune_text = "; ".join(f"{v} (settings {s}): {n} shots" for (v, s), n in tunes)
@@ -918,16 +941,16 @@ def selftest_stats(rows_folder, near):
     """The statistics files (TelemetryStats.cs) with known answers: two server runs on one day add together, a name with a comma and
     quotes, a skill's median and best 10% from its D lines, a test build's lines left out, Skyfall out of the median; and a folder that
     holds both kinds of file is read as one kind only (rows_folder holds selftest's row files)."""
-    key = "player,account,kind,ult,ghosts,pellets,needles,tier,hold,locks,sky,main,quick,volley,charge,ults,ricochet,shatter,gatherer,test,version,settings".split(",")
-    nums = "shots,cost_s,damage,kills,pvp_damage,pvp_kills,held_ms,held_n".split(",")
+    key = "player,account,kind,ult,ghosts,pellets,needles,tier,hold,locks,sky,main,quick,volley,charge,ults,ricochet,shatter,gatherer,test,version,settings,arrow_kind".split(",")
+    nums = "shots,cost_s,damage,kills,pvp_damage,pvp_kills,held_ms,held_n,arrow_power".split(",")
     by = ("arrow,ghost,pellet,needle,core,line,ricochet,shatter,holybeam,holyblast,weight,skyfall,mod").split(",")
     jo = 'Smith, "Jo"'
 
     def s_line(player, account, kind, ult, ghosts, pellets, tier, sky, main, ults, test, numbers, sources):
         k = dict(player=player, account=account, kind=kind, ult=ult, ghosts=ghosts, pellets=pellets, needles=0, tier=tier, hold=0, locks=0,
                  sky=sky, main=main, quick=0, volley=3 if main == "Multi" else 0, charge=3 if main == "Charge" else 0, ults=ults, ricochet=0,
-                 shatter=0, gatherer=0, test=test, version="0.19.5", settings="00c0ffee")
-        return (["S", "2026-11-19"] + [k[c] for c in key] + list(numbers) + [sources.get(b, 0) for b in by])
+                 shatter=0, gatherer=0, test=test, version="0.19.5", settings="00c0ffee", arrow_kind="Arrow")
+        return (["S", "2026-11-19"] + [k[c] for c in key] + list(numbers) + [5 * numbers[0]] + [sources.get(b, 0) for b in by])   # every arrow rated 5
 
     def d_line(kind, ult, ghosts, pellets, tier, sky, main, test, shots, zero, steps):
         return ["D", "2026-11-19", kind, ult, ghosts, pellets, 0, tier, sky, main, 0, test, "0.19.5", "00c0ffee", shots, zero, steps]
@@ -981,6 +1004,9 @@ def selftest_stats(rows_folder, near):
                                                            and r["sessions"] == ["20261119-080000", "20261119-180000"]),
             ("statistics: damage per minute and per shot", near(k["Burst"]["dpm"], 90.0) and near(k["Burst"]["per_shot_mean"], 15.0)
                                                           and near(k["Burst"]["held_mean"], 1.0)),
+            ("statistics: damage as a multiple of a plain hit, and the arrows shot",
+             near(k["Burst"]["x_plain"], 3.0) and near(r["players"][("Ana", "Burst")]["x_plain"], 3.0)
+             and r["arrows"]["Arrow"]["shots"] == 7 and near(r["arrows"]["Arrow"]["power"], 35)),
             ("statistics: median and best 10% from the D lines", near(k["Burst"]["per_shot_median"], 5.25) and near(k["Burst"]["per_shot_p90"], 15.25)
                                                                 and near(k["Charge Shot 3"]["per_shot_median"], 12.25)),
             ("statistics: damage by source", near(k["Burst"]["sources"]["Real arrow"], 25) and near(k["Burst"]["sources"]["Ghosts"], 32)

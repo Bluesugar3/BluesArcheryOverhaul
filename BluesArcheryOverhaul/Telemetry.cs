@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -83,7 +84,7 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>Server, from Draws.Release: one release as the server decided it (Skyfall casts and fizzles included).</summary>
         static readonly int T_Shot = Timing.Section("Telemetry.Shot");
-        internal static void Shot(uint arrow, Player? owner, Resolution r, Build build, int? ms, SkyCode sky, bool test) {
+        internal static void Shot(uint arrow, NetworkEntity? entity, Player? owner, Resolution r, Build build, int? ms, SkyCode sky, bool test) {
             if (!On) return;
             using var _t = Timing.Begin(T_Shot, arrow);
             try {
@@ -92,9 +93,34 @@ namespace BluesArcheryOverhaul {
                 int locks = Claims.LocksOf(arrow, false).Count; // the server's kept Seeking Volley locks (none: 0)
                 int shot = index.Next();
                 index.Put(arrow, account, name, shot, Now);
-                Record(ShotRow.Of(DateTime.UtcNow.Ticks, shot, arrow, name, account, r, ms, locks, sky, build, test, Version, Cfg.SharedChecksum));
+                ShotRow row = ShotRow.Of(DateTime.UtcNow.Ticks, shot, arrow, name, account, r, ms, locks, sky, build, test, Version, Cfg.SharedChecksum);
+                Describe(entity, out row.ArrowKind, out row.Power);
+                Record(row);
             }
             catch (Exception e) { Once(ref warnedShot, "recording a shot failed: " + e.Message); }
+        }
+
+        static readonly List<ImpactTool> arrowTools = new List<ImpactTool>();
+        static bool warnedArrow;
+
+        /// <summary>What was shot (0.19.8; the owner: "Does the statistics keep track of what arrow is shot?"): the arrow's kind (its own
+        /// name, then each attached part that deals damage: a crafted arrow's head) and its damage rating with no skill multiplier
+        /// (Hits.Power; the game keeps a shot's multiplier apart, in ImpactTool.OneOffMultiplier). "?" and 0 when it cannot be read.</summary>
+        static void Describe(NetworkEntity? entity, out string kind, out float power) {
+            kind = "?"; power = 0f;
+            try {
+                if (entity == null) return;
+                kind = TelemetryRules.KindName(entity.name);
+                ImpactTool? root = entity.GetComponentInChildren<ImpactTool>(true);
+                if (root == null) return;
+                power = Hits.Power(root);
+                foreach (ImpactTool t in Hits.Tools(root, arrowTools)) {
+                    if (ReferenceEquals(t, root)) continue;
+                    string part = TelemetryRules.KindName(t.name);
+                    if (part != "?" && kind.Length + part.Length < 80 && kind.IndexOf(part, StringComparison.Ordinal) < 0) kind += " + " + part;
+                }
+            }
+            catch (Exception e) { Once(ref warnedArrow, "reading what was shot failed: " + e.Message); }
         }
 
         /// <summary>Server, from HolyArrow.BeamCreated (the beam is made when the skill arms, before the release): which arrow the beam
