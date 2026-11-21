@@ -41,6 +41,17 @@ namespace BluesArcheryOverhaul {
             enabled = cat.CreateEntry("Enabled", true, description: "Server (not shared). Compiles every bow release and every hit of archery damage (what really came off the target's health, kills, damage to players) into small per-day statistics as they happen: one file per server run per server-local day, stats-v1-<day>-<session>.csv in UserData\\BluesArcheryOverhaul\\telemetry\\, rewritten whole about once a minute, for the balance graphs of tools/telemetry_report.py (python -I tools/telemetry_report.py). No per-shot file unless KeepRows is on. The game's thread only adds to numbers; a background thread writes. Re-read live. Off: nothing is recorded (one check per hit).");
             keepRows = cat.CreateEntry("KeepRows", false, description: "Server (not shared). For troubleshooting: also writes one row per shot and per hit (shots-v1-<day>.csv and hits-v1-<day>.csv, as before 0.19.5), which grow without end on a busy server (about 1 GB a month); the report can read them with --rows and check them against the statistics with --compare. Re-read live.");
             minFreeMb = cat.CreateEntry("MinFreeMb", 2048, description: "Server (not shared). The low-disk stop: while the drive that holds the telemetry folder has less than this many MB free, no telemetry file is written (the statistics wait in memory and are written once there is room; KeepRows' rows are dropped), and the log says so at most every 10 minutes, so weeks of logs can never fill the server's disk. Old days are never deleted: the balance report compiles all of them. 0 = no check. Re-read live.");
+            // 0.19.7 (play-test of 0.19.6: the server was stopped by closing its window and the last statistics were not written):
+            // that way of stopping skips every mod's OnApplicationQuit but still raises OnApplicationDefiniteQuit before the process
+            // ends (MelonLoader 0.7.3; the notes at the top of ServerSettings.cs), so the last write also hangs there. A second
+            // Shutdown finds nothing changed and writes nothing.
+            try { MelonEvents.OnApplicationDefiniteQuit.Subscribe(ShutdownAtDefiniteQuit); }
+            catch (Exception e) { MelonLogger.Warning($"[Archery] Telemetry: cannot see the server's stop ({e.Message}); the last minute of statistics is only written at a clean quit"); }
+        }
+
+        static void ShutdownAtDefiniteQuit() {
+            try { Shutdown(); }
+            catch (Exception e) { MelonLogger.Warning("[Archery] Telemetry: shutdown failed: " + e.Message); }
         }
 
         // [Telemetry] MinFreeMb as bytes for the writer's low-disk stop (0 = no check)
