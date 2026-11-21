@@ -58,7 +58,7 @@ namespace BluesArcheryOverhaul {
             var cat = Cfg.Category("Join");
             check = cat.CreateEntry("Check", "refuse", description: "Server. What happens when a joining game has no matching copy of this mod: refuse, log (let in, log what would be refused) or off (no check, nothing sent).");
             answerSeconds = cat.CreateEntry("AnswerSeconds", 5f, description: "Server. How long a joining game has to answer the check (1 to 60).");
-            settingsMismatch = cat.CreateEntry("SettingsMismatch", "log", description: "Server. A joining game whose [shared] settings differ: log or refuse.");
+            settingsMismatch = cat.CreateEntry("SettingsMismatch", "log", description: "Server. The server sends its settings to every joining game, which uses them while it is on this server. A game that could not take them (another build of the mod with other built-in settings, no answer, or orb switches that need a restart): log or refuse.");
         }
 
         /// <summary>The [Join] settings as they are now (a leaf: its own entries only). An unknown text is warned once.</summary>

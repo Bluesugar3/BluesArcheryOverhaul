@@ -124,7 +124,9 @@ To cast: draw fully, aim at least 25° up, hold 1 s, let go. A sigil opens in th
 
 Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s while the game runs. The `[Tree]` switches that add or remove an orb need a restart of the server and every game.
 
-- **`[shared]` settings** must match on the server and every game. Compare the `[Archery] Settings: shared checksum` line in both logs.
+- **On a server, the server's settings count.** When you join, the server sends its settings and your game uses them until you leave; your own file is not used there (edits to it wait until you leave). Your file is never changed. When the server owner edits the server's file, every game on it gets the change within a few seconds.
+- **Your own sections:** `[Log]`, `[Timing]`, `[Telemetry]`, `[Join]` and `[Settings]` are never set by a server.
+- **`[Join] SettingsMismatch`** (server): a game that cannot take the server's settings (another build of the mod) is only logged (`log`, the default) or turned away (`refuse`).
 - **`[TreeLayout]`** places each orb at the shrine.
 - **`[PvP]`** decides whether arrows hurt players. The server's own PvP setting must be on too.
 - **`[Log] Level = Debug`** gives detailed logs.
