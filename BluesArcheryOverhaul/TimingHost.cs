@@ -22,7 +22,11 @@ namespace BluesArcheryOverhaul {
         static bool calibrated, warnedWrite, ready;
         static float intervalStart;
 
+#if QUEST
+        static string Side => "client";   // a headset is never the server
+#else
         static string Side => global::ApplicationManager.IsHeadless ? "server" : "client";
+#endif
         static string FilePath => Path.Combine(Cfg.Folder, $"timing-{Side}.txt");
 
         internal static void Init() {

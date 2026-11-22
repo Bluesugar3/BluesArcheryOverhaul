@@ -47,7 +47,11 @@ namespace BluesArcheryOverhaul {
     // A fault in this feature never refuses or drops anyone: only a decided mismatch under [Join] SettingsMismatch = refuse refuses, at
     // the join, through the join gate's own refusal. After the join a mismatch is only logged.
     internal static class ServerSettings {
+#if QUEST
+        const Il2CppAlta.Networking.MessageType Message = (Il2CppAlta.Networking.MessageType)JoinWire.Message;
+#else
         const Alta.Networking.MessageType Message = (Alta.Networking.MessageType)JoinWire.Message;
+#endif
         const int PartsPerFrame = 8;
         static int mainThread;
         static readonly object gate = new object();

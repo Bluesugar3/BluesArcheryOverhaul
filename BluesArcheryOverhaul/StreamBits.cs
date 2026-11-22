@@ -18,9 +18,21 @@ namespace BluesArcheryOverhaul {
             return value;
         }
 
+#if QUEST
+        // Quest (IL2CPP): a game object must be cast with TryCast (a C# cast of the proxy gives null), and the Quest StreamReader
+        // has no IsFinished or TotalByteCount: its BitReader has the numbers they are made of (BitsRead, TotalBits).
+        public bool Finished {
+            get { var r = stream.TryCast<StreamReader>()?.reader; return r == null || r.BitsRead >= r.TotalBits - 7; }
+        }
+
+        public int BitsLeft {
+            get { var r = stream.TryCast<StreamReader>()?.reader; return r == null ? 0 : Math.Max(0, (int)r.TotalBits - (int)r.BitsRead); }
+        }
+#else
         public bool Finished => (stream as StreamReader)?.IsFinished ?? true;
 
         // Clamped: the game's reader keeps counting past the end of the message.
         public int BitsLeft => stream is StreamReader r ? Math.Max(0, (int)(r.TotalByteCount * 8) - (int)r.BitIndex) : 0;
+#endif
     }
 }

@@ -91,11 +91,16 @@ namespace BluesArcheryOverhaul {
             if (current == null || ReferenceEquals(current, installedOn)) return;
             installedOn = current;
             if (current.IsDummyLocalServer) return;                     // a client's stand-in server: nobody joins it, and it has no step list
+#if QUEST
+            return;   // a headset is never the server (and its build has no AddConnectionStep)
+#else
             current.AddConnectionStep(Step);
+#endif
             OnServer = true;
             MelonLogger.Msg($"[Archery] Join: check installed on message {JoinWire.Message} ({Values.Check.ToString().ToLowerInvariant()})");
         }
 
+#if !QUEST // the server's half: never on a headset
         [HarmonyPatch(typeof(ServerHandler), "ConnectionCreated")]
         static class ServerListen {
             static readonly int T = Timing.Section("patch ServerHandler.ConnectionCreated / JoinGate.ServerListen");
@@ -105,6 +110,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Error($"[Archery] Join: could not listen for a joining game's answer: {e.Message}"); }
             }
         }
+#endif
 
         static readonly int TServerRead = Timing.Section("JoinGate.ServerRead (a joining game's answer)");
         static void ServerRead(Connection connection, Stream stream) {
@@ -241,7 +247,11 @@ namespace BluesArcheryOverhaul {
                     else if (here.Wire < JoinWire.Version)
                         MelonLogger.Warning($"[Archery] Join: Your {JoinRule.ModName} {own} is newer than this server's {here.Version}. The server needs an update first.");
                 }
+#if QUEST
+                var hello = new JoinHello { Wire = JoinWire.Version, Version = own, Check = Cfg.SharedChecksum, Platform = JoinPlatform.Quest };
+#else
                 var hello = new JoinHello { Wire = JoinWire.Version, Version = own, Check = Cfg.SharedChecksum, Platform = JoinPlatform.Pc };
+#endif
                 connection.Send(null, Message, (c, s) => JoinWire.WriteHello(new StreamBits(s), hello));
             } catch (Exception e) { MelonLogger.Error($"[Archery] Join: answering the server's greeting failed: {e.Message}"); }
         }

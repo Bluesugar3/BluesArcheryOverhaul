@@ -16,11 +16,35 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="*.cs" />
-    <!-- left out: files that only a dedicated server runs -->
-    <Compile Include="..\BluesArcheryOverhaul\*.cs" Exclude="..\BluesArcheryOverhaul\SkyfallCommands.cs" />
+    <!-- The PC mod's own source files compiled for Quest so far (docs/superpowers/plans/2026-11-22-quest-port.md adds them task
+         by task; a file joins once it compiles and works on Quest). The sixteen Unity-free files need no change. -->
+    <Compile Include="..\BluesArcheryOverhaul\Rules.cs;..\BluesArcheryOverhaul\Build.cs;..\BluesArcheryOverhaul\Wire.cs;..\BluesArcheryOverhaul\Release.cs;..\BluesArcheryOverhaul\Spectral.cs;..\BluesArcheryOverhaul\Charge.cs;..\BluesArcheryOverhaul\Path.cs;..\BluesArcheryOverhaul\Preview.cs" />
+    <Compile Include="..\BluesArcheryOverhaul\Lectern.cs;..\BluesArcheryOverhaul\Timing.cs;..\BluesArcheryOverhaul\Homing.cs;..\BluesArcheryOverhaul\SkyfallRules.cs;..\BluesArcheryOverhaul\TelemetryRules.cs;..\BluesArcheryOverhaul\TelemetryStats.cs;..\BluesArcheryOverhaul\JoinRules.cs;..\BluesArcheryOverhaul\SettingsSync.cs" />
+    <!-- task 1: the platform layer, settings, timing, the join gate's and server-set settings' client halves -->
+    <Compile Include="..\BluesArcheryOverhaul\Cfg.cs;..\BluesArcheryOverhaul\TimingHost.cs;..\BluesArcheryOverhaul\StreamBits.cs;..\BluesArcheryOverhaul\JoinGate.cs;..\BluesArcheryOverhaul\ServerSettings.cs" />
     <EmbeddedResource Include="..\BluesArcheryOverhaul\Resources\**\*" Exclude="..\BluesArcheryOverhaul\Resources\**\*.manifest;..\BluesArcheryOverhaul\Resources\**\*.meta" LogicalName="BluesArcheryOverhaul.Resources.%(Filename)%(Extension)" />
     <Reference Include="$(QuestReferences)\*.dll" Private="false" />
   </ItemGroup>
+  <!-- Main.Version comes from the PC mod's Main.cs (tools/stage-build.sh sets it there), so both builds always carry the same
+       version; written into QuestVersion.g.cs before each compile. -->
+  <PropertyGroup>
+    <PcMainText>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)..\BluesArcheryOverhaul\Main.cs'))</PcMainText>
+    <PcVersionLine>$([System.Text.RegularExpressions.Regex]::Match($(PcMainText), 'const string Version = "[0-9][0-9.]*"').Value)</PcVersionLine>
+    <PcVersion>$([System.Text.RegularExpressions.Regex]::Match($(PcVersionLine), '[0-9][0-9.]*').Value)</PcVersion>
+  </PropertyGroup>
+  <Target Name="WriteQuestVersion" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <!-- set here: IntermediateOutputPath is only defined once the SDK's targets are read -->
+      <QuestVersionFile>$(IntermediateOutputPath)QuestVersion.g.cs</QuestVersionFile>
+    </PropertyGroup>
+    <Error Condition="'$(PcVersion)' == ''" Text="Could not read Version from ..\BluesArcheryOverhaul\Main.cs" />
+    <WriteLinesToFile File="$(QuestVersionFile)" Overwrite="true" WriteOnlyWhenDifferent="true"
+      Lines="// made by BluesArcheryOverhaul.Quest.csproj from ..\BluesArcheryOverhaul\Main.cs: do not edit;namespace BluesArcheryOverhaul { public partial class Main { internal const string Version = &quot;$(PcVersion)&quot;%3B } }" />
+    <ItemGroup>
+      <Compile Include="$(QuestVersionFile)" />
+      <FileWrites Include="$(QuestVersionFile)" />
+    </ItemGroup>
+  </Target>
   <Target Name="CheckQuestReferences" BeforeTargets="ResolveReferences" Condition="!Exists('$(QuestReferences)\MelonLoader.dll')">
     <Error Text="Pass -p:QuestReferences=&lt;folder with the Quest game's Il2Cpp assemblies, MelonLoader.dll and Il2CppInterop.Runtime.dll&gt;" />
   </Target>
