@@ -49,11 +49,22 @@ namespace BluesArcheryOverhaul {
             Line(Orb.SeekingVolley, "Hold a volley and shoot to try it. To lock: rest your aim\non a creature until the green rings snap shut round it, then shoot near it.");
 
             Line(Orb.Shatter, "Charge archer: hold a Charge Shot until the thump, then shoot.\nOther archers (half strength): shoot your main path's own shot.");
+            // 0.19.11: an orb off the main path never fires its own shot; grabbing it was its try-out (Lines.OffPath, Shrine.PractiseOnGrab)
+            offPath = cat.CreateEntry("OffPath", "Off your {main} main path this orb has no shot of its own:\ngrabbing it was the try-out. It adds to your {main} shots.",
+                description: "The try-out line for an orb of another line than your main path; {main} is that path's name.");
+        }
+
+        static MelonPreferences_Entry<string>? offPath;
+
+        /// <summary>The orb's try-out line for the local build, as written (a "\n" not yet a line break); empty when it has none.</summary>
+        static string TextFor(Orb orb) {
+            MainPath main = Lines.TryOutMain(ShrineView.Owned, orb, ShrineView.Incumbent);
+            if (offPath != null && Lines.OffPath(orb, main)) return (offPath.Value ?? "").Replace("{main}", main == MainPath.Quick ? "Quick" : main == MainPath.Charge ? "Charge Shot" : "multi-arrow");
+            return lines.TryGetValue(orb, out var entry) ? entry.Value ?? "" : "";
         }
 
         /// <summary>The orb's try-out line as one line of text (for the tablet); empty when it has none.</summary>
-        internal static string LineFor(Orb orb) =>
-            lines.TryGetValue(orb, out var entry) ? (entry.Value ?? "").Replace("\\n", " ").Replace('\n', ' ').Trim() : "";
+        internal static string LineFor(Orb orb) => TextFor(orb).Replace("\\n", " ").Replace('\n', ' ').Trim();
 
         /// <summary>Called by the tablet after it wrote, rebuilt or hid itself, and when a try-out opens without it: the
         /// floating text is shown exactly when a try-out with a line is open and the tablet's text does not carry that line.</summary>
@@ -104,8 +115,8 @@ namespace BluesArcheryOverhaul {
                     Hide();
                     active = false;
                     if (!enabled.Value || ___openSkillOrb == null || ___openSkillOrb.Slot == null) return;
-                    if (!Tree.OrbBySlot.TryGetValue(___openSkillOrb.Slot.Hash, out Orb orb) || !lines.TryGetValue(orb, out var entry)) return;
-                    string text = (entry.Value ?? "").Replace("\\n", "\n");
+                    if (!Tree.OrbBySlot.TryGetValue(___openSkillOrb.Slot.Hash, out Orb orb)) return;
+                    string text = TextFor(orb).Replace("\\n", "\n");
                     if (text.Trim().Length == 0) return;
                     Transform anchor = ___actionGlyphPlacer != null ? ___actionGlyphPlacer.transform : ___openSkillOrb.transform;
                     current = orb;

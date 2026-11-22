@@ -84,7 +84,7 @@ namespace BluesArcheryOverhaul {
             if (storedElsewhere) return ReturnAction.GiveUp;    // someone put it away
             if (held) return ReturnAction.Wait;                 // comes back once it is let go
             if (!quiverCarried) return ReturnAction.Wait;       // comes back once the quiver is worn again
-            if (!quiverHasRoom) return ReturnAction.GiveUp;     // full quiver: gives up for good
+            if (!quiverHasRoom) return ReturnAction.Wait;       // full quiver: comes back once there is room (0.19.11; gave up for good before)
             return ReturnAction.Return;
         }
     }

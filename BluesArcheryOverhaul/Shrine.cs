@@ -242,7 +242,8 @@ namespace BluesArcheryOverhaul {
 
         // ponytail: the owner, 2026-11-20 ("for now when you grab it, it completes the tutorial"): grabbing one of the four later
         // orbs practises it at once, since Ricochet's own practice could not be finished in play (cause not found yet). Their
-        // own-action practice above stays; remove this patch to go back to it.
+        // own-action practice above stays; remove this patch to go back to it. 0.19.11: also any orb off the main path (Lines.OffPath),
+        // whose own shot never fires (the owner: with Quick main, the multi-arrow and Charge try-outs gave no feedback).
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.PracticeSlot))]
         static class PractiseOnGrab {
             static readonly int T = Timing.Section("patch PlayerProgressionManager.PracticeSlot / Shrine.PractiseOnGrab");
@@ -250,8 +251,12 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 try {
                     if (!NetworkSceneManager.IsServer || orb == null || orb.Slot == null) return;
-                    if (!Tree.OrbBySlot.TryGetValue(orb.Slot.Hash, out Orb o) || Array.IndexOf(NewOrbs.All, o) < 0) return;
-                    Practise(__instance.Player, o, "grabbing it");
+                    if (!Tree.OrbBySlot.TryGetValue(orb.Slot.Hash, out Orb o)) return;
+                    if (Array.IndexOf(NewOrbs.All, o) >= 0) { Practise(__instance.Player, o, "grabbing it"); return; }
+                    // 0.19.11: an orb off the main path (the try-out counted, Lines.TryOutMain) never fires its own shot
+                    Builds.Refresh(__instance);
+                    MainPath main = Builds.ServerBuild(__instance.Player).Main;
+                    if (Lines.OffPath(o, main)) Practise(__instance.Player, o, $"grabbing it (off the {main} main path)");
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Shrine: practice on grab failed: {e.Message}"); }
             }
