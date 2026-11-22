@@ -271,11 +271,14 @@ namespace BluesArcheryOverhaul {
             QuestTrace.Step("inject: start");
 #endif
 #if QUEST
-            var trees = ProfessionSkillTree.treeMap;
-            if (trees == null || trees.Count == 0) { injected = false; return; } // not loaded yet: try again next call
-
-            ProfessionSkillTree? tree = null;
-            foreach (ProfessionSkillTree t in trees.Values) if (t != null && t.Slots.Any(s => s.Skill.Is<BowQuickdraw>())) { tree = t; break; }
+            // Quest: the game's own call, not an enumeration of treeMap. A game collection's generic code exists on IL2CPP only for the
+            // instantiations the game itself compiled; walking treeMap.Values (keyed by the ProgressionPath enum) aborted the game on
+            // the headset (2026-11-22). Re-entering GetProfessionTree from its own postfix is harmless: `injected` is already set.
+            ProfessionSkillTree? tree = ProfessionSkillTree.GetProfessionTree(ProgressionPath.Ranged);
+            QuestTrace.Step("inject: the Ranged tree " + (tree != null ? $"found ({tree.Slots.Count} slots)" : "not loaded yet"));
+            if (tree == null) { injected = false; return; } // not loaded yet: try again next call
+            if (!tree.Slots.Any(s => s.Skill.Is<BowQuickdraw>())) tree = null;
+            QuestTrace.Step("inject: Quickdraw orb " + (tree != null ? "found" : "NOT found"));
             if (tree != null) QuestChecks.WrapperIdentity(tree);
 #else
             var trees = Traverse.Create(typeof(ProfessionSkillTree)).Field("treeMap").GetValue<Dictionary<ProgressionPath, ProfessionSkillTree>>();
@@ -314,6 +317,9 @@ namespace BluesArcheryOverhaul {
                 }
 #endif
             }
+#if QUEST
+            QuestTrace.Step($"inject: orbs sorted (charge {chargeSlots.Count}, multi {multi.Count})");
+#endif
             List<ProgressionSlot> byDepth = chargeSlots.OrderBy(s => s.GetIndentLevel(tree)).ToList(); // stable, as before
             chargeSlots.Clear();
             chargeSlots.AddRange(byDepth);
