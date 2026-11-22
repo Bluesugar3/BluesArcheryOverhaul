@@ -87,10 +87,18 @@
 
 What the owner saw missing first: the mod's orbs with the game's icons. This is the first thing a Quest player sees, and the tree's skills (the Volley skill, id 47011) must exist on the client for the bow statuses of Task 3.
 
-- [ ] **Step 1:** Convert each file by the table. `Tree.cs` has the most compile errors (21): slot and skill lists are game collections, icons are textures loaded from the DLL's embedded PNGs (`ImageConversion.LoadImage`: check it is not stripped; if it is, the icons are loaded with the game's own texture path the report's assets list offers, and that is brought to the owner as a finding).
-- [ ] **Step 2:** PC check; Quest build.
-- [ ] **Step 3: Headset check.** Owner: go to the archery shrine and open the tree. Expected in game: the 16 orbs with the mod's icons (Quickdraw 4, Two-Shot, Three-Shot, Burst, Holy Arrow, Auto Dock, Ricochet, Seeking Volley, Shatter, the gatherer), the same as on PC. Buy one orb, leave, rejoin: it is still owned. Executor reads `Tree: ready on the client`.
-- [ ] **Step 4:** Commit.
+- [x] **Step 1:** Convert each file by the table. `Tree.cs` has the most compile errors (21): slot and skill lists are game collections, icons are textures loaded from the DLL's embedded PNGs (`ImageConversion.LoadImage`: check it is not stripped; if it is, the icons are loaded with the game's own texture path the report's assets list offers, and that is brought to the owner as a finding).
+- [x] **Step 2:** PC check; Quest build.
+- [x] **Step 3: Headset check.** Owner: go to the archery shrine and open the tree. Expected in game: the 16 orbs with the mod's icons (Quickdraw 4, Two-Shot, Three-Shot, Burst, Holy Arrow, Auto Dock, Ricochet, Seeking Volley, Shatter, the gatherer), the same as on PC. Buy one orb, leave, rejoin: it is still owned. Executor reads `Tree: ready on the client`.
+- [x] **Step 4:** Commit.
+
+**Done 2026-11-22** (branch `quest-port`, commits up to 0d6df66; the owner's screenshot `docs/quest-shots/shrine-2026-11-22-0111.jpg`: all 16 orbs with the mod's icons). Found on the headset, each now a rule for the rest of the port:
+- **Object identity.** The interop gives a NEW managed object each time a game object is read: its object cache (`Il2CppObjectPool`) is switched off because the garbage-collector hook it needs is not found in this game build (`GarbageCollector_RunFinalizer_Patch.TargetMethodNotFound` sets `DisableCaching`). Forcing it on could hand back stale objects. So every `ReferenceEquals` on game objects becomes `Il.Same` (compares `Pointer`), every `Dictionary`/`HashSet` keyed by a game type gets `Il.ByPointer<T>()`, and `==`/`!=` between plain (non-Unity) game objects becomes `Il.Same`. About 80 `ReferenceEquals` and 90 such collections in the whole mod. Symptom seen: only one Charge Shot orb of three found, so Shatter was left out.
+- **AOT generics.** A game collection's generic code exists only for the instantiations the game compiled. Walking `ProfessionSkillTree.treeMap.Values` (keyed by an enum) aborted the game natively (`FORTIFY: pthread_mutex_lock called on a destroyed mutex`, no managed exception). Prefer the game's own methods over enumerating its collections; a collection keyed by a reference type or `uint` is usually safe (shared code).
+- **Making game objects.** `ScriptableObject.CreateInstance<ProfessionSkill>()` gives null (no script for a class with no asset); the later orbs use `QuestPassiveSkill`, registered with `ClassInjector` at start.
+- **Arrays in generic game classes** are the abstract `Il2CppArrayBase<T>`: the reflection stand-in makes `Il2CppStructArray`/`Il2CppReferenceArray`.
+- **Trace lines** (`QuestTrace.Step`) find a native crash's place: the log keeps the last line before the abort.
+- Approach change for task 3 on: the rest of the mod is compiled for Quest at once (Volley.cs calls into nearly every other file, so per-file stand-ins stopped paying), and still checked on the headset feature by feature.
 
 ### Task 3: The shot (gameplay parity, part 1)
 
