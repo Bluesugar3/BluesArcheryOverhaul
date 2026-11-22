@@ -66,13 +66,20 @@
 **Interfaces:**
 - Produces: `Il.*` as above; `QuestPatches.ApplyAll(HarmonyLib.Harmony)` (every `[HarmonyPatch]` class of the assembly applied on its own, failures logged, a count returned); `QuestMain` (`[MelonGame("Alta", "Att_Quest")]`, the same `MelonInfo` name and `Main.Version`).
 
-- [ ] **Step 1:** `Il.cs`, with the Quest half as the spike's forms (the report lists the line that worked for each). `Il.Keep` adds to a static list and returns its argument.
-- [ ] **Step 2:** The csproj's explicit list: the sixteen Unity-free files, `Il.cs`, `Cfg.cs`, `Timing.cs`, `TimingHost.cs`, `StreamBits.cs`, `SelfCheck.cs`, `JoinGate.cs`, `ServerSettings.cs`. `Main.cs` is NOT in it until Task 5.
-- [ ] **Step 3:** `QuestMain.OnInitializeMelon`: the start-up line `[Archery] Blue's Archery Overhaul v<Main.Version> (Quest)`, `Logs.Init`, `TimingHost.Init`, the `Init()` of each module compiled so far in `Main.cs`'s order, `Cfg.Ready`, component registration, `QuestPatches.ApplyAll`, the self-check. `OnUpdate`: `TimingHost.Frame`, `Cfg.Poll`, `ServerSettings.Tick`, the ticks of the modules compiled so far. `SelfCheck.Run` reads only holders that are compiled (`#if QUEST` list).
-- [ ] **Step 4:** `StreamBits` on Quest reads `BitsLeft` / `Finished` from `StreamReader.reader`. `JoinGate`'s client half answers with `JoinPlatform.Quest`; its server half is under `#if !QUEST`. `ServerSettings`' client half applies the server's settings and sends the SettingsAck; its server half is under `#if !QUEST`.
-- [ ] **Step 5:** PC check (Global Constraints, first bullet). Quest build: 0 errors.
-- [ ] **Step 6: Headset check.** Server gate on `refuse`, `[Join] SettingsMismatch = refuse` for this check. Owner: join on the headset. Expected in game: you get in, at the same speed as without any mod. Executor reads the headset log (`[Archery] ... (Quest)`, `Settings: shared checksum`, `Self-check:`, `Quest: N of N patches applied`, `Settings: this server sets the mod's settings`) and the server log (`Join: Blue passed (..., Quest, ...)` and `took the server's settings`). Then put `SettingsMismatch` back to `log`.
-- [ ] **Step 7:** Commit.
+- [x] **Step 1:** `Il.cs`, with the Quest half as the spike's forms (the report lists the line that worked for each). `Il.Keep` adds to a static list and returns its argument.
+- [x] **Step 2:** The csproj's explicit list: the sixteen Unity-free files, `Il.cs`, `Cfg.cs`, `Timing.cs`, `TimingHost.cs`, `StreamBits.cs`, `SelfCheck.cs`, `JoinGate.cs`, `ServerSettings.cs`. `Main.cs` is NOT in it until Task 5.
+- [x] **Step 3:** `QuestMain.OnInitializeMelon`: the start-up line `[Archery] Blue's Archery Overhaul v<Main.Version> (Quest)`, `Logs.Init`, `TimingHost.Init`, the `Init()` of each module compiled so far in `Main.cs`'s order, `Cfg.Ready`, component registration, `QuestPatches.ApplyAll`, the self-check. `OnUpdate`: `TimingHost.Frame`, `Cfg.Poll`, `ServerSettings.Tick`, the ticks of the modules compiled so far. `SelfCheck.Run` reads only holders that are compiled (`#if QUEST` list).
+- [x] **Step 4:** `StreamBits` on Quest reads `BitsLeft` / `Finished` from `StreamReader.reader`. `JoinGate`'s client half answers with `JoinPlatform.Quest`; its server half is under `#if !QUEST`. `ServerSettings`' client half applies the server's settings and sends the SettingsAck; its server half is under `#if !QUEST`.
+- [x] **Step 5:** PC check (Global Constraints, first bullet). Quest build: 0 errors.
+- [x] **Step 6: Headset check.** Server gate on `refuse`, `[Join] SettingsMismatch = log` (see "Done" below). Owner: join on the headset. Expected in game: you get in, at the same speed as without any mod. Executor reads the headset log (`[Archery] ... (Quest)`, `Settings: shared checksum`, `Self-check:`, `Quest: N of N patches applied`, `Settings: this server sets the mod's settings`) and the server log (`Join: Blue passed (..., Quest, ...)` and `took the server's settings`). Then put `SettingsMismatch` back to `log`.
+- [x] **Step 7:** Commit.
+
+**Done 2026-11-22** (commit 22680cf). The headset joined under `refuse`: server `Join: Blue passed (client 0.19.10, wire 5, Quest, settings DIFFERENT, answered in 100 ms)`; headset `Quest: 1 of 1 patches applied`, `this server sets the mod's settings`, no error. As built, not as first planned:
+- `Il.cs` lives in the Quest project, not the shared folder: the PC never calls it, so the PC DLL gains nothing. Its `Send` / `SetHandler` extension methods make the shared lines compile and work unchanged (C# looks for an extension only when no instance method fits).
+- `SelfCheck.cs` is not compiled yet (it reads every holder of the mod); `QuestMain` reads the holders that are compiled. `SelfCheck.cs` joins when its holders do.
+- Members of files not yet compiled are stood in for by `QuestStubs.cs` (each deleted in the task that adds its file: a duplicate type is a compile error, so none can outlive it).
+- `Main.Version` is read from `Main.cs` by the project file at build time (`obj/.../QuestVersion.g.cs`).
+- **Until the port is complete, the server's `[Join] SettingsMismatch` must stay `log`**: a Quest build that lacks a module also lacks its settings, so its settings check differs from the server's (today: "1 of the server's values could not be taken (1 unknown to this copy of the mod)"), and `refuse` would turn the headset away.
 
 ### Task 2: The tree and its icons
 
