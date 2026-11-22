@@ -1,0 +1,191 @@
+BluesArcheryOverhaul\AutoDock.cs(158,49): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\AutoDock.cs(402,112): error CS1503: Argument 4: cannot convert from 'UnityEngine.Vector3' to 'Il2CppATT.Saving.SaveMode'
+BluesArcheryOverhaul\AutoDock.cs(402,116): error CS1503: Argument 5: cannot convert from 'UnityEngine.Quaternion' to 'Il2Cpp.SpawnHelper.SpawningCallback'
+BluesArcheryOverhaul\AutoDock.cs(402,123): error CS1660: Cannot convert lambda expression to type 'SpawnHelper.SpawningCallback' because it is not a delegate type
+BluesArcheryOverhaul\AutoDock.cs(402,38): error CS1503: Argument 1: cannot convert from 'uint' to 'Il2CppAlta.Networking.NetworkPrefab'
+BluesArcheryOverhaul\AutoDock.cs(402,63): error CS1503: Argument 3: cannot convert from 'Il2CppAlta.Chunks.Chunk' to 'Il2CppAlta.Networking.NetworkEntity'
+BluesArcheryOverhaul\AutoDock.cs(412,17): error CS0019: Operator '+=' cannot be applied to operands of type 'EntityDespawnedHandler' and 'method group'
+BluesArcheryOverhaul\AutoDock.cs(435,72): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\AutoDock.cs(482,61): error CS1660: Cannot convert lambda expression to type 'PickupDockInteractionHandler' because it is not a delegate type
+BluesArcheryOverhaul\AutoDock.cs(519,21): error CS0019: Operator '-=' cannot be applied to operands of type 'EntityDespawnedHandler' and 'method group'
+BluesArcheryOverhaul\AutoDock.cs(707,34): error CS1503: Argument 1: cannot convert from 'UnityEngine.MeshRenderer[]' to 'Il2CppSystem.Collections.Generic.IEnumerable<UnityEngine.MeshRenderer>'
+BluesArcheryOverhaul\Balance.cs(144,30): error CS1660: Cannot convert lambda expression to type 'StatHandler' because it is not a delegate type
+BluesArcheryOverhaul\Builds.cs(118,46): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(130,34): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(138,38): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(147,46): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(279,71): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(289,38): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Builds.cs(293,68): error CS1929: 'IEnumerable<uint>' does not contain a definition for 'Contains' and the best extension method overload 'MemoryExtensions.Contains<uint>(ReadOnlySpan<uint>, uint)' requires a receiver of type 'System.ReadOnlySpan<uint>'
+BluesArcheryOverhaul\Builds.cs(294,73): error CS1929: 'IEnumerable<uint>' does not contain a definition for 'Contains' and the best extension method overload 'MemoryExtensions.Contains<uint>(ReadOnlySpan<uint>, uint)' requires a receiver of type 'System.ReadOnlySpan<uint>'
+BluesArcheryOverhaul\Builds.cs(335,28): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\Builds.cs(65,39): error CS0117: 'IEnumerator<uint>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\Builds.cs(65,39): error CS0202: foreach requires that the return type 'IEnumerator<uint>' of 'IEnumerable<uint>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\Builds.cs(88,32): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\ChargeFx.cs(1053,35): error CS0234: The type or namespace name 'SingletonBehaviour' does not exist in the namespace 'Alta.Utilities' (are you missing an assembly reference?)
+BluesArcheryOverhaul\ChargeFx.cs(1182,82): error CS1503: Argument 1: cannot convert from 'System.Collections.Generic.List<UnityEngine.MeshRenderer>' to 'UnityEngine.Component'
+BluesArcheryOverhaul\ChargeFx.cs(1343,48): error CS1660: Cannot convert lambda expression to type 'PoolChangedHandler' because it is not a delegate type
+BluesArcheryOverhaul\Claims.cs(173,48): error CS0039: Cannot convert type 'Il2CppAlta.Networking.Scripts.Player.IPlayer' to 'Il2Cpp.Player' via a reference conversion, boxing conversion, unboxing conversion, wrapping conversion, or null type conversion
+BluesArcheryOverhaul\Claims.cs(200,97): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Claims.cs(204,93): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(222,38): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(233,38): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(347,41): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(401,35): error CS1061: 'ISkillInputMethod' does not contain a definition for 'ChangedActive' and no accessible extension method 'ChangedActive' accepting a first argument of type 'ISkillInputMethod' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Draws.cs(424,145): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(458,21): error CS0030: Cannot convert type 'Il2CppSystem.Collections.Generic.KeyValuePair<Il2Cpp.IInputBasedSkill, Il2Cpp.ISkillInputMethod>' to 'System.Collections.Generic.KeyValuePair<Il2Cpp.IInputBasedSkill, Il2Cpp.ISkillInputMethod>'
+BluesArcheryOverhaul\Draws.cs(465,124): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(535,35): error CS1061: 'ISkillInputMethod' does not contain a definition for 'ChangedActive' and no accessible extension method 'ChangedActive' accepting a first argument of type 'ISkillInputMethod' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Draws.cs(555,105): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(579,81): error CS8121: An expression of type 'ISkillInputMethod' cannot be handled by a pattern of type 'BowStringPullbackInputMethod'.
+BluesArcheryOverhaul\Draws.cs(603,44): error CS0030: Cannot convert type 'Il2Cpp.BowStringPullbackInputMethod' to 'Il2Cpp.ISkillInputMethod'
+BluesArcheryOverhaul\Draws.cs(604,119): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(641,57): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(687,63): error CS1503: Argument 1: cannot convert from 'Il2CppSystem.Collections.Generic.Dictionary<Il2Cpp.SkillInputStructure, Il2Cpp.ISkillInputMethod>.ValueCollection' to 'System.Collections.Generic.IEnumerable<Il2Cpp.ISkillInputMethod>'
+BluesArcheryOverhaul\Draws.cs(690,69): error CS8121: An expression of type 'ISkillInputMethod' cannot be handled by a pattern of type 'BowStringPullbackInputMethod'.
+BluesArcheryOverhaul\Draws.cs(692,29): error CS0030: Cannot convert type 'Il2CppSystem.Collections.Generic.KeyValuePair<Il2Cpp.IInputBasedSkill, Il2Cpp.ISkillInputMethod>' to 'System.Collections.Generic.KeyValuePair<Il2Cpp.IInputBasedSkill, Il2Cpp.ISkillInputMethod>'
+BluesArcheryOverhaul\Draws.cs(888,121): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(921,179): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Draws.cs(947,110): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Fx.cs(173,25): error CS1660: Cannot convert lambda expression to type 'PoolChangedHandler' because it is not a delegate type
+BluesArcheryOverhaul\Hits.cs(144,119): error CS1503: Argument 1: cannot convert from 'bool' to 'Il2CppSystem.Type'
+BluesArcheryOverhaul\Hits.cs(144,125): error CS1503: Argument 2: cannot convert from 'System.Collections.Generic.List<Il2CppAlta.Impact.ImpactTool>' to 'bool'
+BluesArcheryOverhaul\Hits.cs(161,17): error CS0030: Cannot convert type 'Il2CppSystem.Collections.Generic.KeyValuePair<UnityEngine.Collider, Il2CppSystem.Collections.Generic.HashSet<Il2CppAlta.Impact.ImpactGenerator>>' to 'System.Collections.Generic.KeyValuePair<UnityEngine.Collider, System.Collections.Generic.HashSet<Il2CppAlta.Impact.ImpactGenerator>>'
+BluesArcheryOverhaul\Hits.cs(321,45): error CS1503: Argument 1: cannot convert from 'Il2CppSystem.Collections.Generic.List<Il2CppAlta.Impact.ImpactChannel>' to 'System.Collections.Generic.List<Il2CppAlta.Impact.ImpactChannel>'
+BluesArcheryOverhaul\Hits.cs(364,17): error CS0030: Cannot convert type 'Il2CppSystem.Collections.Generic.KeyValuePair<UnityEngine.Collider, Il2CppSystem.Collections.Generic.HashSet<Il2CppAlta.Impact.ImpactGenerator>>' to 'System.Collections.Generic.KeyValuePair<UnityEngine.Collider, System.Collections.Generic.HashSet<Il2CppAlta.Impact.ImpactGenerator>>'
+BluesArcheryOverhaul\Hits.cs(369,56): error CS1503: Argument 1: cannot convert from 'Il2CppSystem.Collections.Generic.List<Il2CppAlta.Impact.ImpactChannel>' to 'System.Collections.Generic.List<Il2CppAlta.Impact.ImpactChannel>'
+BluesArcheryOverhaul\Hits.cs(498,47): error CS0117: 'IEnumerator<ImpactImmunityGroup>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\Hits.cs(498,47): error CS0202: foreach requires that the return type 'IEnumerator<ImpactImmunityGroup>' of 'IEnumerable<ImpactImmunityGroup>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\Hits.cs(500,47): error CS0117: 'IEnumerator<ImpactImmunityGroup>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\Hits.cs(500,47): error CS0202: foreach requires that the return type 'IEnumerator<ImpactImmunityGroup>' of 'IEnumerable<ImpactImmunityGroup>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\Hits.cs(604,71): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer'
+BluesArcheryOverhaul\HolyArrow.cs(173,83): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\HolyArrow.cs(209,109): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\HolyArrow.cs(225,162): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\HolyArrow.cs(521,52): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\HolyArrow.cs(593,76): error CS1955: Non-invocable member 'PositionFromOriginHandler.GetPosition' cannot be used like a method.
+BluesArcheryOverhaul\HolyArrow.cs(655,64): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\JoinGate.cs(104,55): error CS1503: Argument 2: cannot convert from 'method group' to 'Il2CppAlta.Networking.SerializeConnectionMethod'
+BluesArcheryOverhaul\JoinGate.cs(147,60): error CS1660: Cannot convert lambda expression to type 'SerializeConnectionMethod' because it is not a delegate type
+BluesArcheryOverhaul\JoinGate.cs(191,96): error CS1660: Cannot convert lambda expression to type 'SerializeConnectionMethod' because it is not a delegate type
+BluesArcheryOverhaul\JoinGate.cs(214,55): error CS1503: Argument 2: cannot convert from 'method group' to 'Il2CppAlta.Networking.SerializeConnectionMethod'
+BluesArcheryOverhaul\JoinGate.cs(245,55): error CS1660: Cannot convert lambda expression to type 'SerializeConnectionMethod' because it is not a delegate type
+BluesArcheryOverhaul\JoinGate.cs(94,21): error CS1061: 'ServerHandler' does not contain a definition for 'AddConnectionStep' and no accessible extension method 'AddConnectionStep' accepting a first argument of type 'ServerHandler' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Main.cs(160,48): error CS0103: The name 'SkyfallCommands' does not exist in the current context
+BluesArcheryOverhaul\Main.cs(371,57): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\Pvp.cs(169,148): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\QuiverGather.cs(236,42): error CS1503: Argument 1: cannot convert from 'Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<UnityEngine.MeshRenderer>' to 'Il2CppSystem.Collections.Generic.IEnumerable<UnityEngine.MeshRenderer>'
+BluesArcheryOverhaul\Ricochet.cs(227,33): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\Seek.cs(209,42): error CS0039: Cannot convert type 'Il2CppAlta.Networking.Scripts.Player.IPlayer' to 'Il2Cpp.Player' via a reference conversion, boxing conversion, unboxing conversion, wrapping conversion, or null type conversion
+BluesArcheryOverhaul\Seek.cs(433,41): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Seek.cs(589,42): error CS1503: Argument 1: cannot convert from 'bool' to 'Il2CppSystem.Type'
+BluesArcheryOverhaul\Seek.cs(589,49): error CS1503: Argument 2: cannot convert from 'System.Collections.Generic.List<UnityEngine.Collider>' to 'bool'
+BluesArcheryOverhaul\ServerSettings.cs(244,66): error CS1660: Cannot convert lambda expression to type 'SerializeConnectionMethod' because it is not a delegate type
+BluesArcheryOverhaul\ServerSettings.cs(325,65): error CS1660: Cannot convert lambda expression to type 'SerializeConnectionMethod' because it is not a delegate type
+BluesArcheryOverhaul\Shrine.cs(108,41): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Shrine.cs(113,51): error CS0117: 'IEnumerator<ProgressionSlot>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\Shrine.cs(113,51): error CS0202: foreach requires that the return type 'IEnumerator<ProgressionSlot>' of 'IEnumerable<ProgressionSlot>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\Shrine.cs(113,74): error CS1929: 'IEnumerable<uint>' does not contain a definition for 'Contains' and the best extension method overload 'MemoryExtensions.Contains<uint>(ReadOnlySpan<uint>, uint)' requires a receiver of type 'System.ReadOnlySpan<uint>'
+BluesArcheryOverhaul\Shrine.cs(130,105): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Shrine.cs(172,120): error CS1503: Argument 1: cannot convert from 'Il2CppSystem.Collections.Generic.IEnumerable<uint>' to 'System.Collections.Generic.IEnumerable<uint>'
+BluesArcheryOverhaul\Shrine.cs(184,49): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Shrine.cs(186,50): error CS1503: Argument 1: cannot convert from 'Il2CppSystem.Collections.Generic.IEnumerable<uint>' to 'System.Collections.Generic.IEnumerable<uint>'
+BluesArcheryOverhaul\Shrine.cs(238,87): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Shrine.cs(59,41): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\ShrineView.cs(153,65): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\ShrineView.cs(217,96): error CS1061: 'IPlayer' does not contain a definition for 'Identifier' and no accessible extension method 'Identifier' accepting a first argument of type 'IPlayer' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\ShrineView.cs(265,49): error CS0117: 'IEnumerator<SkillShrineVisualizer>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\ShrineView.cs(265,49): error CS0202: foreach requires that the return type 'IEnumerator<SkillShrineVisualizer>' of 'IEnumerable<SkillShrineVisualizer>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\ShrineView.cs(295,26): error CS0039: Cannot convert type 'Il2CppAlta.Networking.Scripts.Player.IPlayer' to 'Il2Cpp.Player' via a reference conversion, boxing conversion, unboxing conversion, wrapping conversion, or null type conversion
+BluesArcheryOverhaul\ShrineView.cs(320,47): error CS0117: 'IEnumerator<ProgressionSlot>' does not contain a definition for 'MoveNext'
+BluesArcheryOverhaul\ShrineView.cs(320,47): error CS0202: foreach requires that the return type 'IEnumerator<ProgressionSlot>' of 'IEnumerable<ProgressionSlot>.GetEnumerator()' must have a suitable public 'MoveNext' method and public 'Current' property
+BluesArcheryOverhaul\Skyfall.cs(343,39): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\Skyfall.cs(344,27): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Object'.
+BluesArcheryOverhaul\Skyfall.cs(460,85): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Skyfall.cs(516,97): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallHold.cs(121,30): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallLink.cs(102,42): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer'
+BluesArcheryOverhaul\SkyfallLink.cs(104,89): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallLink.cs(117,27): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\SkyfallLink.cs(127,36): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallLink.cs(128,24): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Object'.
+BluesArcheryOverhaul\SkyfallLink.cs(44,29): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\SkyfallLink.cs(69,33): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\SkyfallLook.cs(492,25): error CS1660: Cannot convert lambda expression to type 'PoolChangedHandler' because it is not a delegate type
+BluesArcheryOverhaul\SkyfallLook.cs(604,60): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallLook.cs(604,86): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallLook.cs(717,30): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallNail.cs(512,34): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallServer.cs(167,29): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\SkyfallServer.cs(177,120): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(207,75): error CS1955: Non-invocable member 'PositionFromOriginHandler.GetPosition' cannot be used like a method.
+BluesArcheryOverhaul\SkyfallServer.cs(253,86): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(262,104): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(272,60): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(273,60): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(284,110): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(56,57): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SkyfallServer.cs(77,33): error CS8121: An expression of type 'IPlayer' cannot be handled by a pattern of type 'Player'.
+BluesArcheryOverhaul\SkyfallSigil.cs(168,20): error CS0104: 'Stream' is an ambiguous reference between 'Il2CppAlta.Serialization.Stream' and 'System.IO.Stream'
+BluesArcheryOverhaul\SkyfallSigil.cs(168,20): error CS1674: 'Stream?': type used in a using statement must be implicitly convertible to 'System.IDisposable'.
+BluesArcheryOverhaul\SkyfallSigil.cs(169,21): error CS0019: Operator '!=' cannot be applied to operands of type 'Stream?' and '<null>'
+BluesArcheryOverhaul\SkyfallSigil.cs(170,38): error CS1061: 'Stream?' does not contain a definition for 'Length' and no accessible extension method 'Length' accepting a first argument of type 'Stream?' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\SkyfallSigil.cs(172,61): error CS1061: 'Stream?' does not contain a definition for 'Read' and no accessible extension method 'Read' accepting a first argument of type 'Stream?' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\SkyfallSky.cs(122,52): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallSky.cs(122,78): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SkyfallSky.cs(68,30): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\SnapWeight.cs(420,90): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\SnapWeight.cs(465,67): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Steady.cs(105,79): error CS1503: Argument 1: cannot convert from 'method group' to 'Il2CppSystem.Predicate<Il2Cpp.ArrowFlightSettingsModifier>'
+BluesArcheryOverhaul\Steady.cs(139,49): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\StreamBits.cs(21,58): error CS1061: 'StreamReader' does not contain a definition for 'IsFinished' and no accessible extension method 'IsFinished' accepting a first argument of type 'StreamReader' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\StreamBits.cs(24,79): error CS1061: 'StreamReader' does not contain a definition for 'TotalByteCount' and no accessible extension method 'TotalByteCount' accepting a first argument of type 'StreamReader' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tablet.cs(1171,25): error CS0234: The type or namespace name 'GlobalSettings' does not exist in the namespace 'Alta.Global' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tablet.cs(165,13): error CS0019: Operator '+=' cannot be applied to operands of type 'Action<Font>' and 'method group'
+BluesArcheryOverhaul\Targets.cs(275,81): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Targets.cs(77,42): error CS1503: Argument 1: cannot convert from 'bool' to 'Il2CppSystem.Type'
+BluesArcheryOverhaul\Targets.cs(77,59): error CS1503: Argument 2: cannot convert from 'System.Collections.Generic.List<UnityEngine.Collider>' to 'bool'
+BluesArcheryOverhaul\Telemetry.cs(239,63): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Telemetry.cs(266,52): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Telemetry.cs(92,45): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\TimingHost.cs(25,39): error CS0400: The type or namespace name 'ApplicationManager' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(166,26): error CS0234: The type or namespace name 'GlobalSettings' does not exist in the namespace 'Alta.Global' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(215,25): error CS0400: The type or namespace name 'Player' could not be found in the global namespace (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(249,82): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'Any' and no accessible extension method 'Any' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(306,54): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'Where' and no accessible extension method 'Where' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(322,52): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'FirstOrDefault' and no accessible extension method 'FirstOrDefault' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(323,51): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'FirstOrDefault' and no accessible extension method 'FirstOrDefault' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(402,30): error CS0234: The type or namespace name 'SettingsManager' does not exist in the namespace 'Alta.Utilities' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(438,56): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'Select' and no accessible extension method 'Select' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(499,99): error CS1929: 'IEnumerable<uint>' does not contain a definition for 'Contains' and the best extension method overload 'MemoryExtensions.Contains<uint>(ReadOnlySpan<uint>, uint)' requires a receiver of type 'System.ReadOnlySpan<uint>'
+BluesArcheryOverhaul\Tree.cs(549,48): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Tree.cs(610,48): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'FirstOrDefault' and no accessible extension method 'FirstOrDefault' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(671,38): error CS0019: Operator '??' cannot be applied to operands of type 'List<uint>' and 'List<uint>'
+BluesArcheryOverhaul\Tree.cs(680,58): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'ToList' and no accessible extension method 'ToList' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(725,13): error CS0234: The type or namespace name 'HashedGeneralValue' does not exist in the namespace 'Alta' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(726,57): error CS0234: The type or namespace name 'HashedGeneralValue<>' does not exist in the namespace 'Alta' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(760,40): error CS1061: 'List<ProgressionSlot>' does not contain a definition for 'Where' and no accessible extension method 'Where' accepting a first argument of type 'List<ProgressionSlot>' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(825,25): error CS1674: 'Stream?': type used in a using statement must be implicitly convertible to 'System.IDisposable'.
+BluesArcheryOverhaul\Tree.cs(825,31): error CS0104: 'Stream' is an ambiguous reference between 'Il2CppAlta.Serialization.Stream' and 'System.IO.Stream'
+BluesArcheryOverhaul\Tree.cs(826,29): error CS0019: Operator '!=' cannot be applied to operands of type 'Stream?' and '<null>'
+BluesArcheryOverhaul\Tree.cs(826,59): error CS1061: 'Stream?' does not contain a definition for 'Length' and no accessible extension method 'Length' accepting a first argument of type 'Stream?' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Tree.cs(826,70): error CS1061: 'Stream?' does not contain a definition for 'Read' and no accessible extension method 'Read' accepting a first argument of type 'Stream?' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\TreeColours.cs(132,40): error CS0029: Cannot implicitly convert type 'Il2CppSystem.Collections.Generic.List<uint>' to 'System.Collections.Generic.List<uint>'
+BluesArcheryOverhaul\Volley.cs(1022,34): error CS0039: Cannot convert type 'Il2CppAlta.Networking.Scripts.Player.IPlayer' to 'Il2Cpp.Player' via a reference conversion, boxing conversion, unboxing conversion, wrapping conversion, or null type conversion
+BluesArcheryOverhaul\Volley.cs(519,129): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\Volley.cs(550,118): error CS1503: Argument 1: cannot convert from 'Il2Cpp.Player' to 'Il2CppAlta.Networking.Scripts.Player.IPlayer?'
+BluesArcheryOverhaul\VolleyFx.cs(253,21): error CS0200: Property or indexer 'ParticleSystem.MainModule.startLifetime' cannot be assigned to -- it is read only
+BluesArcheryOverhaul\VolleyFx.cs(256,26): error CS1061: 'ParticleSystem.MainModule' does not contain a definition for 'gravityModifier' and no accessible extension method 'gravityModifier' accepting a first argument of type 'ParticleSystem.MainModule' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\VolleyFx.cs(263,21): error CS0200: Property or indexer 'ParticleSystem.ColorOverLifetimeModule.enabled' cannot be assigned to -- it is read only
+BluesArcheryOverhaul\VolleyFx.cs(315,58): error CS0117: 'ParticleSystem.EmitParams' does not contain a definition for 'position'
+BluesArcheryOverhaul\VolleyFx.cs(315,73): error CS0117: 'ParticleSystem.EmitParams' does not contain a definition for 'startColor'
+BluesArcheryOverhaul\VolleyFx.cs(315,89): error CS0117: 'ParticleSystem.EmitParams' does not contain a definition for 'applyShapeToPosition'
+BluesArcheryOverhaul\VolleyFx.cs(316,41): error CS1061: 'ParticleSystem.EmitParams' does not contain a definition for 'startSize' and no accessible extension method 'startSize' accepting a first argument of type 'ParticleSystem.EmitParams' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\VolleyFx.cs(319,24): error CS1061: 'ParticleSystem.EmitParams' does not contain a definition for 'velocity' and no accessible extension method 'velocity' accepting a first argument of type 'ParticleSystem.EmitParams' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\VolleyFx.cs(79,35): error CS0234: The type or namespace name 'SingletonBehaviour' does not exist in the namespace 'Alta.Utilities' (are you missing an assembly reference?)
+BluesArcheryOverhaul\VolleySkill.cs(207,98): error CS1660: Cannot convert lambda expression to type 'EntitySpawnedHandler' because it is not a delegate type
+BluesArcheryOverhaul\VolleySkill.cs(73,17): error CS0234: The type or namespace name 'HashedGeneralValue' does not exist in the namespace 'Alta' (are you missing an assembly reference?)
+BluesArcheryOverhaul\VolleySkill.cs(74,53): error CS0234: The type or namespace name 'HashedGeneralValue<>' does not exist in the namespace 'Alta' (are you missing an assembly reference?)
+BluesArcheryOverhaul\Weight.cs(137,15): error CS1061: 'Embeddable' does not contain a definition for 'Embedded' and no accessible extension method 'Embedded' accepting a first argument of type 'Embeddable' could be found (are you missing a using directive or an assembly reference?)
+BluesArcheryOverhaul\Weight.cs(220,30): error CS1660: Cannot convert lambda expression to type 'StatHandler' because it is not a delegate type
+BluesArcheryOverhaul\Weight.cs(70,21): error CS1061: 'Embeddable' does not contain a definition for 'Embedded' and no accessible extension method 'Embedded' accepting a first argument of type 'Embeddable' could be found (are you missing a using directive or an assembly reference?)

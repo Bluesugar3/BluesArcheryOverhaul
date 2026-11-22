@@ -1,0 +1,4 @@
+<Project>
+  <!-- Stops the repo root's Directory.Build.props (net472, the PC game's references, the deploy targets) from applying here:
+       MSBuild uses the nearest file of this name. A Quest project brings its own framework and references. -->
+</Project>
