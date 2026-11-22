@@ -15,11 +15,11 @@ namespace BluesArcheryOverhaul {
 
         // Off unless the file UserData/BluesArcheryOverhaul/quest-watch.txt exists at start: the trace wrote about 15,000 log lines in
         // a ten-minute session (every grab and shot), which the owner felt as lag. To trace a crash, create that (empty) file.
-        static readonly bool on = System.IO.File.Exists(System.IO.Path.Combine(MelonLoader.Utils.MelonEnvironment.UserDataDirectory, "BluesArcheryOverhaul", "quest-watch.txt"));
-        static bool Armed => on && Time.unscaledTime < until;
+        internal static readonly bool On = System.IO.File.Exists(System.IO.Path.Combine(MelonLoader.Utils.MelonEnvironment.UserDataDirectory, "BluesArcheryOverhaul", "quest-watch.txt"));
+        static bool Armed => On && Time.unscaledTime < until;
 
         internal static void Arm(string why, float seconds = Seconds) {
-            if (!on) return;
+            if (!On) return;
             counts.Clear();
             until = Time.unscaledTime + seconds;
             MelonLogger.Msg($"[Archery] Quest watch: {why}; logging the mod's routines for {seconds:0} s");
@@ -43,7 +43,7 @@ namespace BluesArcheryOverhaul {
 
         static readonly HashSet<string> said = new HashSet<string>();
         /// <summary>One line the first time a routine is reached, armed or not: proof on the headset that a patch really runs.</summary>
-        internal static void Once(string what) { if (said.Add(what)) MelonLogger.Msg($"[Archery] Quest: reached: {what}"); }
+        internal static void Once(string what) { if (On && said.Add(what)) MelonLogger.Msg($"[Archery] Quest: reached: {what}"); }
 
         internal static void Exit(int id) {
             if (!Armed) return;
@@ -55,7 +55,7 @@ namespace BluesArcheryOverhaul {
             static void Prefix(SkillOrb orb) {
                 Arm($"a try-out is opening ({(orb != null ? orb.name : "no orb")})");
             }
-            static void Postfix() { MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
+            static void Postfix() { if (On) MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
         }
 
         [HarmonyPatch(typeof(Shooter), nameof(Shooter.Shoot))]
@@ -71,8 +71,8 @@ namespace BluesArcheryOverhaul {
 
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Open", new System.Type[0])]
         static class TryOutOpeningAgain {
-            static void Prefix() { if (!Armed) Arm("a try-out is opening again"); else MelonLogger.Msg("[Archery] Quest watch: Open() starts"); }
-            static void Postfix() { MelonLogger.Msg("[Archery] Quest watch: the game's Open() returned"); }
+            static void Prefix() { if (!On) return; if (!Armed) Arm("a try-out is opening again"); else MelonLogger.Msg("[Archery] Quest watch: Open() starts"); }
+            static void Postfix() { if (On) MelonLogger.Msg("[Archery] Quest watch: the game's Open() returned"); }
         }
     }
 }

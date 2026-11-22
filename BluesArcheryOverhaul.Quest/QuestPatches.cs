@@ -16,7 +16,7 @@ namespace BluesArcheryOverhaul {
             foreach (Type t in typeof(QuestPatches).Assembly.GetTypes()) {
                 if (t.IsAbstract || !typeof(UnityEngine.MonoBehaviour).IsAssignableFrom(t)) continue;
                 try {
-                    MelonLogger.Msg($"[Archery] Quest: registering component {t.FullName}");   // a hard crash here names its component
+                    if (QuestWatch.On) MelonLogger.Msg($"[Archery] Quest: registering component {t.FullName}");   // a hard crash here names its component
                     if (!Il2CppInterop.Runtime.Injection.ClassInjector.IsTypeRegisteredInIl2Cpp(t))
                         Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp(t);
                     done++;

@@ -7,7 +7,7 @@ namespace BluesArcheryOverhaul {
     internal static class QuestTrace {
         static readonly HashSet<string> seen = new HashSet<string>();
         internal static void Step(string what) {
-            if (seen.Add(what)) MelonLogger.Msg($"[Archery] Quest trace: {what}");
+            if (QuestWatch.On && seen.Add(what)) MelonLogger.Msg($"[Archery] Quest trace: {what}");
         }
     }
 }

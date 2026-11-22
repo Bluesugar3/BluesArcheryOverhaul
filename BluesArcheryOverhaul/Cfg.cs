@@ -408,7 +408,12 @@ namespace BluesArcheryOverhaul {
 
         internal static void Init() {
             var cat = Cfg.Category("Log");
+#if QUEST
+            // Quest: Quiet unless the player asks for more (the owner: every log line is a small cut of performance on the headset)
+            level = cat.CreateEntry("Level", "Quiet", description: "How much this machine logs (not shared). Quiet: errors, warnings and the start-up lines. Summary: also one line per release and one per rare change (a build, a sale, a main path, the shrine). Debug: every line, for play-tests (switch it on before a play-test that will be diagnosed from the log).");
+#else
             level = cat.CreateEntry("Level", "Summary", description: "How much this machine logs (not shared). Quiet: errors, warnings and the start-up lines. Summary: also one line per release and one per rare change (a build, a sale, a main path, the shrine). Debug: every line, for play-tests (switch it on before a play-test that will be diagnosed from the log).");
+#endif
             Refresh();
         }
 
