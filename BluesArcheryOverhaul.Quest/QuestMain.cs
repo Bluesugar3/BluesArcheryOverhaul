@@ -20,6 +20,9 @@ namespace BluesArcheryOverhaul {
         public override void OnInitializeMelon() {
             LoggerInstance.Msg($"[Archery] Blue's Archery Overhaul v{Info.Version} (Quest; wire {JoinWire.Version})");
             Cfg.CarryOverOldName();
+            QuestTrace.Step("start: registering the later orbs' skill class");
+            QuestSkills.Register();   // before anything makes a later orb's skill
+            QuestTrace.Step("start: skill class registered");
             Logs.Init();
             TimingHost.Init();
             Tree.Init();          // task 2

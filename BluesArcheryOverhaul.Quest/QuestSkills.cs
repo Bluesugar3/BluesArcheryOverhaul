@@ -9,12 +9,32 @@ namespace BluesArcheryOverhaul {
     // plain CreateInstance first, then by type name, then a copy of a skill of the game's whose class is exactly ProfessionSkill
     // (no behaviour of its own); the log says which one worked.
     internal static class QuestSkills {
-        static bool logged;
+        static bool logged, passiveRegistered;
+
+        /// <summary>At start (QuestMain): registers QuestPassiveSkill with the game.</summary>
+        internal static void Register() {
+            try {
+                if (!Il2CppInterop.Runtime.Injection.ClassInjector.IsTypeRegisteredInIl2Cpp<QuestPassiveSkill>())
+                    Il2CppInterop.Runtime.Injection.ClassInjector.RegisterTypeInIl2Cpp<QuestPassiveSkill>();
+                passiveRegistered = true;
+            } catch (Exception e) { MelonLogger.Error($"[Archery] Quest: could not register the later orbs' skill class: {e}"); }
+        }
 
         internal static ProfessionSkill NewPassive(string name) {
             ProfessionSkill? made = null;
             string how = "";
-            try { made = ScriptableObject.CreateInstance<ProfessionSkill>(); how = "CreateInstance<ProfessionSkill>"; } catch (Exception e) { how = "CreateInstance<T> threw " + e.GetType().Name; }
+            // First: the mod's own empty skill class, registered with the game at start (QuestPassiveSkill below). The game has no
+            // plain ProfessionSkill asset, and Unity will not make an instance of a class it has no script for (headset, 2026-11-22).
+            if (passiveRegistered) {
+                try {
+                    ScriptableObject? o = ScriptableObject.CreateInstance(Il2CppInterop.Runtime.Il2CppType.Of<QuestPassiveSkill>());
+                    made = o != null ? o.TryCast<ProfessionSkill>() : null;
+                    how = "the mod's own registered skill class";
+                } catch (Exception e) { how = "the registered class threw " + e.GetType().Name + ": " + e.Message; }
+            }
+            if (made == null) {
+                try { made = ScriptableObject.CreateInstance<ProfessionSkill>(); how += "; CreateInstance<ProfessionSkill>"; } catch (Exception e) { how += "; CreateInstance<T> threw " + e.GetType().Name; }
+            }
             if (made == null) {
                 try {
                     ScriptableObject? o = ScriptableObject.CreateInstance("ProfessionSkill");
@@ -41,6 +61,14 @@ namespace BluesArcheryOverhaul {
             if (made == null) throw new InvalidOperationException("no skill object could be made on Quest");
             made.hideFlags = HideFlags.DontUnloadUnusedAsset;
             return made;
+        }
+    }
+
+    /// <summary>Quest's PassiveOrbSkill: a skill with no behaviour of its own behind a later orb (Auto Dock, Ricochet, Shatter).</summary>
+    public class QuestPassiveSkill : ProfessionSkill {
+        public QuestPassiveSkill(IntPtr pointer) : base(pointer) { }
+        public QuestPassiveSkill() : base(Il2CppInterop.Runtime.Injection.ClassInjector.DerivedConstructorPointer<QuestPassiveSkill>()) {
+            Il2CppInterop.Runtime.Injection.ClassInjector.DerivedConstructorBody(this);
         }
     }
 }
