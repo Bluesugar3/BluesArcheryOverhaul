@@ -221,7 +221,9 @@ namespace BluesArcheryOverhaul {
         // ShootArguments.Serialize is the first and only field of the shot message (Shooter.SyncShoot), and strength is its
         // last field, so the claim goes right after the game's own fields. Writer writes the whole block or nothing; the
         // reader checks Finished before reading any bit (ShotClaimWire.TryRead).
+#if !QUEST
         [HarmonyPatch(typeof(ShootArguments), nameof(ShootArguments.Serialize))]
+#endif
         static class Bits {
             static readonly int T = Timing.Section("patch ShootArguments.Serialize / Claims.Bits");
 #if QUEST
@@ -244,6 +246,62 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Claim: failed: {e}"); }
             }
         }
+
+#if QUEST
+        // Quest: a patch on the struct method ShootArguments.Serialize never runs there (every Quest shot reached the server with
+        // "no claim"). The game's Shooter.SyncShoot calls it first and, when reading, calls Shoot at once with nothing read in
+        // between. So: the claim is written after SyncShoot when it wrote, and read at the very start of the Shoot it calls when
+        // it read. The wire pose comes from the arrow itself: the game has just put it at the message's position and rotation.
+        static Pickup? questSending;
+        static float questStrength;
+        static Il2CppAlta.Serialization.Stream? questReading;
+        static IPlayer? questReader;
+
+        static void QuestPose(uint id, Pickup arrow, float strength) {
+            try { Skyfall.RecordPose(id, new ShotPose { Pos = Seek.H(arrow.transform.position), Dir = Seek.H(arrow.transform.rotation * Vector3.forward), Strength = strength }); }
+            catch (Exception e) { if (!warnedPose) { warnedPose = true; MelonLogger.Warning($"[Archery] Skyfall: recording a release pose failed (said once): {e.Message}"); } }
+        }
+
+        [HarmonyPatch(typeof(Shooter), "SyncShoot")]
+        static class QuestSync {
+            static readonly int T = Timing.Section("patch Shooter.SyncShoot / Claims.QuestSync");
+            static void Prefix(IPlayer __0, Il2CppAlta.Serialization.Stream __1) {
+                if (__1 != null && __1.IsReading) { questReading = __1; questReader = __0; }
+            }
+            static void Postfix(Il2CppAlta.Serialization.Stream __1) {
+                using var _t = Timing.Begin(T);
+                questReading = null; questReader = null;
+                try {
+                    // not cleared: the game may write the same shot twice (to the server, then to players)
+                    Pickup? sent = questSending;
+                    if (__1 == null || !__1.IsWriting || sent == null || sent.Entity == null) return;
+                    uint id = sent.Entity.Identifier;
+                    QuestPose(id, sent, questStrength);
+                    Write(id, __1, Time.time);
+                }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Claim: failed: {e}"); }
+            }
+        }
+
+        [HarmonyPatch(typeof(Shooter), nameof(Shooter.Shoot))]
+        static class QuestShoot {
+            static readonly int T = Timing.Section("patch Shooter.Shoot / Claims.QuestShoot");
+            [HarmonyPriority(900)]   // before every other prefix on Shoot: they use the claim this reads
+            static void Prefix(Pickup pickup, float strength, bool isFromNetwork) {
+                using var _t = Timing.Begin(T);
+                try {
+                    if (!isFromNetwork) { questSending = pickup; questStrength = strength; return; }
+                    var stream = questReading; IPlayer? from = questReader;
+                    questReading = null; questReader = null;
+                    if (stream == null || pickup == null || pickup.Entity == null) return;
+                    uint id = pickup.Entity.Identifier;
+                    QuestPose(id, pickup, strength);
+                    Read(id, from, stream, Time.time);
+                }
+                catch (Exception e) { MelonLogger.Warning($"[Archery] Claim: failed: {e}"); }
+            }
+        }
+#endif
 
         static void Live(string use) {
             if (loggedLive) return;
