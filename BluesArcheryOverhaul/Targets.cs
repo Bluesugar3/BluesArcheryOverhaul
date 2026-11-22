@@ -99,7 +99,11 @@ namespace BluesArcheryOverhaul {
         internal static int Overlap(Vector3 centre, float radius, ref Collider[] buffer, int cap, ref bool warned, string what) {
             using var _t = Timing.Begin(T_Overlap, what);
             int n;
+#if QUEST
+            while ((n = Il.OverlapSphereNonAlloc(centre, radius, buffer, ~(1 << 2), QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
+#else
             while ((n = Physics.OverlapSphereNonAlloc(centre, radius, buffer, ~(1 << 2), QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
+#endif
                 buffer = new Collider[buffer.Length * 2];
             if (n == buffer.Length && !warned) { warned = true; MelonLogger.Warning(Inv($"[Archery] {what}: more than {n} colliders within {radius:0.#} m; some may be missed (said once)")); }
             return n;

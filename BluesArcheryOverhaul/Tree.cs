@@ -589,8 +589,12 @@ namespace BluesArcheryOverhaul {
 
         // Skills are loaded one saved orb at a time. If the combined gatherer orb comes up twice, the player had
         // bought both old orbs: count it once and hand the other point back.
+#if QUEST
+        static class GathererRefund {   // Quest: a server's work (a save being loaded); not patched
+#else
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.UnlockSlot))]
         static class GathererRefund {
+#endif
             static readonly int T = Timing.Section("patch PlayerProgressionManager.UnlockSlot / Tree.GathererRefund");
             static bool Prefix(PlayerProgressionManager __instance, ProgressionSlot slot, bool isFromLoad) {
                 using var _t = Timing.Begin(T);
@@ -625,8 +629,12 @@ namespace BluesArcheryOverhaul {
         static PathExperience? reading;
         static readonly HashSet<string> refundLogged = new HashSet<string>();
 
+#if QUEST
+        static class OffOrbRead {   // Quest: a server's work; not patched
+#else
         [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.Serialize))]
         static class OffOrbRead {
+#endif
             static readonly int TPrefix = Timing.Section("patch PathExperience.Serialize / Tree.OffOrbRead prefix");
 #if QUEST
             static void Prefix(PathExperience __instance, Il2CppAlta.Serialization.Stream stream) {
@@ -639,8 +647,12 @@ namespace BluesArcheryOverhaul {
             static void Finalizer() => reading = null;
         }
 
+#if QUEST
+        static class OffOrbRefund {   // Quest: a server's work; not patched (GetSlot is small and called often)
+#else
         [HarmonyPatch(typeof(ProfessionSkillTree), nameof(ProfessionSkillTree.GetSlot))]
         static class OffOrbRefund {
+#endif
             static readonly int T = Timing.Section("patch ProfessionSkillTree.GetSlot / Tree.OffOrbRefund");
             static void Postfix(uint hash, bool __result) {
                 using var _t = Timing.Begin(T);

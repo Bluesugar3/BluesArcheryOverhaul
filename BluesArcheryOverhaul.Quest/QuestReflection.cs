@@ -26,23 +26,30 @@ namespace BluesArcheryOverhaul {
         readonly Type? type;
         readonly MemberInfo? member;
 
-        Traverse(object? target, Type? type, MemberInfo? member) { this.target = target; this.type = type; this.member = member; }
+        readonly bool missing;   // a member that was not found: reads give null, as Harmony's Traverse does (never the parent object)
+
+        Traverse(object? target, Type? type, MemberInfo? member, bool missing = false) { this.target = target; this.type = type; this.member = member; this.missing = missing; }
 
         internal static Traverse Create(object? o) => new Traverse(o, o?.GetType(), null);
         internal static Traverse Create(Type t) => new Traverse(null, t, null);
 
-        internal Traverse Field(string name) => new Traverse(Current(), CurrentType(), QuestMembers.Find(CurrentType(), name));
+        internal Traverse Field(string name) {
+            if (missing) return this;
+            MemberInfo? found = QuestMembers.Find(CurrentType(), name);
+            return found == null ? new Traverse(null, null, null, true) : new Traverse(Current(), CurrentType(), found);
+        }
         internal Traverse Property(string name) => Field(name);
-        internal bool FieldExists() => member != null;
+        internal bool FieldExists() => !missing && member != null;
 
         object? Current() => member == null ? target : QuestMembers.Get(member, target);
         Type? CurrentType() => member == null ? type : QuestMembers.TypeOf(member);
 
-        internal object? GetValue() => member == null ? target : QuestMembers.Get(member, target);
+        internal object? GetValue() => missing ? null : member == null ? target : QuestMembers.Get(member, target);
 
         internal T GetValue<T>() {
             object? v = GetValue();
-            return (T)QuestMembers.Convert(v, typeof(T), Where())!;
+            object? c = QuestMembers.Convert(v, typeof(T), Where());
+            return c == null ? default! : (T)c;
         }
 
         internal Traverse SetValue(object? value) {

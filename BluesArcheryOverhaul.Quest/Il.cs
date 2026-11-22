@@ -84,7 +84,13 @@ namespace BluesArcheryOverhaul {
         internal static IEnumerable<R> Select<T, R>(this Il2Cpp2.List<T> list, Func<T, R> map) => list.Each().Select(map);
         internal static T? FirstOrDefault<T>(this Il2Cpp2.List<T> list, Func<T, bool> test) => list.Each().FirstOrDefault(test);
         internal static List<T> ToList<T>(this Il2Cpp2.List<T> list) => list.Each().ToList();
-        internal static bool Contains<T>(this Il2Cpp2.IEnumerable<T> items, T value) => items.Each().Contains(value);
+        internal static bool Contains<T>(this Il2Cpp2.IEnumerable<T> items, T value) => items.Each().Any(x => value is Il2CppObjectBase ? Same(x, value) : EqualityComparer<T>.Default.Equals(x, value));
+
+        // A managed list of game objects: List.Contains / Remove compare managed wrappers, and the game hands out a new wrapper per
+        // read, so they never match. These compare the game objects themselves.
+        internal static int IndexOfSame<T>(List<T> list, T item) where T : class { for (int i = 0; i < list.Count; i++) if (Same(list[i], item)) return i; return -1; }
+        internal static bool Has<T>(List<T> list, T item) where T : class => IndexOfSame(list, item) >= 0;
+        internal static bool Drop<T>(List<T> list, T item) where T : class { int i = IndexOfSame(list, item); if (i < 0) return false; list.RemoveAt(i); return true; }
 
         /// <summary>A managed sequence as a game sequence (a new game list behind the game's IEnumerable).</summary>
         internal static Il2Cpp2.IEnumerable<T> Game<T>(IEnumerable<T> items) {
@@ -121,6 +127,35 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>A comparer for a Dictionary or HashSet keyed by game objects.</summary>
         internal static IEqualityComparer<T> ByPointer<T>() where T : class => PointerComparer<T>.Instance;
+
+        // Physics queries that fill a caller's buffer. On Quest a managed array handed to Unity is COPIED in, so the results never
+        // come back: the count is right and every entry is empty. These ask with an array the game owns and copy the results out.
+        // "Full" is still reported as results.Length, so the callers' grow-and-ask-again loops work as on PC.
+        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit> rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(64);
+        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider> colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(64);
+
+        static int Out(int n, UnityEngine.RaycastHit[] results) {
+            n = Math.Min(n, results.Length);
+            for (int i = 0; i < n; i++) results[i] = rayNative[i];
+            return n;
+        }
+
+        internal static int RaycastNonAlloc(UnityEngine.Vector3 origin, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
+            if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
+            return Out(UnityEngine.Physics.RaycastNonAlloc(origin, direction, rayNative, maxDistance, mask, triggers), results);
+        }
+
+        internal static int SphereCastNonAlloc(UnityEngine.Vector3 origin, float radius, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
+            if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
+            return Out(UnityEngine.Physics.SphereCastNonAlloc(origin, radius, direction, rayNative, maxDistance, mask, triggers), results);
+        }
+
+        internal static int OverlapSphereNonAlloc(UnityEngine.Vector3 centre, float radius, UnityEngine.Collider[] results, int mask, UnityEngine.QueryTriggerInteraction triggers) {
+            if (colNative.Length < results.Length) colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(results.Length);
+            int n = Math.Min(UnityEngine.Physics.OverlapSphereNonAlloc(centre, radius, colNative, mask, triggers), results.Length);
+            for (int i = 0; i < n; i++) results[i] = colNative[i];
+            return n;
+        }
 
         sealed class PointerComparer<T> : IEqualityComparer<T> where T : class {
             internal static readonly PointerComparer<T> Instance = new PointerComparer<T>();

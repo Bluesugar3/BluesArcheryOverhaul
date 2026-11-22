@@ -90,7 +90,11 @@ namespace BluesArcheryOverhaul {
             Cfg.Reloaded += () => { if (Open || !(site is null)) Raise(); };
         }
 
+#if QUEST
+        static void Know(SkillShrine s) { if (s != null && !Il.Has(known, s)) known.Add(s); }
+#else
         static void Know(SkillShrine s) { if (s != null && !known.Contains(s)) known.Add(s); }
+#endif
 
         /// <summary>Looks at the loaded shrines again: which one is the archery shrine, is its tree open, for whom.
         /// True when any of that changed. <paramref name="closing"/>: a shrine the game is closing right now (its IsOpen
@@ -240,7 +244,11 @@ namespace BluesArcheryOverhaul {
         static bool IsRanged(SkillShrine s) => Tree.Ready && s.CurrentPath == Tree.RangedPath;
 
         static bool Accept(SkillOrb orb) =>
+#if QUEST
+            orb != null && orb.Slot != null && orb.Status != SkillStatus.OtherPlayer && !Il.Has(orbs, orb);
+#else
             orb != null && orb.Slot != null && orb.Status != SkillStatus.OtherPlayer && !orbs.Contains(orb);
+#endif
 
         // ---------------------------------------------------------------- G3: what this client knows about buying (section 4)
 
@@ -312,10 +320,19 @@ namespace BluesArcheryOverhaul {
 #if QUEST
                 QuestWatch.Mark("ShrineView.SlotsHeld: ring read");
 #endif
+#if QUEST
+                // Quest: the ring's holders are a game array (never a System.Array), read in place
+                var holders = ring.placedHolders;
+                if (holders == null) return null;
+                int n = 0;
+                for (int i = 0; i < holders.Length; i++) { var h = holders[i]; if (h != null && h.SlotHash != 0u) n++; }
+                return n;
+#else
                 if (!(Traverse.Create(ring).Field("placedHolders").GetValue() is Array holders)) return null;
                 int n = 0;
                 foreach (object h in holders) if (h != null && Traverse.Create(h).Property("SlotHash").GetValue<uint>() != 0u) n++;
                 return n;
+#endif
             }
             catch (Exception e) {
                 if (!warnedRing) { warnedRing = true; MelonLogger.Warning($"[Archery] Shrine: cannot read the bought-orb ring ({e.Message}); the tablet cannot tell a full slot cap from short points"); }
@@ -475,8 +492,13 @@ namespace BluesArcheryOverhaul {
             static void Postfix(SkillOrb __instance, bool __result) {
                 using var _t = Timing.Begin(T);
                 try {
+#if QUEST
+                    if (!__result || ApplicationManager.IsHeadless || shrine == null || !Il.Has(orbs, __instance)) return;
+                    if (__instance.Status == SkillStatus.OtherPlayer) Il.Drop(orbs, __instance);
+#else
                     if (!__result || ApplicationManager.IsHeadless || shrine == null || !orbs.Contains(__instance)) return;
                     if (__instance.Status == SkillStatus.OtherPlayer) orbs.Remove(__instance);
+#endif
                     Raise(true);
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Shrine: status hook failed: {e.Message}"); }
@@ -497,7 +519,11 @@ namespace BluesArcheryOverhaul {
                     bool held = ReferenceEquals(Held, __instance);   // before the list test: a held orb that was never listed must not stay held
 #endif
                     if (held) Held = null;
+#if QUEST
+                    if (!Il.Drop(orbs, __instance) && !held) return;
+#else
                     if (!orbs.Remove(__instance) && !held) return;
+#endif
                     Raise();
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Shrine: orb removal hook failed: {e.Message}"); }

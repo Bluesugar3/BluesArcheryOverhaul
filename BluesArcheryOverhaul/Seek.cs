@@ -330,7 +330,11 @@ namespace BluesArcheryOverhaul {
                 float r = Mathf.Tan(LockRule.AimCone(Mathf.Max(1f, z), v) * Mathf.Deg2Rad) * z;
                 float start = Mathf.Max(0f, a - r);
                 int n;
+#if QUEST
+                while ((n = Il.SphereCastNonAlloc(origin + fwd * start, r, fwd, sweep, z - start, ~(1 << 2), QueryTriggerInteraction.Ignore)) == sweep.Length && sweep.Length < 1024)
+#else
                 while ((n = Physics.SphereCastNonAlloc(origin + fwd * start, r, fwd, sweep, z - start, ~(1 << 2), QueryTriggerInteraction.Ignore)) == sweep.Length && sweep.Length < 1024)
+#endif
                     sweep = new RaycastHit[sweep.Length * 2];
                 if (n == sweep.Length && !sweepWarned) { sweepWarned = true; MelonLogger.Warning($"[Archery] Seek: the lock's sweep met more than {n} colliders; some may be missed (said once)"); }
                 for (int i = 0; i < n; i++) {

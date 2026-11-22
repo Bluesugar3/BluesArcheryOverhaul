@@ -60,7 +60,11 @@ namespace BluesArcheryOverhaul {
             into.Clear();
             if (maxDistance <= 0f || direction.sqrMagnitude < 1e-8f) return;
             int n;
+#if QUEST
+            while ((n = Il.RaycastNonAlloc(from, direction.normalized, buffer, maxDistance, Mask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < 2048)
+#else
             while ((n = Physics.RaycastNonAlloc(from, direction.normalized, buffer, maxDistance, Mask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < 2048)
+#endif
                 buffer = new RaycastHit[buffer.Length * 2];
             for (int i = 0; i < n; i++) {
                 RaycastHit h = buffer[i];
@@ -95,7 +99,11 @@ namespace BluesArcheryOverhaul {
             if (maxDistance <= 0f || direction.sqrMagnitude < 1e-8f) return false;
             // A full buffer means hits were dropped in no particular order, and the nearest may be among them: grow and ask again.
             int n;
+#if QUEST
+            while ((n = Il.RaycastNonAlloc(from, direction.normalized, buffer, maxDistance, Mask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < 2048)
+#else
             while ((n = Physics.RaycastNonAlloc(from, direction.normalized, buffer, maxDistance, Mask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < 2048)
+#endif
                 buffer = new RaycastHit[buffer.Length * 2];
             float best = float.MaxValue;
             for (int i = 0; i < n; i++) {

@@ -401,7 +401,11 @@ namespace BluesArcheryOverhaul {
                 Transform folder = t.Area.SpawnFolder != null ? t.Area.SpawnFolder : t.Area.transform;
                 if ((folder.position - at).sqrMagnitude > reach * reach) continue;
                 wanted = true;
+#if QUEST
+                int n = Il.OverlapSphereNonAlloc(folder.position, 10f, trainingHits, ~0, QueryTriggerInteraction.Collide);
+#else
                 int n = Physics.OverlapSphereNonAlloc(folder.position, 10f, trainingHits, ~0, QueryTriggerInteraction.Collide);
+#endif
                 for (int i = 0; i < n; i++) {
                     Arrow a = trainingHits[i] != null ? trainingHits[i].GetComponentInParent<Arrow>() : null!;
                     Pickup p = a != null ? a.GetComponent<Pickup>() : null!;

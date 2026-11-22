@@ -267,7 +267,11 @@ namespace BluesArcheryOverhaul {
             float fx = (float)x, fz = (float)z, ft = (float)top, length = (float)(top - bottom);
             if (float.IsNaN(fx) || float.IsInfinity(fx) || float.IsNaN(fz) || float.IsInfinity(fz) || float.IsNaN(ft) || float.IsInfinity(ft)
                 || !(length > 0f) || float.IsInfinity(length)) return false;
+#if QUEST
+            int n = Il.RaycastNonAlloc(new Vector3(fx, ft, fz), Vector3.down, groundHits, length, GroundMask, QueryTriggerInteraction.Ignore);
+#else
             int n = Physics.RaycastNonAlloc(new Vector3(fx, ft, fz), Vector3.down, groundHits, length, GroundMask, QueryTriggerInteraction.Ignore);
+#endif
             if (n == groundHits.Length && !groundFullWarned) {
                 groundFullWarned = true;
                 MelonLogger.Warning(Inv($"[Archery] Skyfall: a ground cast at ({x:0.0}, {z:0.0}) filled its {groundHits.Length} hits (said once); the highest of those is taken"));

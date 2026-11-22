@@ -208,7 +208,9 @@ namespace BluesArcheryOverhaul {
             catch { return 0u; } // a tool with no entity: not a beam
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(HealthObject), nameof(HealthObject.ReceiveDamage), new[] { typeof(float), typeof(float), typeof(DamageData) })]
+#endif
         static class Damage {
             static readonly int TPre = Timing.Section("patch HealthObject.ReceiveDamage / Telemetry.Damage (prefix)");
             static readonly int TPost = Timing.Section("patch HealthObject.ReceiveDamage / Telemetry.Damage (postfix)");
