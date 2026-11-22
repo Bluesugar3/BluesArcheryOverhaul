@@ -28,6 +28,15 @@ namespace BluesArcheryOverhaul {
             if (n < PerSection) MelonLogger.Msg($"[Archery] Quest watch: start {Timing.NameOf(id)}");
         }
 
+        /// <summary>A step inside a routine, logged while armed (the first PerSection times each).</summary>
+        internal static void Mark(string step) {
+            if (!Armed) return;
+            int id = step.GetHashCode() | int.MinValue;   // apart from the section ids, which are small and positive
+            counts.TryGetValue(id, out int n);
+            counts[id] = n + 1;
+            if (n < 20) MelonLogger.Msg($"[Archery] Quest watch: at {step}");
+        }
+
         internal static void Exit(int id) {
             if (!Armed) return;
             if (counts.TryGetValue(id, out int n) && n <= PerSection) MelonLogger.Msg($"[Archery] Quest watch: end {Timing.NameOf(id)}");

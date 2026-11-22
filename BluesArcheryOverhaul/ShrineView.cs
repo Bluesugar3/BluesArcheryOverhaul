@@ -297,6 +297,9 @@ namespace BluesArcheryOverhaul {
         /// <summary>The opener's unspent points on the open shrine's path, as its bought-orb ring was last told; null when not known.</summary>
         internal static int? FreePoints() {
             BoughtSkillVisualizer? ring = Ring();
+#if QUEST
+            QuestWatch.Mark("ShrineView.FreePoints");
+#endif
             return ring != null && freePoints.TryGetValue(ring, out int p) ? p : (int?)null;
         }
 
@@ -306,6 +309,9 @@ namespace BluesArcheryOverhaul {
             try {
                 BoughtSkillVisualizer? ring = Ring();
                 if (ring == null) return null;
+#if QUEST
+                QuestWatch.Mark("ShrineView.SlotsHeld: ring read");
+#endif
                 if (!(Traverse.Create(ring).Field("placedHolders").GetValue() is Array holders)) return null;
                 int n = 0;
                 foreach (object h in holders) if (h != null && Traverse.Create(h).Property("SlotHash").GetValue<uint>() != 0u) n++;
@@ -325,8 +331,14 @@ namespace BluesArcheryOverhaul {
 #else
             Player? me = Player.Current as Player;
 #endif
+#if QUEST
+            QuestWatch.Mark("ShrineView.Practised: manager");
+#endif
             PlayerProgressionManager? pm = me != null ? me.ProgressionManager : null;
             if (pm == null || slot == null || !pm.PathExperiences.TryGetValue(slot.Path, out PathExperience pe) || pe == null) return null;
+#if QUEST
+            QuestWatch.Mark("ShrineView.Practised: slot");
+#endif
             return pe.IsSlotPracticed(slot.Hash);
         }
 
