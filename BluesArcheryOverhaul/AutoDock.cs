@@ -64,7 +64,11 @@ namespace BluesArcheryOverhaul {
 
         // ---------------------------------------------------------------- server: the quiver a player last drew from
 
+#if QUEST
+        static readonly Dictionary<PlayerController, PickupDock> lastQuiver = new Dictionary<PlayerController, PickupDock>(Il.ByPointer<PlayerController>());
+#else
         static readonly Dictionary<PlayerController, PickupDock> lastQuiver = new Dictionary<PlayerController, PickupDock>();
+#endif
         static readonly HashSet<string> quiversLogged = new HashSet<string>();
         static bool snapLogged;
 
@@ -136,11 +140,16 @@ namespace BluesArcheryOverhaul {
             public bool Grabbed, Fallback;
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, Entry> pending = new Dictionary<BowString, Entry>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Entry> pending = new Dictionary<BowString, Entry>();
+#endif
         static readonly List<BowString> scratch = new List<BowString>();
         static float nextPoll;
 
         // Every shot (a normal arrow, a Quickdraw 4 line, a Holy Arrow beam): Shooter.Shoot has undocked the arrow by now.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowString), "OnShoot")]
         static class Shot {
             static readonly int T = Timing.Section("patch BowString.OnShoot / AutoDock.Shot");
@@ -162,8 +171,10 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Auto Dock: queueing failed: {e.Message}"); }
             }
         }
+#endif
 
         // The owner's (or anyone's) grab of the string: a queued dock is dropped, a refused one docks now.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowString), "StringGrabbed")]
         static class Grab {
             static readonly int T = Timing.Section("patch BowString.StringGrabbed / AutoDock.Grab");
@@ -182,6 +193,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception ex) { MelonLogger.Warning($"[Archery] Auto Dock: grab check failed: {ex.Message}"); }
             }
         }
+#endif
 
         static void State(Entry e, out bool alive, out bool stringHasArrow, out bool ownerHoldsBow, out bool handHoldsArrow) {
             BowString bow = e.Bow;
@@ -425,7 +437,11 @@ namespace BluesArcheryOverhaul {
         }
 
         static void Forget(uint id, NetworkEntity? entity) {
+#if QUEST
+            if (tracked.TryGetValue(id, out NetworkEntity e) && Il.Same(e, entity)) tracked.Remove(id);
+#else
             if (tracked.TryGetValue(id, out NetworkEntity e) && ReferenceEquals(e, entity)) tracked.Remove(id);
+#endif
         }
 
         static string OwnerOf(SkillShrineTestingArea area) {
@@ -437,6 +453,7 @@ namespace BluesArcheryOverhaul {
             catch { return ""; }
         }
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(SkillShrineTestingArea), nameof(SkillShrineTestingArea.Open), new[] { typeof(SkillOrb) })]
         static class TryOutOpened {
             static readonly int T = Timing.Section("patch SkillShrineTestingArea.Open / AutoDock.TryOutOpened");
@@ -487,8 +504,10 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Auto Dock: try-out quiver failed: {e.Message}"); }
             }
         }
+#endif
 
         // Every way a try-out ends (another orb opened, the shrine closed, the player walked off) goes through the private Clear.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Clear")]
         static class TryOutCleared {
             static readonly int T = Timing.Section("patch SkillShrineTestingArea.Clear / AutoDock.TryOutCleared");
@@ -503,6 +522,7 @@ namespace BluesArcheryOverhaul {
                 }
             }
         }
+#endif
 
         /// <summary>Server: one try-out's quiver and every arrow that came out of it go, wherever they are.</summary>
         static void End(TryOut t, string why) {
@@ -571,7 +591,11 @@ namespace BluesArcheryOverhaul {
                 if (tracked.Count == 0 || __result != PickupDock.AllowedResult.Ok || !NetworkSceneManager.IsServer) return;
                 try {
                     if (pickup == null || pickup.Entity == null || __instance == null) return;
+#if QUEST
+                    if (!tracked.TryGetValue(pickup.Entity.Identifier, out NetworkEntity e) || !Il.Same(e, pickup.Entity)) return; // fixF I-1: the same entity, not a reused id
+#else
                     if (!tracked.TryGetValue(pickup.Entity.Identifier, out NetworkEntity e) || !ReferenceEquals(e, pickup.Entity)) return; // fixF I-1: the same entity, not a reused id
+#endif
                     foreach (TryOut t in tryOuts) if (t.Dock == __instance) return;   // back into its try-out quiver
                     if (__instance.GetComponent<Quiver>() == null && Volley.BowForDock(__instance) != null) return; // onto a bow string
                     __result = PickupDock.AllowedResult.CustomFail;

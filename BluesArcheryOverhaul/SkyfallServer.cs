@@ -34,11 +34,23 @@ namespace BluesArcheryOverhaul {
         static readonly List<SkyBody> bodies = new List<SkyBody>();
         static readonly List<HealthObject?> healths = new List<HealthObject?>();
         static readonly List<Player?> players = new List<Player?>();
+#if QUEST
+        static readonly Dictionary<HealthObject, int> creatureAt = new Dictionary<HealthObject, int>(Il.ByPointer<HealthObject>());   // a creature -> its index in bodies
+#else
         static readonly Dictionary<HealthObject, int> creatureAt = new Dictionary<HealthObject, int>();   // a creature -> its index in bodies
+#endif
         static bool creatureWarned;
         static readonly List<SkyEffect> effects = new List<SkyEffect>();
+#if QUEST
+        static readonly Dictionary<HealthObject, Blast> batch = new Dictionary<HealthObject, Blast>(Il.ByPointer<HealthObject>());
+#else
         static readonly Dictionary<HealthObject, Blast> batch = new Dictionary<HealthObject, Blast>();
+#endif
+#if QUEST
+        static readonly HashSet<Player> actedOn = new HashSet<Player>(Il.ByPointer<Player>());
+#else
         static readonly HashSet<Player> actedOn = new HashSet<Player>();
+#endif
 
         static string Inv(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
 

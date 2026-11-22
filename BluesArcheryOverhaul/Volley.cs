@@ -42,7 +42,11 @@ namespace BluesArcheryOverhaul {
             public bool heavySlidLogged;    // the "heavy arrows ... slid out" line was logged for this draw
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, State> states = new Dictionary<BowString, State>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, State> states = new Dictionary<BowString, State>();
+#endif
         static readonly List<BowString> dead = new List<BowString>();
 
         static MelonPreferences_Entry<float> innerShare = null!, outerShare = null!, outerInterval = null!, innerRadius = null!, outerRadius = null!,
@@ -314,10 +318,18 @@ namespace BluesArcheryOverhaul {
 
         // dock -> its bow string, or null when the dock is known not to be a string dock (b3-review I-1: misses are remembered too,
         // so a quiver, rack or chest replayed at a chunk load costs one scene search, not one per arrow stack)
+#if QUEST
+        static readonly Dictionary<PickupDock, BowString?> bowByDock = new Dictionary<PickupDock, BowString?>(Il.ByPointer<PickupDock>());
+#else
         static readonly Dictionary<PickupDock, BowString?> bowByDock = new Dictionary<PickupDock, BowString?>();
+#endif
         static readonly List<PickupDock> deadDocks = new List<PickupDock>();
         const int DockCacheCap = 1024;
+#if QUEST
+        static readonly Dictionary<Shooter, BowString?> bowByShooter = new Dictionary<Shooter, BowString?>(Il.ByPointer<Shooter>());
+#else
         static readonly Dictionary<Shooter, BowString?> bowByShooter = new Dictionary<Shooter, BowString?>();
+#endif
         static readonly int TBowForDock = Timing.Section("scene Volley.BowForDock search (FindObjectsOfType<BowString>)"),
             TBowForShooter = Timing.Section("scene Volley.BowForShooter search (FindObjectsOfType<BowString>)"),
             TBowOf = Timing.Section("scene Volley.BowOf search (FindObjectsOfType<BowString>)");
@@ -327,7 +339,11 @@ namespace BluesArcheryOverhaul {
         internal static BowString? BowForDock(PickupDock? dock) {
             if (dock == null) return null;
             if (bowByDock.TryGetValue(dock, out BowString? known)) {
+#if QUEST
+                if (Il.Same(known, null)) return null;                  // a remembered miss
+#else
                 if (ReferenceEquals(known, null)) return null;                  // a remembered miss
+#endif
                 if (known != null && known.StringDock == dock) return known;    // a live hit
                 bowByDock.Remove(dock);                                          // its bow is gone: ask again
             }
@@ -356,7 +372,11 @@ namespace BluesArcheryOverhaul {
         internal static BowString? BowForShooter(Shooter? shooter) {
             if (shooter == null) return null;
             if (bowByShooter.TryGetValue(shooter, out BowString? known)) {
+#if QUEST
+                if (Il.Same(known, null)) return null;   // G2: a remembered miss (a Shooter that is no bow's, e.g. ItemShooter)
+#else
                 if (ReferenceEquals(known, null)) return null;   // G2: a remembered miss (a Shooter that is no bow's, e.g. ItemShooter)
+#endif
                 if (known != null) return known;
             }
             BowString? found = null;
@@ -401,7 +421,11 @@ namespace BluesArcheryOverhaul {
         /// arrow was last seen nocked on (bounded).</summary>
         internal static class BowRegistry {
             static readonly List<BowString> bows = new List<BowString>();
+#if QUEST
+            static readonly Dictionary<BowString, Shooter?> shooters = new Dictionary<BowString, Shooter?>(Il.ByPointer<BowString>());
+#else
             static readonly Dictionary<BowString, Shooter?> shooters = new Dictionary<BowString, Shooter?>();
+#endif
             static readonly Dictionary<uint, BowString> nocked = new Dictionary<uint, BowString>();
             static bool seeded;
             static readonly int TSeed = Timing.Section("scene Volley.BowRegistry seed (once, FindObjectsOfType<BowString>)");
@@ -1391,11 +1415,19 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { FxError("pellet arrows", e); }
             }
             foreach (BowString b in dead) {
+#if QUEST
+                if (!Il.Same(b, null) && states.TryGetValue(b, out State s)) {
+#else
                 if (!ReferenceEquals(b, null) && states.TryGetValue(b, out State s)) {
+#endif
                     foreach (Ghost? g in s.ghosts) if (g != null) UnityEngine.Object.Destroy(g.gameObject);
                     states.Remove(b);
                 }
+#if QUEST
+                if (!Il.Same(b, null)) DropFx(b);
+#else
                 if (!ReferenceEquals(b, null)) DropFx(b);
+#endif
             }
         }
 
@@ -1449,7 +1481,11 @@ namespace BluesArcheryOverhaul {
             Material? baseMat = HeadMaterial();
             if (baseMat == null) return null;
             if (!rampTest.Value) { RampLog("not run (RampTest is off)"); return baseMat; }
+#if QUEST
+            if (rampMaterialTried && Il.Same(rampMaterialFor, baseMat)) return rampMaterial != null ? rampMaterial : baseMat;
+#else
             if (rampMaterialTried && ReferenceEquals(rampMaterialFor, baseMat)) return rampMaterial != null ? rampMaterial : baseMat;
+#endif
             rampMaterialTried = true;
             rampMaterialFor = baseMat;
             rampMaterial = null;
@@ -1651,8 +1687,16 @@ namespace BluesArcheryOverhaul {
             /// <summary>Every drawn renderer under <paramref name="root"/> at its highest detail: those in LOD0 of a LODGroup that
             /// lists them, and those no LODGroup lists; lower LODs are left out.</summary>
             static List<Renderer> HighestDetail(Transform root) {
+#if QUEST
+                var lod0 = new HashSet<Renderer>(Il.ByPointer<Renderer>());
+#else
                 var lod0 = new HashSet<Renderer>();
+#endif
+#if QUEST
+                var lower = new HashSet<Renderer>(Il.ByPointer<Renderer>());
+#else
                 var lower = new HashSet<Renderer>();
+#endif
                 foreach (LODGroup g in root.GetComponentsInChildren<LODGroup>(false)) CollectLods(g, lod0, lower);
                 foreach (LODGroup g in root.GetComponentsInParent<LODGroup>(false)) CollectLods(g, lod0, lower);
                 var result = new List<Renderer>();
@@ -2265,7 +2309,11 @@ namespace BluesArcheryOverhaul {
                 }
                 strand.SetPositions(points);
                 AnimationCurve curve = ChargeFx.StrandTaperCurve;
+#if QUEST
+                if (!Il.Same(curve, strandCurve)) { strand.widthCurve = curve; strandCurve = curve; }
+#else
                 if (!ReferenceEquals(curve, strandCurve)) { strand.widthCurve = curve; strandCurve = curve; }
+#endif
                 strand.widthMultiplier = ChargeFx.StrandWidth;
                 Color c = Brighter(ChargeFx.StrandColour1, Glow);
                 float k = a * Mathf.Max(1f, Glow) * ChargeFx.GlowScale; // [Fill] GlowScale: the one knob on the charge's glow

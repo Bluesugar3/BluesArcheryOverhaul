@@ -373,8 +373,16 @@ namespace BluesArcheryOverhaul {
                 if (stood) { if (Logs.Debug) MelonLogger.Msg(shrine == null ? "[Archery] Tablet: removed (the archery shrine is gone)" : "[Archery] Tablet: removed"); }
                 return;
             }
+#if QUEST
+            if (root == null || rebuild || !Il.Same(builtFor, shrine)) {
+#else
             if (root == null || rebuild || !ReferenceEquals(builtFor, shrine)) {
+#endif
+#if QUEST
+                bool another = !(builtFor is null) && !Il.Same(builtFor, shrine);
+#else
                 bool another = !(builtFor is null) && !ReferenceEquals(builtFor, shrine);
+#endif
                 Clear();
                 if (another) Forget();
                 Build(shrine);

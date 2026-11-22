@@ -384,7 +384,11 @@ namespace BluesArcheryOverhaul {
         internal static Color Colour(MelonPreferences_Entry<string> entry, Color fallback) {
             string text = entry.Value;
             if (!colours.TryGetValue(entry, out ParsedColour p)) colours[entry] = p = new ParsedColour();
+#if QUEST
+            else if (p.Text != null && Il.Same(p.Text, text)) return p.Ok ? p.Value : fallback;
+#else
             else if (p.Text != null && ReferenceEquals(p.Text, text)) return p.Ok ? p.Value : fallback;
+#endif
             p.Text = text;
             p.Ok = ColorUtility.TryParseHtmlString(text, out p.Value);
             return p.Ok ? p.Value : fallback;

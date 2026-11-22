@@ -161,9 +161,17 @@ namespace BluesArcheryOverhaul {
             internal int Tier => Build.Charge;
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, Fill> fills = new Dictionary<BowString, Fill>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Fill> fills = new Dictionary<BowString, Fill>();
+#endif
         static readonly List<BowString> drop = new List<BowString>();
+#if QUEST
+        static readonly Dictionary<BowString, string> dropWhy = new Dictionary<BowString, string>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, string> dropWhy = new Dictionary<BowString, string>();
+#endif
         static readonly Dictionary<string, float> radii = new Dictionary<string, float>();
         static string lastFrameError = "";
 
@@ -175,7 +183,11 @@ namespace BluesArcheryOverhaul {
         // Clients: who is drawing each bow, from the skill statuses the server sends (Slowdraw's, Holy Arrow's). The game plays
         // a status's glow and sound before the mod's status handling runs, so they read the archer noted by an earlier status
         // of the same draw (ChargingStarted comes at the crossing, Charged later).
+#if QUEST
+        static readonly Dictionary<BowString, KeyValuePair<string, bool>> archers = new Dictionary<BowString, KeyValuePair<string, bool>>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, KeyValuePair<string, bool>> archers = new Dictionary<BowString, KeyValuePair<string, bool>>();
+#endif
 
         internal static void NoteArcher(BowString bow, string owner, bool local) {
             if (bow == null) return;
@@ -333,7 +345,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless || fills.Count == 0) return;
+#if QUEST
+                    if (!isForced && (skill == null || !Il.Same(skill, Tree.Slowdraw))) return;
+#else
                     if (!isForced && (skill == null || !ReferenceEquals(skill, Tree.Slowdraw))) return;
+#endif
                     if (!live) { live = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Fill: patch on ProfessionSkill.ReleaseEffect is live"); }
                     foreach (Fill f in fills.Values) {
                         if (f.arrow != identifier || f.glowHidden == null) continue;
@@ -672,7 +688,11 @@ namespace BluesArcheryOverhaul {
             public bool gatherLogged, armedLogged;
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, HolyGather> holies = new Dictionary<BowString, HolyGather>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, HolyGather> holies = new Dictionary<BowString, HolyGather>();
+#endif
         const float PulseDepth = 0.35f; // the armed core's swing in width and brightness (internal, not a setting)
 
         /// <summary>Clients, from HolyArrow.Status: Lightbeam's ChargingStarted (the crossing), Charged (armed) and Cancelled on
@@ -836,7 +856,11 @@ namespace BluesArcheryOverhaul {
                 get {
                     if (beamColour == null) return DefaultBeam;
                     string s = beamColour.Value;
+#if QUEST
+                    if (!Il.Same(s, beamFor)) { beamFor = s; beam = Cfg.Colour(beamColour, DefaultBeam); }
+#else
                     if (!ReferenceEquals(s, beamFor)) { beamFor = s; beam = Cfg.Colour(beamColour, DefaultBeam); }
+#endif
                     return beam;
                 }
             }
@@ -1050,7 +1074,11 @@ namespace BluesArcheryOverhaul {
                 if (string.IsNullOrWhiteSpace(names)) return "none";
                 SoundEffectSet? set = Fx.FindSound(names); // a miss is logged by Fx
                 if (set == null) return $"'{names}' not found";
+#if QUEST
+                AudioManager am = Il2CppAlta.Utilities.SingletonBehaviour<AudioManager>.Instance;
+#else
                 AudioManager am = Alta.Utilities.SingletonBehaviour<AudioManager>.Instance;
+#endif
                 if (am == null) return "none (no audio manager)";
                 am.PlaySoundEffectOnObject(set, tipT.gameObject, null!, out AudioControl control);
                 if (control == null) return $"'{set.name}' could not play";
@@ -1217,11 +1245,23 @@ namespace BluesArcheryOverhaul {
                     if (status != ToolBasedSkillStatus.Charged || ApplicationManager.IsHeadless || __instance == null || target == null) return true;
                     // Each line's own skill: Slowdraw (Charge), the Volley skill (Multi), Quickdraw (Quick).
                     BowDrawSkill? slow = Tree.Slowdraw, volley = VolleySkill.Skill, quick = Tree.Quickdraw;
+#if QUEST
+                    bool isSlow = slow != null && Il.Same(__instance, slow.InputStructure);
+#else
                     bool isSlow = slow != null && ReferenceEquals(__instance, slow.InputStructure);
+#endif
                     MainPath line; string skill;
                     if (isSlow) { line = MainPath.Charge; skill = "Slowdraw"; }
+#if QUEST
+                    else if (volley != null && Il.Same(__instance, volley.InputStructure)) { line = MainPath.Multi; skill = "Volley"; }
+#else
                     else if (volley != null && ReferenceEquals(__instance, volley.InputStructure)) { line = MainPath.Multi; skill = "Volley"; }
+#endif
+#if QUEST
+                    else if (quick != null && Il.Same(__instance, quick.InputStructure)) { line = MainPath.Quick; skill = "Quickdraw"; }
+#else
                     else if (quick != null && ReferenceEquals(__instance, quick.InputStructure)) { line = MainPath.Quick; skill = "Quickdraw"; }
+#endif
                     else return true;
                     if (!live) { live = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Fill: patch on SkillInputStructure.PlaySoundAt is live"); }
                     NetworkEntity entity = target.GetComponentInParent<NetworkEntity>();
@@ -1340,7 +1380,11 @@ namespace BluesArcheryOverhaul {
                 got.transform.SetParent(tipT, true);
                 effects[j] = got;
                 int slot = j;
+#if QUEST
+                PoolChangedHandler handler = p => { if (Il.Same(p, effects[slot])) effects[slot] = null; };
+#else
                 PoolChangedHandler handler = p => { if (ReferenceEquals(p, effects[slot])) effects[slot] = null; };
+#endif
                 onReleased[j] = handler;
                 got.Released += handler; // released by its own timer: never touch it again
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Fill: knot {j + 1} on '{bowName}' (effect '{def.name}')");

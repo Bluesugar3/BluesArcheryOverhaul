@@ -36,8 +36,16 @@ namespace BluesArcheryOverhaul {
             public Vector3 origin, end, direction, normal; public bool struck, needlesDrawn; public float time;
             public Transform? shooter, bow, bowString; // what the casts ignore (the needles are cast later for a spectator)
         }
+#if QUEST
+        static readonly Dictionary<Arrow, ShotInfo> shots = new Dictionary<Arrow, ShotInfo>(Il.ByPointer<Arrow>());
+#else
         static readonly Dictionary<Arrow, ShotInfo> shots = new Dictionary<Arrow, ShotInfo>();
+#endif
+#if QUEST
+        static readonly Dictionary<Arrow, Result> results = new Dictionary<Arrow, Result>(Il.ByPointer<Arrow>()); // client: where each line shot ended
+#else
         static readonly Dictionary<Arrow, Result> results = new Dictionary<Arrow, Result>(); // client: where each line shot ended
+#endif
         static Arrow? lastLocalArrow;
         static bool localHasIt;
         static readonly MethodInfo? embedMethod = AccessTools.Method(typeof(Embeddable), "Embed");
@@ -245,6 +253,7 @@ namespace BluesArcheryOverhaul {
         // A release the server resolved as a Line while the game's Quickdraw input was not active (a snap the server accepted
         // from the shooter's trusted claim after its own input had lapsed) never reaches BowDrawSkill.OnArrowShot. OnShoot's
         // postfix runs after every OnShootingEntity handler: such a Line is fired here (b2-review I-3: it flew at x1 in 0.13.0).
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowString), "OnShoot")]
         static class FromRelease {
             static readonly int T = Timing.Section("patch BowString.OnShoot / Quickdraw4.FromRelease");
@@ -269,6 +278,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Error($"[Archery] Q4: line from the release failed: {e}"); }
             }
         }
+#endif
 
         static readonly int T_Fire = Timing.Section("Quickdraw4.Fire (server line)");
         static void Fire(BowString bowString, NetworkEntity shotEntity, Player __state) {
@@ -423,7 +433,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 if (NetworkSceneManager.IsServer || speed < Marker - 1f) return true;
                 try {
+#if QUEST
+                    bool mine = Il.Same(__instance, lastLocalArrow);
+#else
                     bool mine = ReferenceEquals(__instance, lastLocalArrow);
+#endif
                     if (mine && !localHasIt) {
                         localHasIt = true;
                         if (Logs.Summary) MelonLogger.Msg("[Archery] Q4: the server confirmed a line shot; later ones are predicted locally.");

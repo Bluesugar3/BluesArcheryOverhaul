@@ -202,7 +202,11 @@ namespace BluesArcheryOverhaul {
                 aim.Clear();
                 return;
             }
+#if QUEST
+            if (!Il.Same(aim.Bow, bow) || aim.Arrow != crossed) { aim.Clear(); aim.Bow = bow; aim.Arrow = crossed; }
+#else
             if (!ReferenceEquals(aim.Bow, bow) || aim.Arrow != crossed) { aim.Clear(); aim.Bow = bow; aim.Arrow = crossed; }
+#endif
             HomingValues v = Values;
             Transform tipT = arrow.ArrowTip != null ? arrow.ArrowTip.transform : arrow.transform;
             Vector3 origin = tipT.position, fwd = docked.transform.forward;
@@ -285,7 +289,11 @@ namespace BluesArcheryOverhaul {
         /// would home on, in claim order (the first is the main lock); null with none (no lock, or every lock outside the release
         /// cone: the release would be an ordinary volley, and the bow shows that).</summary>
         internal static List<Vector3>? HeldLocks(BowString bow) =>
+#if QUEST
+            Il.Same(heldBow, bow) && Time.frameCount - heldFrame <= 1 && heldCentres.Count > 0 ? heldCentres : null;
+#else
             ReferenceEquals(heldBow, bow) && Time.frameCount - heldFrame <= 1 && heldCentres.Count > 0 ? heldCentres : null;
+#endif
 
         /// <summary>H2: this release homes on this machine (it has a homing record: Volley.Launch opened one). H4 (H23-review minor 4 =
         /// Opus minor 9): only while it can still be in flight (the arrow id comes back through Quiver Gather and Auto Dock, and its
@@ -394,7 +402,11 @@ namespace BluesArcheryOverhaul {
             var none = new List<uint>();
             List<uint>? claimed = null;
             try {
+#if QUEST
+                if (bow == null || !Il.Same(aim.Bow, bow) || aim.Set.Locks.Count == 0 || Time.time - aim.LastUpdate > 0.3f) return none;
+#else
                 if (bow == null || !ReferenceEquals(aim.Bow, bow) || aim.Set.Locks.Count == 0 || Time.time - aim.LastUpdate > 0.3f) return none;
+#endif
                 if (!Applies(Builds.LocalBuild()) || !LockRule.Steerable(r)) {
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Seek: {aim.Set.Locks.Count} lock(s) not used: {(LockRule.Steerable(r) ? "the orb does not work for this build" : "the release is no volley (" + r + ")")}");
                     return none;
@@ -758,7 +770,11 @@ namespace BluesArcheryOverhaul {
             public Vector3 At; public float CoreEndedAt = -1f;
             protected override string Who => "Seek";
         }
+#if QUEST
+        static readonly Dictionary<Arrow, Hold> holds = new Dictionary<Arrow, Hold>(Il.ByPointer<Arrow>());
+#else
         static readonly Dictionary<Arrow, Hold> holds = new Dictionary<Arrow, Hold>();
+#endif
         static readonly List<Arrow> holdScratch = new List<Arrow>();
         static readonly MethodInfo? embedMethod = AccessTools.Method(typeof(Embeddable), "Embed");
         /// <summary>H3, clients: seconds after their own core cluster ended that they wait for the server to place the arrow before they
@@ -786,7 +802,11 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(Embeddable), "SyncEmbed")]
         static class HeldEmbed {
             static readonly int T = Timing.Section("patch Embeddable.SyncEmbed / Seek.HeldEmbed");
+#if QUEST
+            static void Prefix(Embeddable __instance, Il2CppAlta.Serialization.Stream stream) {
+#else
             static void Prefix(Embeddable __instance, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (holds.Count == 0 || NetworkSceneManager.IsServer || __instance == null || stream == null || stream.IsWriting) return;
                 try {

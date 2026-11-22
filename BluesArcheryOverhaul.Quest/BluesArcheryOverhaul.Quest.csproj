@@ -16,14 +16,9 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="*.cs" />
-    <!-- The PC mod's own source files compiled for Quest so far (docs/superpowers/plans/2026-11-22-quest-port.md adds them task
-         by task; a file joins once it compiles and works on Quest). The sixteen Unity-free files need no change. -->
-    <Compile Include="..\BluesArcheryOverhaul\Rules.cs;..\BluesArcheryOverhaul\Build.cs;..\BluesArcheryOverhaul\Wire.cs;..\BluesArcheryOverhaul\Release.cs;..\BluesArcheryOverhaul\Spectral.cs;..\BluesArcheryOverhaul\Charge.cs;..\BluesArcheryOverhaul\Path.cs;..\BluesArcheryOverhaul\Preview.cs" />
-    <Compile Include="..\BluesArcheryOverhaul\Lectern.cs;..\BluesArcheryOverhaul\Timing.cs;..\BluesArcheryOverhaul\Homing.cs;..\BluesArcheryOverhaul\SkyfallRules.cs;..\BluesArcheryOverhaul\TelemetryRules.cs;..\BluesArcheryOverhaul\TelemetryStats.cs;..\BluesArcheryOverhaul\JoinRules.cs;..\BluesArcheryOverhaul\SettingsSync.cs" />
-    <!-- task 1: the platform layer, settings, timing, the join gate's and server-set settings' client halves -->
-    <Compile Include="..\BluesArcheryOverhaul\Cfg.cs;..\BluesArcheryOverhaul\TimingHost.cs;..\BluesArcheryOverhaul\StreamBits.cs;..\BluesArcheryOverhaul\JoinGate.cs;..\BluesArcheryOverhaul\ServerSettings.cs" />
-    <!-- task 2: the tree and its icons -->
-    <Compile Include="..\BluesArcheryOverhaul\Tree.cs;..\BluesArcheryOverhaul\Paths.cs;..\BluesArcheryOverhaul\Builds.cs;..\BluesArcheryOverhaul\Fx.cs;..\BluesArcheryOverhaul\VolleySkill.cs;..\BluesArcheryOverhaul\KitHooks.cs" />
+    <!-- Every source file of the PC mod, compiled with QUEST defined (docs/superpowers/plans/2026-11-22-quest-port.md). Left out:
+         files only a dedicated server runs, and Main.cs, whose Quest start-up is QuestMain.cs. -->
+    <Compile Include="..\BluesArcheryOverhaul\*.cs" Exclude="..\BluesArcheryOverhaul\Main.cs;..\BluesArcheryOverhaul\SkyfallCommands.cs" />
     <EmbeddedResource Include="..\BluesArcheryOverhaul\Resources\**\*" Exclude="..\BluesArcheryOverhaul\Resources\**\*.manifest;..\BluesArcheryOverhaul\Resources\**\*.meta" LogicalName="BluesArcheryOverhaul.Resources.%(Filename)%(Extension)" />
     <Reference Include="$(QuestReferences)\*.dll" Private="false" />
   </ItemGroup>

@@ -51,7 +51,11 @@ namespace BluesArcheryOverhaul {
         static bool fullWarned;
         static readonly List<HealthObject> healths = new List<HealthObject>();
         static readonly List<SplinterCandidate> candidates = new List<SplinterCandidate>();
+#if QUEST
+        static readonly HashSet<HealthObject> seenHealth = new HashSet<HealthObject>(Il.ByPointer<HealthObject>());
+#else
         static readonly HashSet<HealthObject> seenHealth = new HashSet<HealthObject>();
+#endif
         static int logs, offLogs, offSeen;
 
         internal static void Init() {

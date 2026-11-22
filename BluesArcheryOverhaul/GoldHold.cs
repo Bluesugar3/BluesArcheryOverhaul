@@ -137,7 +137,11 @@ namespace BluesArcheryOverhaul {
             public Light? lamp;
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, Bow> bows = new Dictionary<BowString, Bow>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Bow> bows = new Dictionary<BowString, Bow>();
+#endif
 
         /// <summary>This frame's hold on one bow, with the settings it is drawn with: <see cref="For"/> gives each arrow its look.</summary>
         internal struct Look {
@@ -259,7 +263,11 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>The bow's hold is over (released, cancelled, consumed, its bow gone, or its archer has no stage to hold for).</summary>
         internal static void Forget(BowString bow) {
+#if QUEST
+            if (bows.Count == 0 || Il.Same(bow, null) || !bows.TryGetValue(bow, out Bow b)) return;
+#else
             if (bows.Count == 0 || ReferenceEquals(bow, null) || !bows.TryGetValue(bow, out Bow b)) return;
+#endif
             bows.Remove(bow);
             if (b.lamp != null) UnityEngine.Object.Destroy(b.lamp.gameObject);
         }

@@ -69,7 +69,11 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, Hold> holds = new Dictionary<BowString, Hold>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Hold> holds = new Dictionary<BowString, Hold>();
+#endif
         static readonly List<BowString> scratch = new List<BowString>();
         static bool holdFailed;
         static float lastSoundAt = -1000f;
@@ -118,7 +122,11 @@ namespace BluesArcheryOverhaul {
         static string Inv(FormattableString s) => s.ToString(CultureInfo.InvariantCulture);
 
         static bool NoPlayer() {
+#if QUEST
+            var me = Il2Cpp.Player.Current;
+#else
             var me = global::Player.Current;
+#endif
             return me == null || (me is UnityEngine.Object o && o == null);
         }
 

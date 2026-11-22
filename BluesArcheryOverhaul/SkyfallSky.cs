@@ -65,7 +65,11 @@ namespace BluesArcheryOverhaul {
         static bool Finite(float x) => !float.IsNaN(x) && !float.IsInfinity(x);
 
         static bool NoPlayer() {
+#if QUEST
+            var me = Il2Cpp.Player.Current;
+#else
             var me = global::Player.Current;
+#endif
             return me == null || (me is UnityEngine.Object o && o == null);   // a destroyed player counts as none
         }
 
@@ -105,7 +109,11 @@ namespace BluesArcheryOverhaul {
             if (ApplicationManager.IsHeadless || skyDim == null) return;
             if (!skyDim.Value || NoPlayer()) { Restore(); return; }
             if (requests.Count == 0 && !driving) { shown = 0f; return; }
+#if QUEST
+            if (!Il.Same(dtm, null) && dtm == null) {              // destroyed (a scene change): the next one reset itself on Awake
+#else
             if (!ReferenceEquals(dtm, null) && dtm == null) {              // destroyed (a scene change): the next one reset itself on Awake
+#endif
                 dtm = null; light = fade = null;
                 driving = false; shown = 0f;
             }
@@ -119,7 +127,11 @@ namespace BluesArcheryOverhaul {
             if (dtm == null || light == null || fade == null) { shown = 0f; driving = false; return; }
 
             float want = 0f;
+#if QUEST
+            Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current as Il2Cpp.Player);
+#else
             Vector3? head = Targets.HeadOf(global::Player.Current as global::Player);
+#endif
             if (head.HasValue) {
                 float range2 = v.SkyDimMetres * v.SkyDimMetres;
                 bool cave = !dtm.IsEnabled;

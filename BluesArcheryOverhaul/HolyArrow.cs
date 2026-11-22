@@ -38,9 +38,21 @@ namespace BluesArcheryOverhaul {
 
         class BeamInfo { public PlayerController? shooter; public float centreDamage; public Transform? bow; public HashSet<ImpactChannel>? channels; }
         static readonly Dictionary<uint, BeamInfo> beams = new Dictionary<uint, BeamInfo>();          // server
+#if QUEST
+        static readonly Dictionary<Projectile, Vector3> boosted = new Dictionary<Projectile, Vector3>(Il.ByPointer<Projectile>()); // every machine
+#else
         static readonly Dictionary<Projectile, Vector3> boosted = new Dictionary<Projectile, Vector3>(); // every machine
+#endif
+#if QUEST
+        static readonly HashSet<BowString> armed = new HashSet<BowString>(Il.ByPointer<BowString>());                           // server
+#else
         static readonly HashSet<BowString> armed = new HashSet<BowString>();                           // server
+#endif
+#if QUEST
+        static readonly Dictionary<BowString, uint> clientArmed = new Dictionary<BowString, uint>(Il.ByPointer<BowString>());   // clients: bow -> arrow armed, from the status broadcasts
+#else
         static readonly Dictionary<BowString, uint> clientArmed = new Dictionary<BowString, uint>();   // clients: bow -> arrow armed, from the status broadcasts
+#endif
         static NetworkPrefab? beamPrefab;
         static readonly MethodInfo? onCollision = AccessTools.Method(typeof(Projectile), "OnCollision");
 
@@ -136,7 +148,11 @@ namespace BluesArcheryOverhaul {
         // Server: Lightbeam's input charged by the shared timer (set to the fastest build's, Tree.ApplyTimers) before this
         // archer's own wait (Paths.HolySecondsFor): armed from Tick when the draw clock reaches it, if the input is still live.
         struct Deferred { public LightBeamSkill skill; public ISkillInputMethod input; }
+#if QUEST
+        static readonly Dictionary<BowString, Deferred> waiting = new Dictionary<BowString, Deferred>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Deferred> waiting = new Dictionary<BowString, Deferred>();
+#endif
         static readonly MethodInfo? handleInput = AccessTools.Method(typeof(LightBeamSkill), "HandleInputChanged");
         // G2: a direct, non-virtual call to LightBeamSkill's own override (nothing derives from LightBeamSkill), as Invoke dispatched.
         static Action<LightBeamSkill, bool, ISkillInputMethod, BowString>? handleInputCall = OwnTime.Bind<LightBeamSkill>(handleInput);
@@ -185,11 +201,16 @@ namespace BluesArcheryOverhaul {
 
         // Live-draw gate: the string is held, it crossed 68% in this draw (a short dip keeps the span), and the arrow
         // on it is the one that was there at the crossing. No volley is needed.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(LightBeamSkill), "HandleInputChanged")]
         static class Arm {
             static readonly int TPrefix = Timing.Section("patch LightBeamSkill.HandleInputChanged / HolyArrow.Arm prefix");
             static readonly int TPostfix = Timing.Section("patch LightBeamSkill.HandleInputChanged / HolyArrow.Arm postfix");
+#if QUEST
+            static readonly Dictionary<BowString, uint> refusedLogged = new Dictionary<BowString, uint>(Il.ByPointer<BowString>()); // the arrow at the crossing of the draw last logged
+#else
             static readonly Dictionary<BowString, uint> refusedLogged = new Dictionary<BowString, uint>(); // the arrow at the crossing of the draw last logged
+#endif
 
             static bool Prefix(LightBeamSkill __instance, bool isEnabled, ISkillInputMethod input, BowString bowString) {
                 using var _t = Timing.Begin(TPrefix);
@@ -250,6 +271,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Holy: absorbing the volley on arming failed: {e.Message}"); }
             }
         }
+#endif
 
         // A Holy Arrow that never armed must not give its damage bonus to the ordinary arrow either.
         [HarmonyPatch(typeof(BowDrawSkill), "OnArrowShot")]
@@ -323,6 +345,7 @@ namespace BluesArcheryOverhaul {
 
         // ---------------------------------------------------------------- beam damage and speed
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(ExtraArrowUpdater), nameof(ExtraArrowUpdater.CreateExtraArrow))]
         static class BeamCreated {
             static readonly int T = Timing.Section("patch ExtraArrowUpdater.CreateExtraArrow / HolyArrow.BeamCreated");
@@ -357,10 +380,15 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Error($"[Archery] Holy: beam setup failed: {e}"); }
             }
         }
+#endif
 
         static HashSet<ImpactChannel>? Channels(ImpactTool? arrowTool) {
             if (arrowTool == null) return null;
+#if QUEST
+            var set = new HashSet<ImpactChannel>(Il.ByPointer<ImpactChannel>());
+#else
             var set = new HashSet<ImpactChannel>();
+#endif
             foreach (ImpactTool t in Hits.Tools(arrowTool)) foreach (ImpactChannel c in t.Channels) if (c != null) set.Add(c);
             return set;
         }
@@ -478,8 +506,13 @@ namespace BluesArcheryOverhaul {
         // and never reaches ExtraArrowUpdater.ShootExtraArrows or Projectile.Shoot (BeamShot) there. Start the trail here.
         [HarmonyPatch(typeof(Projectile), "SyncFired")]
         static class BeamFiredSync {
+#if QUEST
+            static readonly int T = Timing.Section("patch Projectile.SyncFired / HolyArrow.BeamFiredSync");
+            static void Postfix(Projectile __instance, Il2CppAlta.Serialization.Stream stream) {
+#else
             static readonly int T = Timing.Section("patch Projectile.SyncFired / HolyArrow.BeamFiredSync");
             static void Postfix(Projectile __instance, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (stream == null || !stream.IsReading || NetworkSceneManager.IsServer || __instance == null) return;
                 if (boosted.TryGetValue(__instance, out Vector3 v)) { __instance.Rigidbody.useGravity = false; __instance.Rigidbody.velocity = v; return; }
@@ -501,7 +534,11 @@ namespace BluesArcheryOverhaul {
 
         // Clients: beams fired by another archer (their trail and name), from the beam's "fired" message to its landing.
         class SeenBeam { public Trail? trail; public string name = "?"; }
+#if QUEST
+        static readonly Dictionary<Projectile, SeenBeam> seen = new Dictionary<Projectile, SeenBeam>(Il.ByPointer<Projectile>());
+#else
         static readonly Dictionary<Projectile, SeenBeam> seen = new Dictionary<Projectile, SeenBeam>();
+#endif
 
         /// <summary>Clients: the bow string a synced beam hangs on (ExtraArrowUpdater.SyncExtraArrows parents it to the bow),
         /// with its archer's name and whether that is the local player.</summary>
@@ -548,6 +585,7 @@ namespace BluesArcheryOverhaul {
 
         // ---------------------------------------------------------------- server: the blast
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(Projectile), "OnCollision")]
         static class Landed {
             static readonly int T = Timing.Section("patch Projectile.OnCollision / HolyArrow.Landed");
@@ -563,8 +601,13 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Error($"[Archery] Holy: blast failed: {e}"); }
             }
         }
+#endif
 
+#if QUEST
+        static readonly HashSet<HealthObject> healths = new HashSet<HealthObject>(Il.ByPointer<HealthObject>());
+#else
         static readonly HashSet<HealthObject> healths = new HashSet<HealthObject>();
+#endif
 
         // Same recipe as the game's own explosives: who is in range, damage scaled by distance, a shove.
         static readonly int T_Blast = Timing.Section("hit HolyArrow.Blast");
@@ -617,7 +660,11 @@ namespace BluesArcheryOverhaul {
                             (pvpSpared > 0 ? $", {pvpSpared} player(s) spared (the server's PvP is off, or the archer)" : ""));
             healths.Clear(); rejected.Clear();
         }
+#if QUEST
+        static readonly HashSet<HealthObject> rejected = new HashSet<HealthObject>(Il.ByPointer<HealthObject>());
+#else
         static readonly HashSet<HealthObject> rejected = new HashSet<HealthObject>();
+#endif
 
         static bool Accepts(ImpactDetector d, HashSet<ImpactChannel>? channels) {
             if (channels == null || channels.Count == 0 || d.Channels == null) return true; // nothing to compare: do not silently hit nothing
@@ -631,7 +678,13 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupBasedSkill), nameof(PickupBasedSkill.SendSerializedMessage))]
         static class Status {
             static readonly int T = Timing.Section("patch PickupBasedSkill.SendSerializedMessage / HolyArrow.Status");
+#if QUEST
+            static void Postfix(PickupBasedSkill __instance, IPlayer __0, Il2CppAlta.Serialization.Stream __1) {
+                ToolBasedSkillStatus ___status = __instance.status;
+                uint ___pickupIdentifier = __instance.pickupIdentifier;
+#else
             static void Postfix(PickupBasedSkill __instance, IPlayer __0, Alta.Serialization.Stream __1, ToolBasedSkillStatus ___status, uint ___pickupIdentifier) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (!(__instance is LightBeamSkill) || __1 == null || !__1.IsReading || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer) return;
                 ToolBasedSkillStatus status = ___status;
@@ -667,8 +720,13 @@ namespace BluesArcheryOverhaul {
 
         [HarmonyPatch(typeof(Projectile), "SyncCollided")]
         static class LandedOnClient {
+#if QUEST
+            static readonly int T = Timing.Section("patch Projectile.SyncCollided / HolyArrow.LandedOnClient");
+            static void Postfix(Projectile __instance, Il2CppAlta.Serialization.Stream stream) {
+#else
             static readonly int T = Timing.Section("patch Projectile.SyncCollided / HolyArrow.LandedOnClient");
             static void Postfix(Projectile __instance, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (stream == null || !stream.IsReading || NetworkSceneManager.IsServer || ApplicationManager.IsHeadless || __instance == null) return;
@@ -912,7 +970,11 @@ namespace BluesArcheryOverhaul {
             static readonly int T_MarkAll = Timing.Section("look HolyArrow.StunMarker.MarkAll (overlap)");
             internal static int MarkAll(Vector3 point) {
                 using var _t = Timing.Begin(T_MarkAll);
+#if QUEST
+                var seen = new HashSet<HealthObject>(Il.ByPointer<HealthObject>());
+#else
                 var seen = new HashSet<HealthObject>();
+#endif
                 int count = 0;
                 foreach (Collider c in Physics.OverlapSphere(point, radius.Value)) {
                     if (c == null || c.isTrigger) continue;

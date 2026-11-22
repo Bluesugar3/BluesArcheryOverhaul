@@ -132,7 +132,11 @@ namespace BluesArcheryOverhaul {
             public bool failed;
         }
 
+#if QUEST
+        static readonly Dictionary<BowString, Ember> embers = new Dictionary<BowString, Ember>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, Ember> embers = new Dictionary<BowString, Ember>();
+#endif
         static readonly List<BowString> gone = new List<BowString>();
         static float lastEmberLog = float.NegativeInfinity;
 
@@ -238,7 +242,11 @@ namespace BluesArcheryOverhaul {
         }
 
         static void Remove(BowString bow) {
+#if QUEST
+            if (Il.Same(bow, null) || !embers.TryGetValue(bow, out Ember e)) return;
+#else
             if (ReferenceEquals(bow, null) || !embers.TryGetValue(bow, out Ember e)) return;
+#endif
             embers.Remove(bow);
             if (e.go != null) UnityEngine.Object.Destroy(e.go);
         }

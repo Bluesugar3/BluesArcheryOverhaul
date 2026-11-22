@@ -33,13 +33,21 @@ namespace BluesArcheryOverhaul {
         static readonly Func<BowString, float, float> GetStrength =
             AccessTools.MethodDelegate<Func<BowString, float, float>>(AccessTools.Method(typeof(BowString), "GetStrength", new[] { typeof(float) }));
 
+#if QUEST
+        static readonly Dictionary<BowString, DrawRecord> records = new Dictionary<BowString, DrawRecord>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, DrawRecord> records = new Dictionary<BowString, DrawRecord>();
+#endif
         static readonly List<BowString> dead = new List<BowString>();
         static readonly Dictionary<uint, Resolution> releases = new Dictionary<uint, Resolution>();
         static readonly Dictionary<uint, Build> releaseBuilds = new Dictionary<uint, Build>(); // the build each release was decided with
         static readonly HashSet<string> livePatches = new HashSet<string>();
+#if QUEST
+        // Quest: BowDrawSkill.inputs and BowStringPullbackInputMethod.isInPullbackRange are proxy properties, read directly below
+#else
         static AccessTools.FieldRef<BowDrawSkill, Dictionary<BowString, ISkillInputMethod>>? inputsRef;
         static AccessTools.FieldRef<BowStringPullbackInputMethod, bool>? inRangeRef;
+#endif
         static bool warnedClock, warnedInputs;
         static bool ours; // set while this mod resets the inputs on a shot, so the game's own resets can be told apart
 
@@ -95,11 +103,18 @@ namespace BluesArcheryOverhaul {
         /// <summary>The release decided for this arrow on this machine, if it is still remembered.</summary>
         internal static Resolution? ReleaseOf(uint arrowId) => releases.TryGetValue(arrowId, out Resolution r) ? r : (Resolution?)null;
 
+#if QUEST
+        static Il2CppSystem.Collections.Generic.Dictionary<BowString, ISkillInputMethod>? InputsOf(BowDrawSkill skill) {
+            try {
+                return skill.inputs;
+            }
+#else
         static Dictionary<BowString, ISkillInputMethod>? InputsOf(BowDrawSkill skill) {
             try {
                 inputsRef ??= AccessTools.FieldRefAccess<BowDrawSkill, Dictionary<BowString, ISkillInputMethod>>("inputs");
                 return inputsRef(skill);
             }
+#endif
             catch (Exception e) {
                 if (!warnedInputs) { warnedInputs = true; MelonLogger.Error($"[Archery] Draw: cannot read the bow skills' inputs; releases read as uncharged: {e.Message}"); }
                 return null;
@@ -108,8 +123,12 @@ namespace BluesArcheryOverhaul {
 
         static bool InRange(BowStringPullbackInputMethod input) {
             try {
+#if QUEST
+                return input.isInPullbackRange;
+#else
                 inRangeRef ??= AccessTools.FieldRefAccess<BowStringPullbackInputMethod, bool>("isInPullbackRange");
                 return inRangeRef(input);
+#endif
             }
             catch { return false; }
         }
@@ -336,7 +355,11 @@ namespace BluesArcheryOverhaul {
         }
 
         // Server, play-test 7: the last holder of each bow string, so a string drawn by someone else starts fresh for them.
+#if QUEST
+        static readonly Dictionary<BowString, string> holders = new Dictionary<BowString, string>(Il.ByPointer<BowString>());
+#else
         static readonly Dictionary<BowString, string> holders = new Dictionary<BowString, string>();
+#endif
 
         static readonly int T_NewHolder = Timing.Section("Draws.NewHolder");
         static void NewHolder(BowString bow, Interactor? interactor) {
@@ -362,7 +385,11 @@ namespace BluesArcheryOverhaul {
                             $"{swept} input(s) of other holders or of skills '{name}' does not own removed from Quickdraw, Charge Shot, the Volley and Holy Arrow)");
         }
 
+#if QUEST
+        // Quest: BowDrawSkill.bowStrings is a proxy property, read directly below
+#else
         static AccessTools.FieldRef<BowDrawSkill, Dictionary<ISkillInputMethod, BowString>>? bowStringsRef;
+#endif
 
         // Fix batch D (fixA-review I-3): on a handover, every input on this string that is not the new holder's goes, in all four
         // bow skills (not only the ones the new holder owns: BowDrawSkill.Register, and so StaleInputs, runs only for those).
@@ -377,14 +404,23 @@ namespace BluesArcheryOverhaul {
             foreach (BowDrawSkill? skill in new[] { Tree.Quickdraw, Tree.Slowdraw, VolleySkill.Skill, Tree.Holy }) {
                 if (skill == null) continue;
                 try {
+#if QUEST
+                    var byInput = skill.bowStrings;
+                    var inputs = InputsOf(skill);
+#else
                     bowStringsRef ??= AccessTools.FieldRefAccess<BowDrawSkill, Dictionary<ISkillInputMethod, BowString>>("bowStrings");
                     Dictionary<ISkillInputMethod, BowString> byInput = bowStringsRef(skill);
                     Dictionary<BowString, ISkillInputMethod>? inputs = InputsOf(skill);
+#endif
                     if (byInput == null) continue;
                     bool owned = pm == null || pm.GetLevel(skill) > 0; // a manager that cannot be read keeps the holder's own inputs
                     var drop = new List<ISkillInputMethod>();
                     foreach (KeyValuePair<ISkillInputMethod, BowString> kv in byInput) {
+#if QUEST
+                        if (kv.Key == null || !Il.Same(kv.Value, bow)) continue;
+#else
                         if (kv.Key == null || !ReferenceEquals(kv.Value, bow)) continue;
+#endif
                         HeldPickupHandler h = kv.Key.Handler;
                         Player? owner = h != null && h.PlayerHelper != null ? h.PlayerHelper.Player : null;
                         if (!StaleInputRule.Wanted(!StaleInputRule.Foreign(owner, holder!), true, owned)) drop.Add(kv.Key);
@@ -402,7 +438,11 @@ namespace BluesArcheryOverhaul {
                         OwnTime.Forget(old);
                         DrawGrace.Forget(old);
                         try { old.Clear(); } catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: clearing another holder's input failed: {e.Message}"); }
+#if QUEST
+                        if (inputs != null && inputs.TryGetValue(bow, out ISkillInputMethod now) && Il.Same(now, old)) inputs.Remove(bow);
+#else
                         if (inputs != null && inputs.TryGetValue(bow, out ISkillInputMethod now) && ReferenceEquals(now, old)) inputs.Remove(bow);
+#endif
                         n++;
                     }
                 }
@@ -434,6 +474,7 @@ namespace BluesArcheryOverhaul {
         // kept sending ChargingStarted and Cancelled for a skill the player no longer owned. Now, when the game's own call left a bow
         // input that no other skill on that pickup uses (it returns early itself when one does) and did not clear it, it is cleared
         // here (StaleInputRule.ClearAfterDeregister). Server only, bow inputs only: nothing else changes.
+#if !QUEST // server-only: the game's bow skills run on the server (CLAUDE.md, skill logic is server-side)
         [HarmonyPatch(typeof(HeldPickupHandler), nameof(HeldPickupHandler.DeregisterSkill))]
         static class Orphans {
             static readonly int TPrefix = Timing.Section("patch HeldPickupHandler.DeregisterSkill / Draws.Orphans prefix");
@@ -455,7 +496,11 @@ namespace BluesArcheryOverhaul {
                 try {
                     Live(ref live6, "HeldPickupHandler.DeregisterSkill");
                     bool stillUsed = false;
+#if QUEST
+                    foreach (KeyValuePair<IInputBasedSkill, ISkillInputMethod> kv in __instance.SkillsToInputs) if (Il.Same(kv.Value, __state)) { stillUsed = true; break; }
+#else
                     foreach (KeyValuePair<IInputBasedSkill, ISkillInputMethod> kv in __instance.SkillsToInputs) if (ReferenceEquals(kv.Value, __state)) { stillUsed = true; break; }
+#endif
                     // the game cleared it itself when it was active (the Clear is deferred, so it still reads active here)
                     if (!StaleInputRule.ClearAfterDeregister(stillUsed, __state.IsActive)) return;
                     OwnTime.Forget(__state);
@@ -468,6 +513,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: clearing a dropped skill's input failed: {e.Message}"); }
             }
         }
+#endif
 
         // A fresh grab starts a fresh draw: the last draw's span never ended (HeldUpdate stops with the release), so
         // without this the next shot would be timed from the previous crossing.
@@ -504,6 +550,7 @@ namespace BluesArcheryOverhaul {
         // it is still known, unhooked from the skill, and cleared (unsubscribed from the string). Every BowDrawSkill (Quickdraw,
         // Slowdraw, the mod's Volley copy, Lightbeam) runs this method. The StringReleased exception itself is not touched (the
         // server gets InteractEnd before the shot message; a clean release would reset the inputs before OnArrowShot).
+#if !QUEST // server-only: the game's bow skills run on the server (CLAUDE.md, skill logic is server-side)
         [HarmonyPatch(typeof(BowDrawSkill), nameof(BowDrawSkill.Register), new[] { typeof(ISkillInputMethod) })]
         static class StaleInputs {
             static readonly int T = Timing.Section("patch BowDrawSkill.Register / Draws.StaleInputs");
@@ -537,7 +584,11 @@ namespace BluesArcheryOverhaul {
                         DrawGrace.Forget(old);
                         try { old.Clear(); } catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: clearing a stale input failed: {e.Message}"); }
                     }
+#if QUEST
+                    if (___inputs.TryGetValue(s, out ISkillInputMethod cur) && !Il.Same(cur, input)) ___inputs.Remove(s);
+#else
                     if (___inputs.TryGetValue(s, out ISkillInputMethod cur) && !ReferenceEquals(cur, input)) ___inputs.Remove(s);
+#endif
                     if (logged >= LogCap || !Logs.Summary) return; // G2: Summary (a stale input is an open bug's trace); nothing below acts
                     var parts = new List<string>();
                     foreach (KeyValuePair<string, int> kv in whose) parts.Add($"'{kv.Key}' x{kv.Value}");
@@ -549,6 +600,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: stale input check failed, the game registers as before: {e.Message}"); }
             }
         }
+#endif
 
         static string OwnerName(ISkillInputMethod? input) {
             HeldPickupHandler h = input != null ? input.Handler : null!;
@@ -559,10 +611,26 @@ namespace BluesArcheryOverhaul {
 
         static string Label(object? skill) {
             if (skill == null) return "?";
+#if QUEST
+            if (Il.Same(skill, Tree.Slowdraw)) return "Slowdraw";
+#else
             if (ReferenceEquals(skill, Tree.Slowdraw)) return "Slowdraw";
+#endif
+#if QUEST
+            if (VolleySkill.Skill != null && Il.Same(skill, VolleySkill.Skill)) return "Volley";
+#else
             if (VolleySkill.Skill != null && ReferenceEquals(skill, VolleySkill.Skill)) return "Volley";
+#endif
+#if QUEST
+            if (Il.Same(skill, Tree.Holy)) return "Holy Arrow";
+#else
             if (ReferenceEquals(skill, Tree.Holy)) return "Holy Arrow";
+#endif
+#if QUEST
+            if (Il.Same(skill, Tree.Quickdraw)) return "Quickdraw";
+#else
             if (ReferenceEquals(skill, Tree.Quickdraw)) return "Quickdraw";
+#endif
             return SkillName(skill);
         }
 
@@ -574,7 +642,11 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(BowStringPullbackInputMethod), "CheckForPullback")]
         static class DrawGrace {
             static readonly int T = Timing.Section("patch BowStringPullbackInputMethod.CheckForPullback / Draws.DrawGrace");
+#if QUEST
+            static readonly Dictionary<BowStringPullbackInputMethod, float> belowSince = new Dictionary<BowStringPullbackInputMethod, float>(Il.ByPointer<BowStringPullbackInputMethod>());
+#else
             static readonly Dictionary<BowStringPullbackInputMethod, float> belowSince = new Dictionary<BowStringPullbackInputMethod, float>();
+#endif
 
             internal static void Forget(ISkillInputMethod input) { if (input is BowStringPullbackInputMethod b) belowSince.Remove(b); }
 
@@ -598,7 +670,11 @@ namespace BluesArcheryOverhaul {
                     // G2: Summary for a STALE input (it traces an open bug), Debug for a live one; nothing here acts, it only reads
                     if (!Logs.Summary) return true;
                     var map = ___skill is BowDrawSkill b ? InputsOf(b) : null;
+#if QUEST
+                    bool live = map != null && map.TryGetValue(___bowString, out ISkillInputMethod cur) && Il.Same(cur, __instance);
+#else
                     bool live = map != null && map.TryGetValue(___bowString, out ISkillInputMethod cur) && ReferenceEquals(cur, __instance);
+#endif
                     if (live && !Logs.Debug) return true;
                     HeldPickupHandler h = ((ISkillInputMethod)__instance).Handler;
                     string who = h != null && h.PlayerHelper != null && h.PlayerHelper.Player != null ? Builds.NameOf(h.PlayerHelper.Player) : "?";
@@ -669,6 +745,7 @@ namespace BluesArcheryOverhaul {
         // OnShoot raises OnShootingEntity for every handler, so this runs after every skill's OnArrowShot (and after
         // Volley.Fire). CheckForPullback returns early with no arrow docked, so an input still in range would otherwise
         // keep timing and charge the next arrow.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowString), "OnShoot")]
         static class ShotReset {
             static readonly int T = Timing.Section("patch BowString.OnShoot / Draws.ShotReset");
@@ -690,7 +767,11 @@ namespace BluesArcheryOverhaul {
                             bool live = input.IsActive || (input is BowStringPullbackInputMethod pull && InRange(pull));
                             if (!live) continue;
                             foreach (KeyValuePair<IInputBasedSkill, ISkillInputMethod> kv in handler.SkillsToInputs)
+#if QUEST
+                                if (Il.Same(kv.Value, input) && kv.Key != null) charging.Add(SkillName(kv.Key.Skill));
+#else
                                 if (ReferenceEquals(kv.Value, input) && kv.Key != null) charging.Add(SkillName(kv.Key.Skill));
+#endif
                         }
                         ours = true;
                         try {
@@ -727,6 +808,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: input reset on release failed: {e}"); }
             }
         }
+#endif
 
         // The game's own clears after a shot, timed against it (a few lines per shot, for the log only).
         static bool TakeGameLine(DrawRecord rec, out int ms) {
@@ -737,6 +819,7 @@ namespace BluesArcheryOverhaul {
             return true;
         }
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowStringPullbackInputMethod), nameof(BowStringPullbackInputMethod.Reset))]
         static class GameReset {
             static readonly int T = Timing.Section("patch BowStringPullbackInputMethod.Reset / Draws.GameReset");
@@ -752,9 +835,11 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: reset log failed: {e.Message}"); }
             }
         }
+#endif
 
         // Runs when the held pickup's interaction ends (PlayerToolBasedSkillHelper.InteractionEnded): the bow or the
         // string, which the log settles. Each input's own Reset follows one frame later.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(HeldPickupHandler), nameof(HeldPickupHandler.Clear))]
         static class GameClear {
             static readonly int T = Timing.Section("patch HeldPickupHandler.Clear / Draws.GameClear");
@@ -778,6 +863,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: clear log failed: {e.Message}"); }
             }
         }
+#endif
     }
 
     // Server: each player's own charge time. The game's Slowdraw and Volley timers are shared by every player and set to
@@ -828,7 +914,11 @@ namespace BluesArcheryOverhaul {
         static bool handleProven;
         static bool sending, warned;
 
+#if QUEST
+        static string Label(BowDrawSkill skill) => Il.Same(skill, Tree.Slowdraw) ? "Slowdraw" : "Volley";
+#else
         static string Label(BowDrawSkill skill) => ReferenceEquals(skill, Tree.Slowdraw) ? "Slowdraw" : "Volley";
+#endif
 
         static Player? OwnerOf(ISkillInputMethod input) {
             HeldPickupHandler handler = input != null ? input.Handler : null!;
@@ -838,23 +928,43 @@ namespace BluesArcheryOverhaul {
         /// <summary>Seconds after the crossing at which this skill is charged for this build; null for a skill the mod does not time.</summary>
         static float? OwnSeconds(BowDrawSkill skill, Build b) {
             if (skill == null) return null;
+#if QUEST
+            if (Il.Same(skill, Tree.Slowdraw)) return Paths.StagesFor(b).S1;
+#else
             if (ReferenceEquals(skill, Tree.Slowdraw)) return Paths.StagesFor(b).S1;
+#endif
+#if QUEST
+            if (VolleySkill.Skill != null && Il.Same(skill, VolleySkill.Skill)) return Paths.VolleyTimesFor(b).VolleyAt;
+#else
             if (VolleySkill.Skill != null && ReferenceEquals(skill, VolleySkill.Skill)) return Paths.VolleyTimesFor(b).VolleyAt;
+#endif
             return null;
         }
 
         static int Find(BowDrawSkill skill, BowString bow) {
+#if QUEST
+            for (int i = 0; i < waits.Count; i++) if (Il.Same(waits[i].skill, skill) && Il.Same(waits[i].bow, bow)) return i;
+#else
             for (int i = 0; i < waits.Count; i++) if (ReferenceEquals(waits[i].skill, skill) && ReferenceEquals(waits[i].bow, bow)) return i;
+#endif
             return -1;
         }
 
         static int Ms(float? s) => s.HasValue ? Mathf.RoundToInt(s.Value * 1000f) : -1;
 
         /// <summary>Server, play-test 7: a stale input (Draws.StaleInputs) holds nothing back any more.</summary>
+#if QUEST
+        internal static void Forget(ISkillInputMethod input) => waits.RemoveAll(w => Il.Same(w.input, input));
+#else
         internal static void Forget(ISkillInputMethod input) => waits.RemoveAll(w => ReferenceEquals(w.input, input));
+#endif
 
         /// <summary>Server, play-test 7: someone else took this string; every charge held back on it goes. How many went.</summary>
+#if QUEST
+        internal static int ForgetBow(BowString bow) => waits.RemoveAll(w => Il.Same(w.bow, bow));
+#else
         internal static int ForgetBow(BowString bow) => waits.RemoveAll(w => ReferenceEquals(w.bow, bow));
+#endif
 
         static bool warnedDeliver;
 
@@ -874,7 +984,11 @@ namespace BluesArcheryOverhaul {
                     if (i >= waits.Count) continue; // G5: a delivery below may change the list
                     Wait w = waits[i];
                     if (w.bow == null || w.input == null || Time.time - w.since > StaleSeconds) { waits.RemoveAt(i); continue; }
+#if QUEST
+                    if (!Il.Same(w.bow, bow)) continue;
+#else
                     if (!ReferenceEquals(w.bow, bow)) continue;
+#endif
                     if (!w.input.IsActive) { waits.RemoveAt(i); continue; } // cancelled or shot meanwhile: nothing to send
                     Player? owner = OwnerOf(w.input);
                     float? own = OwnSeconds(w.skill, Builds.ServerBuild(owner));
@@ -896,6 +1010,7 @@ namespace BluesArcheryOverhaul {
 
         // The Charged status of Slowdraw and the Volley skill (BowDrawSkill.HandleInputChanged -> SetEffectActive). Holy Arrow
         // (a LightBeamSkill, which calls this as its base) is held by its own patch, HolyArrow.Arm.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowDrawSkill), "HandleInputChanged")]
         static class Hold {
             static readonly int T = Timing.Section("patch BowDrawSkill.HandleInputChanged / Draws.Hold");
@@ -924,10 +1039,12 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: own-time check failed, the game's timer stands: {e.Message}"); return true; }
             }
         }
+#endif
 
         // An arrow shot while its Charged status is still held back: not charged for this player (the resolver says the same),
         // so the game's skill does nothing. With the shooter's trusted claim the release may already be on time (the echo fix):
         // then the game's skill runs as usual.
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowDrawSkill), "OnArrowShot")]
         static class NotYet {
             static readonly int T = Timing.Section("patch BowDrawSkill.OnArrowShot / Draws.NotYet");
@@ -950,5 +1067,6 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: own-time shot check failed: {e.Message}"); return true; }
             }
         }
+#endif
     }
 }

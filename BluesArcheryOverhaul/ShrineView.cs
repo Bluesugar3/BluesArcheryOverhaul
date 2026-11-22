@@ -115,8 +115,16 @@ namespace BluesArcheryOverhaul {
                 SkillShrine s = known[i];
                 if (s == null) { known.RemoveAt(i); continue; }
                 if (!IsRanged(s)) continue;
+#if QUEST
+                if (found == null || Il.Same(s, site)) found = s;   // the one already shown stays, should there be two
+#else
                 if (found == null || ReferenceEquals(s, site)) found = s;   // the one already shown stays, should there be two
+#endif
+#if QUEST
+                if (s.IsOpen && !Il.Same(s, closing) && s.CurrentManager != null) open = s;
+#else
                 if (s.IsOpen && !ReferenceEquals(s, closing) && s.CurrentManager != null) open = s;
+#endif
             }
             if (open != null) found = open;   // a tree someone has open wins
 
@@ -132,13 +140,21 @@ namespace BluesArcheryOverhaul {
                     // known yet ("?": the player's info had not arrived when the tree opened) is read again on each survey
                     // (twice a second, never per frame) until it resolves; the change then raises Changed and the tablet
                     // writes the name.
+#if QUEST
+                    bool sameOpening = siteOpen && Il.Same(manager, openerManager) && Il.Same(found, site);
+#else
                     bool sameOpening = siteOpen && ReferenceEquals(manager, openerManager) && ReferenceEquals(found, site);
+#endif
                     nowOpener = sameOpening && !Unresolved(opener) ? opener : NameOfOpener(manager!);
                     if (sameOpening && Unresolved(opener) && !Unresolved(nowOpener))
                         { if (Logs.Summary) MelonLogger.Msg($"[Archery] Shrine: the opener's name is now known: '{nowOpener}'"); }
                 }
             }
+#if QUEST
+            if (Il.Same(found, site) && nowOpen == siteOpen && nowLocal == openerLocal && nowOpener == opener) return false;
+#else
             if (ReferenceEquals(found, site) && nowOpen == siteOpen && nowLocal == openerLocal && nowOpener == opener) return false;
+#endif
             bool wasOpen = siteOpen;
             string was = opener;
             site = found; siteOpen = nowOpen; openerLocal = nowLocal; opener = nowOpener; openerManager = nowOpen ? manager : null;
@@ -229,7 +245,11 @@ namespace BluesArcheryOverhaul {
         // (_decomp BoughtSkillVisualizer.cs:274-314 Serialize -> UpdateHolders(freePoints); re-sent on every points change,
         // ProgressionShrine.UpdateVisuals). The ring's filled holders are the skills held over all professions; UpdateHolders' argument
         // is the free points. Neither is a new message.
+#if QUEST
+        static readonly Dictionary<BoughtSkillVisualizer, int> freePoints = new Dictionary<BoughtSkillVisualizer, int>(Il.ByPointer<BoughtSkillVisualizer>());
+#else
         static readonly Dictionary<BoughtSkillVisualizer, int> freePoints = new Dictionary<BoughtSkillVisualizer, int>();
+#endif
         static bool warnedRing;
 
         [HarmonyPatch(typeof(BoughtSkillVisualizer), "UpdateHolders")]
@@ -441,7 +461,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless) return;
+#if QUEST
+                    bool held = Il.Same(Held, __instance);   // before the list test: a held orb that was never listed must not stay held
+#else
                     bool held = ReferenceEquals(Held, __instance);   // before the list test: a held orb that was never listed must not stay held
+#endif
                     if (held) Held = null;
                     if (!orbs.Remove(__instance) && !held) return;
                     Raise();

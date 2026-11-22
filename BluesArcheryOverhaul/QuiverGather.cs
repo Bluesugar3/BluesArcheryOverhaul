@@ -61,6 +61,7 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(Pickup), "OnUndocked")]
         static class TakenFromDock {
             static readonly int T = Timing.Section("patch Pickup.OnUndocked / QuiverGather.TakenFromDock");
@@ -82,6 +83,7 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Quiver: tracking failed: {e.Message}"); }
             }
         }
+#endif
 
         static void Trim(PlayerController owner) {
             int mine = 0;
@@ -97,6 +99,7 @@ namespace BluesArcheryOverhaul {
             catch { return "?"; }
         }
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(Pickup), "OnDocked")]
         static class PutIntoDock {
             static readonly int T = Timing.Section("patch Pickup.OnDocked / QuiverGather.PutIntoDock");
@@ -105,7 +108,11 @@ namespace BluesArcheryOverhaul {
                 try {
                     if (!NetworkSceneManager.IsServer || pickup == null || dock == null || pickup.Entity == null) return;
                     uint id = pickup.Entity.Identifier;
+#if QUEST
+                    if (!tracked.TryGetValue(id, out Tracked t) || !Il.Same(t.pickup, pickup)) return; // G2: ids are reused; the entry must be this arrow's
+#else
                     if (!tracked.TryGetValue(id, out Tracked t) || !ReferenceEquals(t.pickup, pickup)) return; // G2: ids are reused; the entry must be this arrow's
+#endif
                     if (dock == t.quiver) { tracked.Remove(id); return; }           // back home by hand
                     if (IsBowStringDock(dock)) { t.shot = false; return; }          // nocked again: countdown restarts on the next shot
                     tracked.Remove(id);                                              // stored somewhere else: an ordinary arrow now
@@ -114,19 +121,26 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Quiver: dock check failed: {e.Message}"); }
             }
         }
+#endif
 
+#if !QUEST // server-only: every patch method returns at once on a client
         [HarmonyPatch(typeof(BowString), "OnShoot")]
         static class Shot {
             static readonly int T = Timing.Section("patch BowString.OnShoot / QuiverGather.Shot");
             static void Postfix(Pickup arg2) {
                 using var _t = Timing.Begin(T);
                 if (!NetworkSceneManager.IsServer || arg2 == null || arg2.Entity == null) return;
+#if QUEST
+                if (!tracked.TryGetValue(arg2.Entity.Identifier, out Tracked t) || !Il.Same(t.pickup, arg2)) return; // G2: by reference
+#else
                 if (!tracked.TryGetValue(arg2.Entity.Identifier, out Tracked t) || !ReferenceEquals(t.pickup, arg2)) return; // G2: by reference
+#endif
                 try { if (Skyfall.IsCast(arg2.Entity.Identifier)) { tracked.Remove(arg2.Entity.Identifier); return; } } catch (Exception e) { MelonLogger.Warning($"[Archery] Skyfall: quiver check failed: {e.Message}"); } // Skyfall: the arrow is used up, never returned
                 t.shot = true;
                 t.due = Time.time + returnSeconds.Value;
             }
         }
+#endif
 
         // ---------------------------------------------------------------- server: the return
 

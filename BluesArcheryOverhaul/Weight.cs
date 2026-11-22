@@ -189,7 +189,11 @@ namespace BluesArcheryOverhaul {
             public bool FullSinceKnockDown;
             public StatHandler? OnPool;
             public Stat? Pool;
+#if QUEST
+            public Il2CppAlta.Intelligence.Agent? Agent;
+#else
             public Alta.Intelligence.Agent? Agent;
+#endif
             public bool AgentSearched;
             public float Spiritual = float.NaN;
         }
@@ -249,8 +253,13 @@ namespace BluesArcheryOverhaul {
         // ---------------------------------------------------------------- the knock-down probes (server)
 
         static readonly Type[] KnockDownTypes = {
+#if QUEST
+            typeof(Il2CppAlta.Intelligence.Turabada), typeof(Il2CppAlta.Intelligence.Gotera), typeof(Il2CppAlta.Intelligence.GreaterGotera),
+            typeof(Il2CppAlta.Intelligence.Babu), typeof(Il2CppAlta.Intelligence.Dragonfly),
+#else
             typeof(Alta.Intelligence.Turabada), typeof(Alta.Intelligence.Gotera), typeof(Alta.Intelligence.GreaterGotera),
             typeof(Alta.Intelligence.Babu), typeof(Alta.Intelligence.Dragonfly),
+#endif
         };
 
         [HarmonyPatch]
@@ -263,7 +272,11 @@ namespace BluesArcheryOverhaul {
             }
 
             static readonly int T = Timing.Section("patch Agent.Stun (5 creature types) / Weight.KnockDown");
+#if QUEST
+            static void Postfix(Il2CppAlta.Intelligence.Agent __instance, float strength) {
+#else
             static void Postfix(Alta.Intelligence.Agent __instance, float strength) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (!NetworkSceneManager.IsServer || __instance == null) return;
@@ -507,7 +520,11 @@ namespace BluesArcheryOverhaul {
                 afterInterrupt.RemoveAt(i--);
                 string now2 = "none";
                 if (c.Agent != null) {
+#if QUEST
+                    Il2CppAlta.Intelligence.IActiveAction act = c.Agent.ActiveAction;
+#else
                     Alta.Intelligence.IActiveAction act = c.Agent.ActiveAction;
+#endif
                     if (act != null && act.Action != null) now2 = act.Action.Name;
                 }
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Weight: after interrupt '{c.Name}' now '{now2}'");
@@ -544,13 +561,21 @@ namespace BluesArcheryOverhaul {
             catch (Exception e) { MelonLogger.Warning($"[Archery] Weight: line weight failed: {e}"); }
         }
 
+#if QUEST
+        static Il2CppAlta.Intelligence.Agent? AgentOf(Creature c) {
+#else
         static Alta.Intelligence.Agent? AgentOf(Creature c) {
+#endif
             if (c.AgentSearched) return c.Agent;
             c.AgentSearched = true;
             NetworkEntity e = c.Health.Entity;
             NetworkEntity root = e != null ? e.PrefabRoot : null!;
             if (root == null) return null;
+#if QUEST
+            foreach (Il2CppAlta.Intelligence.Agent agent in root.GetComponentsInChildren<Il2CppAlta.Intelligence.Agent>(true))
+#else
             foreach (Alta.Intelligence.Agent agent in root.GetComponentsInChildren<Alta.Intelligence.Agent>(true))
+#endif
                 if (agent != null && agent.HealthObject == c.Health) { c.Agent = agent; break; }
             return c.Agent;
         }
@@ -561,11 +586,21 @@ namespace BluesArcheryOverhaul {
             HealthObject h = c.Health;
             if (h == null || h is PlayerHealth) return;
             float now = Time.time;
+#if QUEST
+            Il2CppAlta.Intelligence.Agent? agent = AgentOf(c);
+            Il2CppAlta.Intelligence.IActiveAction? active = agent != null ? agent.ActiveAction : null;
+            Il2CppAlta.Intelligence.IAction? action = active?.Action;
+#else
             Alta.Intelligence.Agent? agent = AgentOf(c);
             Alta.Intelligence.IActiveAction? active = agent != null ? agent.ActiveAction : null;
             Alta.Intelligence.IAction? action = active?.Action;
+#endif
             bool cancellable = action != null && action.GeneralSettings != null && action.GeneralSettings.IsCancellable;
+#if QUEST
+            bool wyrm = agent is Il2CppAlta.Intelligence.Wyrm;
+#else
             bool wyrm = agent is Alta.Intelligence.Wyrm;
+#endif
             string reason;
             if (!interrupt.Value) reason = "skipped (off)";
             else if (agent == null) reason = "skipped (no Agent found)";

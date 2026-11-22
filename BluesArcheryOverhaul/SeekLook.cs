@@ -297,7 +297,11 @@ namespace BluesArcheryOverhaul {
         static void Retire(Material? old) {
             if (old == null) return;
             try { UnityEngine.Object.Destroy(old, 120f); } catch { }
+#if QUEST
+            if (Il.Same(old, headMaterial)) headMaterial = null;
+#else
             if (ReferenceEquals(old, headMaterial)) headMaterial = null;
+#endif
         }
 
         internal static Material? HeadMaterial() {

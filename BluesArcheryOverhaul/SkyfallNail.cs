@@ -509,7 +509,11 @@ namespace BluesArcheryOverhaul {
         internal static void Tick() {
             if (ApplicationManager.IsHeadless) return;
             try {
+#if QUEST
+                var me = Il2Cpp.Player.Current;
+#else
                 var me = global::Player.Current;
+#endif
                 if (me == null || (me is UnityEngine.Object o && o == null)) {
                     if (runs.Count > 0) Clear();
                     return;

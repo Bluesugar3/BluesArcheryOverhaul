@@ -115,7 +115,11 @@ namespace BluesArcheryOverhaul {
                 if (root == null) return;
                 power = Hits.Power(root);
                 foreach (ImpactTool t in Hits.Tools(root, arrowTools)) {
+#if QUEST
+                    if (Il.Same(t, root)) continue;
+#else
                     if (ReferenceEquals(t, root)) continue;
+#endif
                     string part = TelemetryRules.KindName(t.name);
                     if (part != "?" && kind.Length + part.Length < 80 && kind.IndexOf(part, StringComparison.Ordinal) < 0) kind += " + " + part;
                 }

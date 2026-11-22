@@ -220,7 +220,11 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(ShootArguments), nameof(ShootArguments.Serialize))]
         static class Bits {
             static readonly int T = Timing.Section("patch ShootArguments.Serialize / Claims.Bits");
+#if QUEST
+            static void Postfix(ref ShootArguments __instance, IPlayer player, Il2CppAlta.Serialization.Stream stream) {
+#else
             static void Postfix(ref ShootArguments __instance, IPlayer player, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (stream == null) return;
                 try {
@@ -246,7 +250,11 @@ namespace BluesArcheryOverhaul {
         // Either side. Never removes the claim: the client may serialise twice (to the server, then to players) and the
         // server's relay is serialised once for all recipients; every pass must write the same bits.
         static readonly int T_Write = Timing.Section("Claims.Write (shot claim)");
+#if QUEST
+        static void Write(uint id, Il2CppAlta.Serialization.Stream stream, float now) {
+#else
         static void Write(uint id, Alta.Serialization.Stream stream, float now) {
+#endif
             using var _t = Timing.Begin(T_Write, id);
             Live("writing");
             if (!outgoing.TryGet(id, now, out ShotClaim? claim) || claim == null) return;
@@ -258,7 +266,11 @@ namespace BluesArcheryOverhaul {
 
         // Either side: the server reads the shooter's claim, clients read the server's relay.
         static readonly int T_Read = Timing.Section("Claims.Read (shot claim)");
+#if QUEST
+        static void Read(uint id, IPlayer? player, Il2CppAlta.Serialization.Stream stream, float now) {
+#else
         static void Read(uint id, IPlayer? player, Alta.Serialization.Stream stream, float now) {
+#endif
             using var _t = Timing.Begin(T_Read, id);
             Live("reading");
             bool server = NetworkSceneManager.IsServer;

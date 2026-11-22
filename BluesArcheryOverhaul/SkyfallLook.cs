@@ -601,7 +601,11 @@ namespace BluesArcheryOverhaul {
                 var centre = new Vector3((float)s.CX, (float)s.CY, (float)s.CZ);
                 if (!Finite(centre)) return;
                 if (!caster) {
+#if QUEST
+                    Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current as Il2Cpp.Player);
+#else
                     Vector3? head = Targets.HeadOf(global::Player.Current as global::Player);
+#endif
                     float max = LookMaxMetres;
                     if (head.HasValue && (head.Value - centre).sqrMagnitude > max * max) {
                         if (Logs.Debug) MelonLogger.Msg(Inv($"[Archery] Skyfall: storm {s.ArrowId} is {(head.Value - centre).magnitude:0} m away (LookMaxMetres {max:0}); not drawn here"));
@@ -714,7 +718,11 @@ namespace BluesArcheryOverhaul {
         /// search runs in a release's frame. No player (a disconnect): everything released.</summary>
         internal static void Tick() {
             if (ApplicationManager.IsHeadless) return;
+#if QUEST
+            var me = Il2Cpp.Player.Current;
+#else
             var me = global::Player.Current;
+#endif
             if (me == null || (me is UnityEngine.Object o && o == null)) {
                 playerSince = -1f;
                 if (runs.Count > 0 || scorches.Count > 0) Clear();

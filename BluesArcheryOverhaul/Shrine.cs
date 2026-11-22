@@ -19,9 +19,11 @@ namespace BluesArcheryOverhaul {
         static readonly HashSet<string> livePatches = new HashSet<string>();
         static readonly Dictionary<string, SkillStatus> blockLogged = new Dictionary<string, SkillStatus>(); // "player|orb" -> status last logged
         static bool warnedBlock, warnedFields;
+#if !QUEST // the server's sale bookkeeping: never on a headset
         static AccessTools.FieldRef<PlayerProgressionManager, Dictionary<uint, int>>? skillLevel;
         static AccessTools.FieldRef<PlayerProgressionManager, int>? ownedCount;
         static AccessTools.FieldRef<PlayerProgressionManager, bool>? canBuyMore;
+#endif
         const int LogTrimAt = 256;
 
         // G2: one flag per patch (no string hashed per frame); the set still says each patch once.
@@ -73,6 +75,7 @@ namespace BluesArcheryOverhaul {
             if (Logs.Summary) MelonLogger.Msg($"[Archery] Shrine: '{name}' sees {orb} as {now} (was {was}; free points {freePoints}, cost {slot!.Cost}): they already own {owned}; only one ultimate can be bought (it can still be tried)");
         }
 
+#if !QUEST // server-only patches (each returns at once on a client): left out of the Quest build
         [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.IsSlotAvailable))]
         static class PathAvailable {
             static readonly int T = Timing.Section("patch PathExperience.IsSlotAvailable / Shrine.PathAvailable");
@@ -219,6 +222,8 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#endif
+
         // ---------------------------------------------------------------- practice by use (server)
 
         /// <summary>Server: when the owner is trying out this orb in the shrine, using it once (`how`) counts as its practice.
@@ -243,6 +248,7 @@ namespace BluesArcheryOverhaul {
         // ponytail: the owner, 2026-11-20 ("for now when you grab it, it completes the tutorial"): grabbing one of the four later
         // orbs practises it at once, since Ricochet's own practice could not be finished in play (cause not found yet). Their
         // own-action practice above stays; remove this patch to go back to it.
+#if !QUEST // server-only
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.PracticeSlot))]
         static class PractiseOnGrab {
             static readonly int T = Timing.Section("patch PlayerProgressionManager.PracticeSlot / Shrine.PractiseOnGrab");
@@ -257,6 +263,7 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#endif
         /// <summary>Server: the owner has this orb in the shrine's try-out area right now (Shatter: a networked thing there counts as struck; it is practised on the charged release, Volley.Launch).</summary>
         internal static bool Trying(Player? owner, Orb orb) {
             try {

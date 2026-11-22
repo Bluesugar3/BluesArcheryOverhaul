@@ -340,7 +340,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>Clients: this game's account (Player.Current's UserInfo.Identifier); 0 when unknown.</summary>
         internal static int OwnAccount {
             get {
+#if QUEST
+                IPlayer? me = Il2Cpp.Player.Current;
+#else
                 IPlayer? me = global::Player.Current;
+#endif
                 if (me is UnityEngine.Object o && o == null) return 0;   // a destroyed player counts as none
                 return me?.UserInfo?.Identifier ?? 0;
             }
@@ -604,7 +608,11 @@ namespace BluesArcheryOverhaul {
                 /// <summary>Server: the destroys tried so far (SkyfallSeam.DestroyNext).</summary>
                 public int Tries;
             }
+#if QUEST
+            static readonly Dictionary<Arrow, Entry> holds = new Dictionary<Arrow, Entry>(Il.ByPointer<Arrow>());
+#else
             static readonly Dictionary<Arrow, Entry> holds = new Dictionary<Arrow, Entry>();
+#endif
             static readonly List<Arrow> scratch = new List<Arrow>();
             static bool keptWarned;   // the "could not be destroyed" warning, once a session
 

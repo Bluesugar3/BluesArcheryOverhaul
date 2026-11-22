@@ -33,7 +33,11 @@ namespace BluesArcheryOverhaul {
         static readonly Dictionary<uint, Pending> pending = new Dictionary<uint, Pending>(); // arrow id -> decided at Shooter.Shoot
         static readonly ArrowFlightSettingsDevianceMultiplierModifier?[] modifiers = new ArrowFlightSettingsDevianceMultiplierModifier?[4]; // [tier], 1..3
         static readonly HashSet<string> livePatches = new HashSet<string>();
+#if QUEST
+        // Quest: ArrowFlightSettingsDevianceMultiplierModifier.devianceMultiplier is a proxy property, set directly below
+#else
         static AccessTools.FieldRef<ArrowFlightSettingsDevianceMultiplierModifier, float>? multiplierRef;
+#endif
         static bool warnedModifier, warnedMax;
 
         static string F(float v, string format) => v.ToString(format, CultureInfo.InvariantCulture);
@@ -64,8 +68,12 @@ namespace BluesArcheryOverhaul {
 
         static bool SetMultiplier(ArrowFlightSettingsDevianceMultiplierModifier m, float value) {
             try {
+#if QUEST
+                m.devianceMultiplier = value;
+#else
                 multiplierRef ??= AccessTools.FieldRefAccess<ArrowFlightSettingsDevianceMultiplierModifier, float>("devianceMultiplier");
                 multiplierRef(m) = value;
+#endif
                 return true;
             }
             catch (Exception e) {
@@ -98,7 +106,11 @@ namespace BluesArcheryOverhaul {
 
         static bool IsOurs(ArrowFlightSettingsModifier m) {
             if (m == null) return false;
+#if QUEST
+            for (int t = 1; t <= 3; t++) if (Il.Same(m, modifiers[t])) return true;
+#else
             for (int t = 1; t <= 3; t++) if (ReferenceEquals(m, modifiers[t])) return true;
+#endif
             return false;
         }
 

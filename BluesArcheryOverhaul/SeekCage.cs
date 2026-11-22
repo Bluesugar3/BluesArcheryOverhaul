@@ -187,7 +187,11 @@ namespace BluesArcheryOverhaul {
         static void Refresh(Cage c, in SeekLook.Mark m) {
             c.Extents = m.Extents;
             if (m.Root != null) {
+#if QUEST
+                c.Offset = c.HasRoot && Il.Same(c.Root, m.Root) ? Vector3.Lerp(c.Offset, m.Offset, 0.35f) : m.Offset;
+#else
                 c.Offset = c.HasRoot && ReferenceEquals(c.Root, m.Root) ? Vector3.Lerp(c.Offset, m.Offset, 0.35f) : m.Offset;
+#endif
                 c.Root = m.Root; c.HasRoot = true;
             }
             else { c.HasRoot = false; c.Root = null; c.Centre = m.Centre; }

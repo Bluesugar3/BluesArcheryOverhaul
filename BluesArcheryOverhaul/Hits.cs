@@ -15,6 +15,10 @@ namespace BluesArcheryOverhaul {
         static RaycastHit[] buffer = new RaycastHit[64];
         const int Mask = ~(1 << 2); // everything except Unity's "Ignore Raycast" layer
         // G2: a cached field accessor instead of FieldInfo.GetValue on every hand-made hit (null when the field is missing, as before).
+#if QUEST
+        // Quest: ImpactDetector.hitCooldowns is a proxy property
+        static Il2CppSystem.Collections.Generic.Dictionary<ImpactTool, float>? Cooldowns(ImpactDetector detector) => detector.hitCooldowns;
+#else
         static readonly AccessTools.FieldRef<ImpactDetector, Dictionary<ImpactTool, float>>? cooldownRef = CooldownRef();
 
         static AccessTools.FieldRef<ImpactDetector, Dictionary<ImpactTool, float>>? CooldownRef() {
@@ -23,6 +27,7 @@ namespace BluesArcheryOverhaul {
         }
 
         static Dictionary<ImpactTool, float>? Cooldowns(ImpactDetector detector) => cooldownRef != null ? cooldownRef(detector) : null;
+#endif
 
         /// <summary>True while the mod deals a hit it built by hand (Apply, FlushSpectral, Copy). The real-arrow hook
         /// (Weight) ignores hits made while it is set: they share the real arrow's tool but are not its hit.</summary>
@@ -141,7 +146,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>G2: <see cref="Tools(ImpactTool)"/> into a list the caller owns (no array per call; the same components in the same
         /// order: Unity fills the list as it fills the array). Each caller keeps its own static list and nothing it calls while it walks
         /// the list fills that list again.</summary>
+#if QUEST
+        internal static List<ImpactTool> Tools(ImpactTool tool, List<ImpactTool> into) { into.Clear(); foreach (ImpactTool t in tool.GetComponentsInChildren<ImpactTool>(true)) into.Add(t); return into; }
+#else
         internal static List<ImpactTool> Tools(ImpactTool tool, List<ImpactTool> into) { tool.GetComponentsInChildren(true, into); return into; }
+#endif
 
         static readonly List<ImpactTool> powerTools = new List<ImpactTool>(), partTools = new List<ImpactTool>();
 
@@ -158,10 +167,17 @@ namespace BluesArcheryOverhaul {
             var sb = new System.Text.StringBuilder();
             foreach (ImpactTool t in Tools(tool)) {
                 int impactors = 0; float top = 0f, cripple = 0f;
+#if QUEST
+                foreach (var pair in t.ImpactorsPerCollider)
+                    foreach (ImpactGenerator g in pair.Value) {
+                        if (g == null) continue;
+                        // the best part is the one with the strongest health damage; its cripple is the arrowhead's own
+#else
                 foreach (KeyValuePair<Collider, HashSet<ImpactGenerator>> pair in t.ImpactorsPerCollider)
                     foreach (ImpactGenerator g in pair.Value) {
                         if (g == null) continue;
                         // the best part is the one with the strongest health damage; its cripple is the arrowhead's own
+#endif
                         if (impactors == 0 || g.HealthDamageModifier > top) { top = g.HealthDamageModifier; cripple = g.CrippleDamageModifier; }
                         impactors++;
                     }
@@ -212,7 +228,11 @@ namespace BluesArcheryOverhaul {
             // G3 (diagnosis 11): never a zero-length or not-a-number normal or point into the game's hit (Shatter's fallback normal is
             // -axis, which is never zero there; a broken point would put the hit nowhere)
             Sane(detector, ref point, ref normal);
+#if QUEST
+            Il2CppSystem.Collections.Generic.Dictionary<ImpactTool, float>? cooldowns = null;
+#else
             Dictionary<ImpactTool, float>? cooldowns = null;
+#endif
             try {
                 // The game ignores a second hit from the same arrow on the same target for a short time. The real
                 // arrow and its extras share one tool, so clear that before (so this lands) and after (so the real
@@ -312,7 +332,11 @@ namespace BluesArcheryOverhaul {
             ImpactGenerator impactor = first.Impactor;
             if (tool == null || impactor == null) { what += " (the first hit has no tool part)"; return false; }
             float pvp = 1f;
+#if QUEST
+            if (next.HealthTarget.Is(out PlayerHealth ph)) {   // play-test 7: a jump lands on a player only with PvP on (Pvp.cs)
+#else
             if (next.HealthTarget is PlayerHealth ph) {   // play-test 7: a jump lands on a player only with PvP on (Pvp.cs)
+#endif
                 pvp = Pvp.PlayerShare(tool, ph);
                 if (!(pvp > 0f)) { what += " (player: PvP is off for the mod's hits)"; return false; }
             }
@@ -322,7 +346,11 @@ namespace BluesArcheryOverhaul {
             if (channel == null) { what += " (not something this arrow can damage)"; return false; }
 
             Sane(next, ref point, ref normal); // G3, as Apply
+#if QUEST
+            Il2CppSystem.Collections.Generic.Dictionary<ImpactTool, float>? cooldowns = null;
+#else
             Dictionary<ImpactTool, float>? cooldowns = null;
+#endif
             try {
                 cooldowns = Cooldowns(next);
                 cooldowns?.Remove(tool);
@@ -361,7 +389,11 @@ namespace BluesArcheryOverhaul {
             using var _t = Timing.Begin(T_BestPart);
             best = null; channel = null; bestTool = null; float bestPower = -1f;
             foreach (ImpactTool t in Tools(tool, partTools)) {
+#if QUEST
+                foreach (var pair in t.ImpactorsPerCollider) {
+#else
                 foreach (KeyValuePair<Collider, HashSet<ImpactGenerator>> pair in t.ImpactorsPerCollider) {
+#endif
                     foreach (ImpactGenerator g in pair.Value) {
                         if (g == null) continue;
                         float power = t.Damage * g.HealthDamageModifier;
@@ -494,10 +526,26 @@ namespace BluesArcheryOverhaul {
         static float Immunity(ImpactGenerator generator, ImpactDetector detector) {
             float k = 1f;
             if (generator.ImmunityGroups == null || detector.ImmunityGroups == null) return k;
+#if QUEST
+            var theirs = new HashSet<ImpactImmunityGroup>(Il.ByPointer<ImpactImmunityGroup>());
+#else
             var theirs = new HashSet<ImpactImmunityGroup>();
+#endif
+#if QUEST
+            foreach (ImpactImmunityGroup g in detector.ImmunityGroups.Each()) if (g != null) theirs.Add(g);
+#else
             foreach (ImpactImmunityGroup g in detector.ImmunityGroups) if (g != null) theirs.Add(g);
+#endif
+#if QUEST
+            var seen = new HashSet<ImpactImmunityGroup>(Il.ByPointer<ImpactImmunityGroup>());
+#else
             var seen = new HashSet<ImpactImmunityGroup>();
+#endif
+#if QUEST
+            foreach (ImpactImmunityGroup g in generator.ImmunityGroups.Each())
+#else
             foreach (ImpactImmunityGroup g in generator.ImmunityGroups)
+#endif
                 if (g != null && theirs.Contains(g) && seen.Add(g)) k *= g.Multiplier;
             return k;
         }
@@ -522,7 +570,11 @@ namespace BluesArcheryOverhaul {
                         e *= Immunity(pl.generator, pl.detector);
                         if (!(e > 0f)) continue;
                         HealthObject target = pl.detector.HealthTarget;
+#if QUEST
+                        Il2CppSystem.Collections.Generic.Dictionary<ImpactTool, float>? cooldowns = null;
+#else
                         Dictionary<ImpactTool, float>? cooldowns = null;
+#endif
                         bool dealt = false;
                         try {
                             // The real arrow and its spectral arrows share one tool, and the game ignores a second hit from
@@ -601,7 +653,11 @@ namespace BluesArcheryOverhaul {
                 foreach (KeyValuePair<int, float> c in shares) {
                     float xp = settings != null ? settings.GetDamageExperience(c.Value, ProgressionPath.Ranged) : 0f;
                     if (info.shooter != null) {
+#if QUEST
+                        try { PlayerProgressionManager.GainExperience(info.shooter.Cast<IPlayer>(), ProgressionPath.Ranged, xp); }
+#else
                         try { PlayerProgressionManager.GainExperience(info.shooter, ProgressionPath.Ranged, xp); }
+#endif
                         catch (Exception e) { MelonLogger.Error($"[Archery] Xp: paying arrow {release} failed: {e}"); }
                     }
                     info.names.TryGetValue(c.Key, out string? name);
@@ -637,7 +693,11 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if QUEST
+        static ImpactChannel? Shared(Il2CppSystem.Collections.Generic.List<ImpactChannel> a, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppArrayBase<ImpactChannel> b) {
+#else
         static ImpactChannel? Shared(List<ImpactChannel> a, ImpactChannel[] b) {
+#endif
             if (a == null || b == null) return null;
             foreach (ImpactChannel x in a)
                 foreach (ImpactChannel y in b)

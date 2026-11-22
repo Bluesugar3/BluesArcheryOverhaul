@@ -124,9 +124,17 @@ namespace BluesArcheryOverhaul {
 
         // Not on the first player being set: the message can be read in the frame before this tick sees the new player.
         static void ClientTick() {
+#if QUEST
+            IPlayer? now = Il2Cpp.Player.Current;
+#else
             IPlayer? now = global::Player.Current;
+#endif
             if (now is UnityEngine.Object o && o == null) now = null;   // a destroyed player counts as none
+#if QUEST
+            if (!Il.Same(now, lastPlayer) && lastPlayer != null) {
+#else
             if (!ReferenceEquals(now, lastPlayer) && lastPlayer != null) {
+#endif
                 bool held = Skyfall.LocalHolds;
                 Skyfall.LocalHolds = Skyfall.LocalFestival = false;
                 Skyfall.LocalTakenAt = -1f;
@@ -143,7 +151,11 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PlayerTextMessage), nameof(PlayerTextMessage.Serialize))]
         static class Latch {
             static readonly int T = Timing.Section("patch PlayerTextMessage.Serialize / SkyfallLink.Latch");
+#if QUEST
+            static void Postfix(ref PlayerTextMessage __instance, Il2CppAlta.Serialization.Stream stream) {
+#else
             static void Postfix(ref PlayerTextMessage __instance, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (stream == null || !stream.IsReading) return;
                 try { Read(__instance.Message); }

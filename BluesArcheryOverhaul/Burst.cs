@@ -77,7 +77,11 @@ namespace BluesArcheryOverhaul {
             const int SetCap = 64;
             static MelonPreferences_Entry<bool> on = null!;
             static MelonPreferences_Entry<float> scale = null!, width = null!, length = null!, brightness = null!, ripple = null!, arrive = null!, join = null!;
+#if QUEST
+            static readonly Dictionary<BowString, Set> sets = new Dictionary<BowString, Set>(Il.ByPointer<BowString>());
+#else
             static readonly Dictionary<BowString, Set> sets = new Dictionary<BowString, Set>();
+#endif
             static bool failed;
             // what the last dropped set was showing, for the release of the same frame (Left)
             static BowString? leftBow;
@@ -130,7 +134,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T_Begin);
                 set = null;
                 if (!show || failed || on == null || !on.Value || arrow == null) { Drop(bow); return false; }
+#if QUEST
+                if (sets.TryGetValue(bow, out Set known) && Il.Same(known.arrow, arrow)) { set = known; return true; }
+#else
                 if (sets.TryGetValue(bow, out Set known) && ReferenceEquals(known.arrow, arrow)) { set = known; return true; }
+#endif
                 Drop(bow); // another arrow on the string
                 if (Fx.LineMaterial() == null) { Failed("no line material"); return false; }
                 if (sets.Count >= SetCap) { foreach (KeyValuePair<BowString, Set> kv in sets) Destroy(kv.Value); sets.Clear(); }
@@ -174,7 +182,11 @@ namespace BluesArcheryOverhaul {
             /// <summary>The bow's pellet arrows are gone (released, consumed, cancelled, no longer racked, or the bow is gone).
             /// Where they were is kept for the rest of this frame, for the release (<see cref="Left"/>).</summary>
             internal static void Drop(BowString bow) {
+#if QUEST
+                if (Il.Same(bow, null) || !sets.TryGetValue(bow, out Set set)) return;
+#else
                 if (ReferenceEquals(bow, null) || !sets.TryGetValue(bow, out Set set)) return;
+#endif
                 leftBow = bow;
                 leftFrame = Time.frameCount;
                 for (int p = 0; p < BurstPattern.Count; p++) { leftTips[p] = set.tips[p]; leftShown[p] = set.outness[p] > 0.5f; }
@@ -186,7 +198,11 @@ namespace BluesArcheryOverhaul {
             /// arrow was. False when this machine was not showing it.</summary>
             static bool Left(BowString bow, int p, out Vector3 tip) {
                 tip = default;
+#if QUEST
+                if (p < 0 || p >= BurstPattern.Count || !Il.Same(leftBow, bow) || leftFrame != Time.frameCount || !leftShown[p]) return false;
+#else
                 if (p < 0 || p >= BurstPattern.Count || !ReferenceEquals(leftBow, bow) || leftFrame != Time.frameCount || !leftShown[p]) return false;
+#endif
                 tip = leftTips[p];
                 return true;
             }

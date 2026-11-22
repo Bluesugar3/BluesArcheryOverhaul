@@ -76,7 +76,11 @@ namespace BluesArcheryOverhaul {
         // from Wwise and so clears the volume; touching it after that would re-register a game-owned object.
         static void PlayQuiet(SoundEffectSet s, Vector3 at, float volume) {
             try {
+#if QUEST
+                AudioManager am = Il2CppAlta.Utilities.SingletonBehaviour<AudioManager>.Instance;
+#else
                 AudioManager am = Alta.Utilities.SingletonBehaviour<AudioManager>.Instance;
+#endif
                 if (am == null) { s.PlayAtPosition(at); return; }
                 am.PlaySoundEffectAt(s, at, null!, out AudioControl control);
                 AkGameObj ak = control != null ? control.AkGameObj : null!;
@@ -132,7 +136,11 @@ namespace BluesArcheryOverhaul {
             }
 
             const int Cap = 64;
+#if QUEST
+            static readonly Dictionary<BowString, Bow> bows = new Dictionary<BowString, Bow>(Il.ByPointer<BowString>());
+#else
             static readonly Dictionary<BowString, Bow> bows = new Dictionary<BowString, Bow>();
+#endif
             static bool loggedSounds;
 
             /// <summary>One frame of a drawn bow. Returns the ripple's strength now (0 = none, 1 = its peak); <paramref name="rack"/>
