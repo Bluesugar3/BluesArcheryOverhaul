@@ -79,13 +79,17 @@ namespace BluesArcheryOverhaul {
         static List<Orb> RealOwned(PlayerProgressionManager? pm) {
             var owned = new List<Orb>();
             // TryGetValue, never the indexer: a player who never earned Ranged experience has no entry yet.
-            if (pm != null && TreeMapped && pm.PathExperiences.TryGetValue(Tree.RangedPath, out PathExperience exp) && exp != null)
 #if QUEST
-                foreach (uint hash in exp.UnlockedSlots.Each())
+            // Quest: never the game's PathExperiences (keyed by an enum: reading it from the mod aborts the game natively); the
+            // game's own list of the unlocked slots of every path
+            if (pm != null && TreeMapped)
+                foreach (ProgressionSlot slot in pm.GetSlots().Each())
+                    if (slot != null && slot.Path == Tree.RangedPath && Tree.OrbBySlot.TryGetValue(slot.Hash, out Orb o)) owned.Add(o);
 #else
+            if (pm != null && TreeMapped && pm.PathExperiences.TryGetValue(Tree.RangedPath, out PathExperience exp) && exp != null)
                 foreach (uint hash in exp.UnlockedSlots)
-#endif
                     if (Tree.OrbBySlot.TryGetValue(hash, out Orb o)) owned.Add(o);
+#endif
             return owned;
         }
 

@@ -331,15 +331,17 @@ namespace BluesArcheryOverhaul {
 #else
             Player? me = Player.Current as Player;
 #endif
-#if QUEST
-            QuestWatch.Mark("ShrineView.Practised: manager");
-#endif
             PlayerProgressionManager? pm = me != null ? me.ProgressionManager : null;
-            if (pm == null || slot == null || !pm.PathExperiences.TryGetValue(slot.Path, out PathExperience pe) || pe == null) return null;
 #if QUEST
-            QuestWatch.Mark("ShrineView.Practised: slot");
-#endif
+            // Quest: reading the game's PathExperiences (a dictionary keyed by an enum) from the mod aborts the game natively (no
+            // AOT code for it); the game's own question, which its orbs ask on clients (SkillOrb.UpdateAllowed). It also says true
+            // when the server does not require practice, as the game's orbs then do.
+            if (pm == null || slot == null) return null;
+            try { return pm.IsSlotPracticed(slot); } catch { return null; }
+#else
+            if (pm == null || slot == null || !pm.PathExperiences.TryGetValue(slot.Path, out PathExperience pe) || pe == null) return null;
             return pe.IsSlotPracticed(slot.Hash);
+#endif
         }
 
         /// <summary>The held orb's slot: whether one of its parents is owned (any of; none needed for a root), and their names.</summary>
