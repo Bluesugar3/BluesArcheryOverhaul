@@ -277,13 +277,28 @@ namespace BluesArcheryOverhaul {
                 MelonLogger.Warning(Inv($"[Archery] Skyfall: a ground cast at ({x:0.0}, {z:0.0}) filled its {groundHits.Length} hits (said once); the highest of those is taken"));
             }
             for (int i = 0; i < n; i++) {
+#if QUEST
+                QuestWatch.Mark("ground: read a hit collider");
+#endif
                 Collider col = groundHits[i].collider;
                 if (col == null) { groundFacts[i] = new GroundHit { Height = float.NaN }; continue; }   // gone: never the ground
+#if QUEST
+                QuestWatch.Mark("ground: its rigidbody");
+#endif
                 Rigidbody rb = col.attachedRigidbody;
+#if QUEST
+                QuestWatch.Mark("ground: body test");
+#endif
                 groundFacts[i] = new GroundHit { Height = groundHits[i].point.y, Body = IsBody(col), Loose = rb != null && !rb.isKinematic };
             }
+#if QUEST
+            QuestWatch.Mark("ground: hits judged");
+#endif
             float best = SkyGround.Highest(groundFacts, n);
             if (float.IsNaN(best) || !Hits.Loaded(new Vector3(fx, best, fz))) return false;
+#if QUEST
+            QuestWatch.Mark("ground: chunk loaded");
+#endif
             y = best;
             return true;
         }
@@ -292,8 +307,17 @@ namespace BluesArcheryOverhaul {
         /// creature (Targets.IsCreature, the test SkyfallServer.Landing strikes by) or a player. Anything else with health (a Rock)
         /// stays ground.</summary>
         static bool IsBody(Collider col) {
+#if QUEST
+            QuestWatch.Mark("body: detector lookup");
+#endif
             ImpactDetector det = col.GetComponentInParent<ImpactDetector>();
+#if QUEST
+            QuestWatch.Mark("body: health target");
+#endif
             HealthObject? h = det != null ? det.HealthTarget : null;
+#if QUEST
+            QuestWatch.Mark("body: creature or player");
+#endif
             return h != null && (Targets.IsCreature(h) || Targets.IsPlayer(h));
         }
 

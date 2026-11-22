@@ -135,25 +135,32 @@ namespace BluesArcheryOverhaul {
         static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider> colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(64);
 
         static int Out(int n, UnityEngine.RaycastHit[] results) {
+            QuestWatch.Mark("Il cast: the game returned");
             n = Math.Min(n, results.Length);
             for (int i = 0; i < n; i++) results[i] = rayNative[i];
+            QuestWatch.Mark("Il cast: hits copied out");
             return n;
         }
 
         internal static int RaycastNonAlloc(UnityEngine.Vector3 origin, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
             if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
+            QuestWatch.Mark("Il cast: RaycastNonAlloc starts");
             return Out(UnityEngine.Physics.RaycastNonAlloc(origin, direction, rayNative, maxDistance, mask, triggers), results);
         }
 
         internal static int SphereCastNonAlloc(UnityEngine.Vector3 origin, float radius, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
             if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
+            QuestWatch.Mark("Il cast: SphereCastNonAlloc starts");
             return Out(UnityEngine.Physics.SphereCastNonAlloc(origin, radius, direction, rayNative, maxDistance, mask, triggers), results);
         }
 
         internal static int OverlapSphereNonAlloc(UnityEngine.Vector3 centre, float radius, UnityEngine.Collider[] results, int mask, UnityEngine.QueryTriggerInteraction triggers) {
             if (colNative.Length < results.Length) colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(results.Length);
+            QuestWatch.Mark("Il overlap: starts");
             int n = Math.Min(UnityEngine.Physics.OverlapSphereNonAlloc(centre, radius, colNative, mask, triggers), results.Length);
+            QuestWatch.Mark("Il overlap: the game returned");
             for (int i = 0; i < n; i++) results[i] = colNative[i];
+            QuestWatch.Mark("Il overlap: colliders copied out");
             return n;
         }
 
