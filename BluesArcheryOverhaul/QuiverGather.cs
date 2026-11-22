@@ -18,7 +18,17 @@ namespace BluesArcheryOverhaul {
             public PlayerController owner = null!;
             public bool shot;
             public float due;
+            public long seq;      // 0.19.11: the order it was tracked in (Trim forgets the oldest, unshot ones first)
+            public int refusals;  // 0.19.11: the quiver refused the dock this many times
         }
+
+        static long nextSeq;
+        const int RefusalsMax = 20;
+        // 0.19.11 (the owner: "make sure the arrow quiver return is more consistent"): what became of the arrows due back, one Summary
+        // line a minute when any did not come back, so a play-test's log says why
+        static int returnedCount;
+        static readonly Dictionary<string, int> lostWhy = new Dictionary<string, int>();
+        static float reportAt;
 
         static MelonPreferences_Entry<bool> enabled = null!;
         static MelonPreferences_Entry<float> returnSeconds = null!, retrySeconds = null!, ghostMinDistance = null!;
@@ -76,7 +86,7 @@ namespace BluesArcheryOverhaul {
                     if (owner == null || !Builds.ServerBuild(owner.NetworkPlayer).QuiverGather) return;
 
                     uint id = pickup.Entity.Identifier;
-                    tracked[id] = new Tracked { pickup = pickup, quiver = dock, owner = owner };
+                    tracked[id] = new Tracked { pickup = pickup, quiver = dock, owner = owner, seq = ++nextSeq };
                     Trim(owner);
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Quiver: tracking arrow {id} for {Name(owner)}");
                 }
@@ -89,9 +99,16 @@ namespace BluesArcheryOverhaul {
             int mine = 0;
             foreach (Tracked t in tracked.Values) if (t.owner == owner) mine++;
             if (mine <= maxTracked.Value) return;
-            // ponytail: dictionary order stands in for "oldest"; exact age would need a counter.
-            uint oldest = tracked.First(p => p.Value.owner == owner).Key;
-            tracked.Remove(oldest);
+            // 0.19.11: the oldest arrow drawn and never shot goes first, else the oldest shot one (dictionary order is not age: a freed
+            // slot is reused, so a fresh shot could be the one forgotten)
+            uint victim = 0u; bool victimShot = true; long victimSeq = long.MaxValue;
+            foreach (KeyValuePair<uint, Tracked> p in tracked) {
+                if (p.Value.owner != owner) continue;
+                bool better = (victimShot && !p.Value.shot) || (victimShot == p.Value.shot && p.Value.seq < victimSeq);
+                if (better) { victim = p.Key; victimShot = p.Value.shot; victimSeq = p.Value.seq; }
+            }
+            tracked.Remove(victim);
+            if (victimShot) Lost("more than MaxTracked arrows out");
         }
 
         static string Name(PlayerController pc) {
@@ -116,6 +133,7 @@ namespace BluesArcheryOverhaul {
                     if (dock == t.quiver) { tracked.Remove(id); return; }           // back home by hand
                     if (IsBowStringDock(dock)) { t.shot = false; return; }          // nocked again: countdown restarts on the next shot
                     tracked.Remove(id);                                              // stored somewhere else: an ordinary arrow now
+                    if (t.shot) Lost("put away before its return");
                     if (Logs.Debug) MelonLogger.Msg($"[Archery] Quiver: arrow {id} -> GiveUp (stored elsewhere)");
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Quiver: dock check failed: {e.Message}"); }
@@ -158,7 +176,15 @@ namespace BluesArcheryOverhaul {
             foreach (uint id in dead) tracked.Remove(id);
             if (dead.Count > 0 && Logs.Debug) MelonLogger.Msg($"[Archery] Quiver: forgot {dead.Count} unshot arrow(s) whose arrow or archer is gone");
             foreach (uint id in scratch) Tick(id);
+            if (lostWhy.Count > 0 && Time.time >= reportAt) {
+                reportAt = Time.time + 60f;
+                int n = lostWhy.Values.Sum();
+                if (Logs.Summary) MelonLogger.Msg($"[Archery] Quiver: {returnedCount} arrow(s) returned, {n} did not ({string.Join(", ", lostWhy.Select(kv => kv.Value + " " + kv.Key).ToArray())}) since the last such line");
+                lostWhy.Clear(); returnedCount = 0;
+            }
         }
+
+        static void Lost(string why) { lostWhy.TryGetValue(why, out int n); lostWhy[why] = n + 1; }
 
         static readonly int T_Tick = Timing.Section("QuiverGather.Tick");
         static void Tick(uint id) {
@@ -190,13 +216,19 @@ namespace BluesArcheryOverhaul {
                         if (arrow.Rigidbody != null) { arrow.Rigidbody.velocity = Vector3.zero; arrow.Rigidbody.angularVelocity = Vector3.zero; }
                     }
                     PickupDock.AllowedResult result = p.DockInto(null, t.quiver, 1, true);
-                    if (result != PickupDock.AllowedResult.Ok) { action = ReturnAction.GiveUp; why = "quiver refused: " + result; }
+                    if (result != PickupDock.AllowedResult.Ok) {
+                        // 0.19.11: a refusal can pass (the quiver being moved); try again each RetrySeconds, RefusalsMax times
+                        if (++t.refusals < RefusalsMax) { t.due = Time.time + retrySeconds.Value; return; }
+                        action = ReturnAction.GiveUp; why = "quiver refused: " + result;
+                    }
                 }
                 tracked.Remove(id);
+                if (action == ReturnAction.Return) returnedCount++; else Lost(why);
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Quiver: arrow {id} -> {action} ({why})");
             }
             catch (Exception e) {
                 tracked.Remove(id);
+                Lost("an error");
                 MelonLogger.Warning($"[Archery] Quiver: arrow {id} dropped after an error: {e.Message}");
             }
         }
@@ -208,7 +240,7 @@ namespace BluesArcheryOverhaul {
             if (!Builds.ServerBuild(owner.NetworkPlayer).QuiverGather) return false;
 
             uint id = pickup.Entity.Identifier;
-            tracked[id] = new Tracked { pickup = pickup, quiver = quiver, owner = owner };
+            tracked[id] = new Tracked { pickup = pickup, quiver = quiver, owner = owner, seq = ++nextSeq };
             Trim(owner);
             if (Logs.Debug) MelonLogger.Msg($"[Archery] Quiver: tracking auto-docked arrow {id} for {Name(owner)}");
             return true;

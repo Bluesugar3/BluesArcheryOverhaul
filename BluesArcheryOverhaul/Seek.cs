@@ -31,6 +31,7 @@ namespace BluesArcheryOverhaul {
             bloomMax = null!, sideMax = null!, letGoSeconds = null!, placeMax = null!, leadMax = null!, chainMaxLife = null!;
         static MelonPreferences_Entry<int> maxLocks = null!, coreArrows = null!;
         static MelonPreferences_Entry<string> chainLocks = null!;
+        static MelonPreferences_Entry<bool> lockPlayers = null!;
         static string chainWarned = "";
         static HomingValues? cache;
 
@@ -85,6 +86,8 @@ namespace BluesArcheryOverhaul {
             // H5 (the owner: "Have homing bounce each ghost arrow to each target that is locked onto")
             chainLocks = Cfg.Shared(cat.CreateEntry("ChainLocks", HomingChain.Name(d.ChainLocks), description: "Which homing arrows chain through the locks: a chaining arrow that lands on one of the release's locks while it still homes deals its hit and flies on to the nearest lock it has not struck yet, until it has struck every living lock or its life is over. ghosts = the inner and outer ghosts; all = Burst's pellets too; off = as before (every arrow ends on its first creature). The core arrows never chain."));
             chainMaxLife = F("ChainMaxLifeSeconds", d.ChainMaxLifeSeconds, "Flight: a chaining arrow's whole flight, every leg included, never lasts longer than this (0.5 to 10 s). Each leg gets the time to reach its lock plus 0.3 s.", true);
+            // 0.19.11 (the owner: "homing doesn't work on players")
+            lockPlayers = Cfg.Shared(cat.CreateEntry("LockPlayers", d.LockPlayers, description: "The lock also takes other players (never yourself). The server keeps a player's lock only while its PvP is on and [PvP] ModHitsHurtPlayers is on; otherwise that release is an ordinary volley. A server with PvP off can switch this off so no player is locked at all."));
             SeekLook.Init(cat);
             Cfg.Reloaded += () => cache = null;
         }
@@ -113,6 +116,7 @@ namespace BluesArcheryOverhaul {
                     // H5: at most 10 s, so every per-release record the chain's hits use (Targets 15 s, the homing record 12 s, the
                     // landing looks 10 s) outlives the flight
                     ChainLocks = HomingChain.Parse(chainLocks.Value, out bool known), ChainMaxLifeSeconds = Mathf.Clamp(chainMaxLife.Value, 0.5f, 10f),
+                    LockPlayers = lockPlayers.Value,
                 };
                 if (!known && chainWarned != chainLocks.Value) {
                     chainWarned = chainLocks.Value;
@@ -319,6 +323,7 @@ namespace BluesArcheryOverhaul {
             using var _t = Timing.Begin(T_Search);
             var watch = System.Diagnostics.Stopwatch.StartNew();
             Transform? self = PlayerController.Current != null ? PlayerController.Current.transform : null;
+            PlayerController? me = PlayerController.Current;
             Transform? bowT = bow.Bow != null ? bow.Bow.transform : null;
             seen.Clear();
             scored.Clear(); // H4 (H23-review minor 3): a sweep that threw part-way never leaves ids behind for the next one
@@ -342,7 +347,12 @@ namespace BluesArcheryOverhaul {
                     if (c == null) continue;
                     ImpactDetector det = c.GetComponentInParent<ImpactDetector>();
                     HealthObject h = det != null ? det.HealthTarget : null!;
-                    if (h == null || !Targets.IsCreature(h) || Targets.IsPlayer(h) || !(h.Health > 0f)) continue;
+                    if (h == null || !(h.Health > 0f)) continue;
+#if QUEST
+                    if (Targets.IsPlayer(h) ? !v.LockPlayers || (h.Is(out PlayerHealth own) && own.Player == me) : !Targets.IsCreature(h)) continue;   // 0.19.11: other players too
+#else
+                    if (Targets.IsPlayer(h) ? !v.LockPlayers || (h is PlayerHealth own && own.Player == me) : !Targets.IsCreature(h)) continue;   // 0.19.11: other players too
+#endif
                     uint id = Targets.IdOf(h);
                     if (id == 0u || seen.ContainsKey(id)) continue;
                     var k = Measure(h, eye);
@@ -381,7 +391,12 @@ namespace BluesArcheryOverhaul {
         static Tracked Measure(HealthObject h, Vector3 eye) {
             Transform root = Targets.RootOf(h);
             var k = new Tracked { Health = h, Root = root };
-            if (Targets.BoundsOf(root, out Bounds bb)) { k.Centre = bb.center; k.Extents = bb.extents; k.Radius = Mathf.Clamp(Mathf.Max(bb.extents.x, Mathf.Max(bb.extents.y, bb.extents.z)), 0.3f, 3f); }
+#if QUEST
+            if (h.Is<PlayerHealth>()) { k.Centre = Targets.Centre(h, out _); k.Extents = new Vector3(0.3f, 0.6f, 0.3f); k.Radius = 0.6f; }   // 0.19.11: a player's chest (Targets.Centre)
+#else
+            if (h is PlayerHealth) { k.Centre = Targets.Centre(h, out _); k.Extents = new Vector3(0.3f, 0.6f, 0.3f); k.Radius = 0.6f; }   // 0.19.11: a player's chest (Targets.Centre)
+#endif
+            else if (Targets.BoundsOf(root, out Bounds bb)) { k.Centre = bb.center; k.Extents = bb.extents; k.Radius = Mathf.Clamp(Mathf.Max(bb.extents.x, Mathf.Max(bb.extents.y, bb.extents.z)), 0.3f, 3f); }
             else { k.Centre = root.position + Vector3.up * 0.5f; k.Radius = 0.5f; }
             k.Offset = root.InverseTransformPoint(k.Centre);
             k.Distance = (k.Centre - eye).magnitude;
@@ -473,13 +488,17 @@ namespace BluesArcheryOverhaul {
             HomingValues v = Values;
             LockFacts Facts(uint t) {
                 HealthObject? h = Targets.ResolveOwn(t);
-                if (h == null) return default;
+#if QUEST
+                if (h == null || (h.Is(out PlayerHealth own) && pc != null && own.Player == pc)) return default;   // never the archer
+#else
+                if (h == null || (h is PlayerHealth own && pc != null && own.Player == pc)) return default;   // never the archer
+#endif
                 Vector3 c = Targets.Centre(h, out _);
                 return new LockFacts(true, Targets.IsCreature(h), Targets.IsPlayer(h), h.Health > 0f, (c - head.Value).magnitude, Vector3.Angle(fwd, c - tip));
             }
             var refused = new List<KeyValuePair<uint, LockRefusal>>();
             float? seconds = effectiveMs.HasValue ? effectiveMs.Value / 1000f : (float?)null;
-            List<uint> kept = LockCheck.Keep(claimed, Facts, seconds, build.Quick, v, refused);
+            List<uint> kept = LockCheck.Keep(claimed, Facts, seconds, build.Quick, v, refused, v.LockPlayers && Pvp.ModHitsLand);
             ShotClaim c2 = LockClaim.Server(got, kept, Targets.Wanted(build), t => Targets.Facts(t, head.Value), Targets.Range);
             if (Logs.Summary) {
                 var why = new List<string>();
@@ -612,7 +631,11 @@ namespace BluesArcheryOverhaul {
         static List<Collider>? BodyOf(HealthObject h) {
             using var _t = Timing.Begin(T_Body);
             Transform root = Targets.RootOf(h);
-            if (root == null) return null;
+#if QUEST
+            if (root == null || h.Is<PlayerHealth>()) return null;   // 0.19.11: a player's middle is their chest (Targets.Centre), the same on every machine
+#else
+            if (root == null || h is PlayerHealth) return null;   // 0.19.11: a player's middle is their chest (Targets.Centre), the same on every machine
+#endif
             root.GetComponentsInChildren(false, bodyScratch);
             var body = new List<Collider>();
             foreach (Collider c in bodyScratch) {

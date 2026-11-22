@@ -41,6 +41,8 @@ namespace BluesArcheryOverhaul {
         // through the release's locks ([SeekingVolley] ChainLocks), and the longest a chaining arrow flies in all
         public ChainMode ChainLocks = ChainMode.Ghosts;
         public float ChainMaxLifeSeconds = 8f;
+        // 0.19.11 (the owner: "homing doesn't work on players"): other players can be locked ([SeekingVolley] LockPlayers)
+        public bool LockPlayers = true;
 
         /// <summary>H5: the longest any homing arrow of a release can fly: MaxLifeSeconds, or ChainMaxLifeSeconds when arrows chain.</summary>
         public float FlightSeconds => ChainLocks == ChainMode.Off ? MaxLifeSeconds : Math.Max(MaxLifeSeconds, ChainMaxLifeSeconds);
@@ -425,13 +427,13 @@ namespace BluesArcheryOverhaul {
 
     /// <summary>The server's check of a claim's locks, with the design's slack (it sees creatures 100 to 200 ms late).</summary>
     internal static class LockCheck {
-        /// <summary>The claimed locks the server keeps, in the shooter's order, each once, at most MaxLocks: found, a creature, never a
-        /// player, alive, within LockRangeMetres + ServerRangeMetres, within ReleaseConeDegrees + ServerToleranceDegrees of the
+        /// <summary>The claimed locks the server keeps, in the shooter's order, each once, at most MaxLocks: found, a creature (a player
+        /// only with <paramref name="players"/>, 0.19.11), alive, within LockRangeMetres + ServerRangeMetres, within ReleaseConeDegrees + ServerToleranceDegrees of the
         /// release, and the shot's time since the 68% crossing (<paramref name="seconds"/>, the time the server decided with) at least
         /// the dwells of every lock up to this one less ServerDwellSlackSeconds each (locks fill one after another). No time: none.
         /// <paramref name="refused"/> (may be null) gets each refused id and why.</summary>
         public static List<uint> Keep(IList<uint> claimed, Func<uint, LockFacts> facts, float? seconds, int quickOrbs, HomingValues v,
-                                      List<KeyValuePair<uint, LockRefusal>>? refused) {
+                                      List<KeyValuePair<uint, LockRefusal>>? refused, bool players = false) {
             var kept = new List<uint>();
             var seen = new List<uint>();
             if (claimed == null) return kept;
@@ -447,8 +449,7 @@ namespace BluesArcheryOverhaul {
                     needed += LockRule.Dwell(f.Exists ? f.Distance : v.DwellNearMetres, quickOrbs, v);
                     double slack = (double)v.ServerDwellSlackSeconds * counted;
                     if (!f.Exists) why = LockRefusal.Gone;
-                    else if (f.Player) why = LockRefusal.Player;
-                    else if (!f.Creature) why = LockRefusal.NotCreature;
+                    else if (f.Player ? !players : !f.Creature) why = f.Player ? LockRefusal.Player : LockRefusal.NotCreature;
                     else if (!f.Alive) why = LockRefusal.Dead;
                     else if (float.IsNaN(f.Distance) || f.Distance > v.LockRangeMetres + v.ServerRangeMetres + 1e-4f) why = LockRefusal.Range;
                     // play-test of 0.17.12: with chaining on only the first lock kept must be within the cone (the shooter puts the
@@ -468,7 +469,7 @@ namespace BluesArcheryOverhaul {
             switch (r) {
                 case LockRefusal.Gone: return "not found";
                 case LockRefusal.NotCreature: return "not a creature";
-                case LockRefusal.Player: return "a player";
+                case LockRefusal.Player: return "a player (LockPlayers off, or the server's PvP off)";
                 case LockRefusal.Dead: return "dead";
                 case LockRefusal.Range: return "out of range";
                 case LockRefusal.Cone: return "outside the release cone";

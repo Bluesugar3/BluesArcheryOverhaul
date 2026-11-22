@@ -64,7 +64,7 @@ Default numbers, with the orb's own path as your main path. Times count from the
 | **Two-Shot** | From 0.3 s: 5 ghost arrows, 15% damage each. |
 | **Three-Shot** | From 1 s: 10 more ghosts, all 15 by 1.4 s, 6% each. |
 | **Burst** | At 1.5 s: 15 pellets, 4% each, 30 m range. |
-| **Seeking Volley** | Legendary. Rest your aim on a creature to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
+| **Seeking Volley** | Legendary. Rest your aim on a creature, or on another player when the server has PvP on, to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
 | **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage, then once more for half of that. |
 | **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s. |
 
@@ -128,7 +128,7 @@ Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s
 - **Your own sections:** `[Log]`, `[Timing]`, `[Telemetry]`, `[Join]` and `[Settings]` are never set by a server.
 - **`[Join] SettingsMismatch`** (server): a game that cannot take the server's settings (another build of the mod) is only logged (`log`, the default) or turned away (`refuse`).
 - **`[TreeLayout]`** places each orb at the shrine.
-- **`[PvP]`** decides whether arrows hurt players. The server's own PvP setting must be on too.
+- **`[PvP]`** decides whether arrows hurt players. Everything is on by default: arrows, the extra arrows, Ricochet's jumps, Shatter's blast and Holy Arrow's blast all hurt other players (the mod's own hits at half a creature's damage, `ModHitShare`), and Seeking Volley locks them (`[SeekingVolley] LockPlayers`). The server's own PvP setting must be on too, and its PvP damage multiplier applies on top.
 - **`[Log] Level = Debug`** gives detailed logs.
 - **Orb icons:** put `<Name>.png` in `UserData\BluesArcheryOverhaul\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
 

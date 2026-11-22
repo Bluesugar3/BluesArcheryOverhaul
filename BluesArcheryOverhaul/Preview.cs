@@ -19,6 +19,18 @@ namespace BluesArcheryOverhaul {
 
         public static bool Legendary(Orb o) => o == Orb.Quickdraw4 || o == Orb.SeekingVolley || o == Orb.HolyArrow;
 
+        /// <summary>0.19.11 (the owner: with Quick main, the multi-arrow and Charge try-outs give no feedback): an orb of a line other
+        /// than the main path never fires its own shot (only the main path's does), so its try-out could never be practised. Grabbing
+        /// it practises it (Shrine.PractiseOnGrab) and the try-out line says so (Tutorial).</summary>
+        public static bool OffPath(Orb o, MainPath main) => Of(o) != MainPath.None && main != MainPath.None && Of(o) != main;
+
+        /// <summary>The main path while <paramref name="tried"/> is tried out beside <paramref name="owned"/>: the try-out counts, and
+        /// the remembered path keeps a tie (as the server's build, Builds.Compute).</summary>
+        public static MainPath TryOutMain(IEnumerable<Orb> owned, Orb tried, MainPath incumbent) {
+            var all = new List<Orb>(owned) { tried };
+            return MainPathRule.Decide(Build.From(all), incumbent);
+        }
+
         /// <summary>True when the shrine has the Seeking Volley orb (<c>[Tree] SeekingVolleyOrb</c>, set by the tree at load on
         /// both sides); the multi-arrow line then has four orbs.</summary>
         public static bool SeekingVolleyBuilt { get; set; }
@@ -527,7 +539,7 @@ namespace BluesArcheryOverhaul {
             return string.Join(", ", parts);
         }
 
-        /// <summary>Fix batch D: "half strength" for the shipped share, else "N% strength".</summary>
+        /// <summary>Fix batch D: "half strength" for the shipped share, else "N% strength".</summary>
         /// <summary>H5b: the words for [Ricochet] Bounces past the first jump (each further jump is JumpShare of the one before; the off-path
         /// half is taken once, on the first). Empty for one jump.</summary>
         static string OnAgain(OrbValues v) => v.RicochetBounces <= 1 ? "" : v.RicochetBounces == 2

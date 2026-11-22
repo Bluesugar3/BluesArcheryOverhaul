@@ -144,9 +144,9 @@ namespace BluesArcheryOverhaul {
                 // only the creature's own root (b4b-review M-4): a networked container holding creatures is not one of them
                 if (h != null && (h.Entity == null || h.Entity.PrefabRoot != root)) h = null;
 #if QUEST
-                if (h != null && !(h.Is<PlayerHealth>()) && !h.HasCrippleStat && !Targets.IsDummy(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
+                if (h != null && !(h.Is<PlayerHealth>()) && !Targets.IsCreature(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
 #else
-                if (h != null && !(h is PlayerHealth) && !h.HasCrippleStat && !Targets.IsDummy(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
+                if (h != null && !(h is PlayerHealth) && !Targets.IsCreature(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
 #endif
                 det = null;
             }

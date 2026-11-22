@@ -582,7 +582,7 @@ namespace BluesArcheryOverhaul {
                 if (projectile == null || projectile.HasCollided) { Destroy(this); return; }
                 Vector3 now = transform.position, step = now - previous;
                 Transform? shooter = info != null && info.shooter != null ? info.shooter.transform : null;
-                if (step.sqrMagnitude > 1e-6f && Hits.Cast(previous, step, step.magnitude, out RaycastHit hit, shooter, info?.bow, transform)) {
+                if (step.sqrMagnitude > 1e-6f && FirstHit(previous, step, shooter, info?.bow, out RaycastHit hit)) {
                     transform.position = hit.point;
                     ImpactTool tool = GetComponent<ImpactTool>();
                     if (tool != null) Hits.Apply(tool, hit, tool.OneOffMultiplier, out _, players: false); // a player takes the blast (its own PvP rule), not the beam
@@ -591,6 +591,20 @@ namespace BluesArcheryOverhaul {
                     return;
                 }
                 previous = now;
+            }
+
+            // 0.19.11 (the owner: "Holy arrow sometimes hits the user"): the first thing in the step that is not the archer, their bow,
+            // the beam or an arrow. The game's own beam ignores the arrow that was nocked (ExtraArrowUpdater.IgnoreCollisionsBetweenArrows);
+            // with the arrow kept (RevampedSkills' arrow recovery, [HolyArrow] KeepsArrow) it is still on the beam's line at the first
+            // physics tick, and this check set the beam down on it, a metre from the bow: the blast went off at the archer.
+            static readonly List<RaycastHit> stepHits = new List<RaycastHit>();
+            bool FirstHit(Vector3 from, Vector3 step, Transform? shooter, Transform? bow, out RaycastHit hit) {
+                Hits.CastAll(from, step, step.magnitude, stepHits, shooter, bow, transform);
+                foreach (RaycastHit h in stepHits)
+                    if (h.collider != null && h.collider.GetComponentInParent<Arrow>() == null) { hit = h; stepHits.Clear(); return true; }
+                stepHits.Clear();
+                hit = default;
+                return false;
             }
         }
 
