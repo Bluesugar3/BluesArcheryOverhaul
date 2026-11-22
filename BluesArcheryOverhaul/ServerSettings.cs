@@ -316,7 +316,15 @@ namespace BluesArcheryOverhaul {
                 toldEdit = false;
                 saveStopped = Cfg.SetFileSaving(false);
                 if (!saveStopped && !warnedNoSaveStop) { warnedNoSaveStop = true; MelonLogger.Warning($"[Archery] Settings: cannot stop MelonLoader saving {Cfg.FileName} while the server's settings are held; your own values are put back before it saves at quit"); }
+#if QUEST
+                // Quest: MelonLoader's file watcher is NOT stopped. Disposing a FileSystemWatcher under Android's Mono leaves its
+                // background thread locking a destroyed mutex, and the game aborts some seconds later (FORTIFY:
+                // pthread_mutex_lock called on a destroyed mutex; the headset, 2026-11-22). A load it makes from its own thread is
+                // already handled: OnPreferencesLoaded puts the server's values back at the next frame.
+                if (!watcherStopped) { watcherStopped = true; QuestTrace.Step("settings: file watcher left running (Quest)"); }
+#else
                 if (!watcherStopped) { watcherStopped = true; Cfg.StopFileWatcher(); }
+#endif
             }
             heldConnection = p.Connection;
             targets = SettingsSync.Targets(mine, p.Changed, out int unknown);
