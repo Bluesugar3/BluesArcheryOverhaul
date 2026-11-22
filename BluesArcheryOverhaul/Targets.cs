@@ -48,6 +48,9 @@ namespace BluesArcheryOverhaul {
                 NetworkEntity e = scene != null ? scene.GetEntity(id) : null!;
                 NetworkEntity root = e != null ? e.PrefabRoot : null!;
                 if (root == null) return null;
+                // 0.19.11: a player's own health, never another health object under their body (Seeking Volley locks players)
+                PlayerController pc = root.GetComponent<PlayerController>();
+                if (pc != null && pc.Health != null) return pc.Health;
                 HealthObject h = root.GetComponentInChildren<HealthObject>(true);
                 return h != null ? h : null;
             }
@@ -89,8 +92,13 @@ namespace BluesArcheryOverhaul {
         internal static Vector3 Centre(HealthObject h, out Transform root) {
             using var _t = Timing.Begin(T_Centre);
             root = RootOf(h);
+            // 0.19.11: a player's chest, from the head every machine knows (the body's colliders ride the avatar's bones, posed
+            // differently on each machine; the bounds of everything under a player's root are not their body)
+            if (h is PlayerHealth ph && ph.Player != null && ph.Player.Head != null) return ph.Player.Head.position + Vector3.down * PlayerChestBelowHead;
             return BoundsOf(root, out Bounds b) ? b.center : root.position + Vector3.up * 0.5f;
         }
+
+        internal const float PlayerChestBelowHead = 0.35f;
 
         /// <summary>The colliders within <paramref name="radius"/> of <paramref name="centre"/> (not layer 2, no triggers), in
         /// <paramref name="buffer"/>, which is doubled while full up to <paramref name="cap"/>; still full at the cap, one warning
@@ -106,9 +114,25 @@ namespace BluesArcheryOverhaul {
         }
 
         /// <summary>A creature for the mod's own targeting (target lists, Ricochet's jumps, Shatter's trigger and blast, the Quickdraw 4
-        /// line passing through): a thing with health and a stagger pool that is not a player; G3: or a combat dummy (IsDummy). Stagger
-        /// and interrupt test the pool themselves (Weight), so a dummy is never staggered.</summary>
-        internal static bool IsCreature(HealthObject? h) => h != null && !(h is PlayerHealth) && (h.HasCrippleStat || IsDummy(h));
+        /// line passing through, Seeking Volley's locks): a thing with health and a stagger pool that is not a player; 0.19.11: or one
+        /// with a creature's AI (a Spriggull has no stagger pool); G3: or a combat dummy (IsDummy). Stagger and interrupt test the pool
+        /// themselves (Weight), so a Spriggull or a dummy is never staggered.</summary>
+        internal static bool IsCreature(HealthObject? h) => h != null && !(h is PlayerHealth) && (h.HasCrippleStat || HasAgent(h) || IsDummy(h));
+
+        static readonly Dictionary<int, bool> agentMemo = new Dictionary<int, bool>();
+
+        /// <summary>An Alta.Intelligence.Agent under the health object's prefab root (every creature's AI). Remembered per health
+        /// object, at most 1024.</summary>
+        static bool HasAgent(HealthObject h) {
+            int key = h.GetInstanceID();
+            if (agentMemo.TryGetValue(key, out bool known)) return known;
+            NetworkEntity e = h.Entity;
+            NetworkEntity root = e != null ? e.PrefabRoot : null!;
+            bool yes = root != null && root.GetComponent<PlayerController>() == null && root.GetComponentInChildren<Alta.Intelligence.Agent>(true) != null;
+            if (agentMemo.Count >= DummyMemoCap) agentMemo.Clear();
+            agentMemo[key] = yes;
+            return yes;
+        }
 
         // G3 (play-test 8, diagnosis 5): [Targets] DummiesCount and DummyNames (shared: the server's targets depend on them)
         static MelonPreferences_Entry<bool>? dummiesCount;

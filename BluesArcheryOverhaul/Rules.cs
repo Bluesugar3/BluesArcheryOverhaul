@@ -429,11 +429,12 @@ namespace BluesArcheryOverhaul {
         public const float DefaultModHitShare = 0.5f;
         /// <summary>[PvP] ReportSeconds: a report counts only within this many seconds of the arrow's shot.</summary>
         public const float DefaultReportSeconds = 10f;
-        /// <summary>[PvP] JumpsHitPlayers ships off: Ricochet's jumps are not aimed, so they pick creatures only.</summary>
-        public const bool DefaultJumpsHitPlayers = false;
-        /// <summary>[PvP] BlastHitsPlayers ships off (fixF, final review I-2): Shatter's blast fires on the first creature hit of every
-        /// release of any owner, and its cone opens where a friend fighting that creature stands.</summary>
-        public const bool DefaultBlastHitsPlayers = false;
+        /// <summary>[PvP] JumpsHitPlayers ships on since 0.19.11 (the owner: "Turn on all pvp settings with archery as default"; off
+        /// before: Ricochet's jumps are not aimed). The server's PvP and ModHitsHurtPlayers still gate it.</summary>
+        public const bool DefaultJumpsHitPlayers = true;
+        /// <summary>[PvP] BlastHitsPlayers ships on since 0.19.11 (the owner's PvP defaults; off from fixF, final review I-2: Shatter's
+        /// blast fires on the first creature hit of every release, and its cone opens where a friend fighting that creature stands).</summary>
+        public const bool DefaultBlastHitsPlayers = true;
 
         /// <summary>Why the server keeps refusing a player's report of an arrow hitting their own body, or null to accept it:
         /// [PvP] ArrowsHurtPlayers on, the game refused it, the reporter's own body, an Arrow with a damage tool that no hand holds

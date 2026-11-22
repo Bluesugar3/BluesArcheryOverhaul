@@ -135,7 +135,7 @@ namespace BluesArcheryOverhaul {
                 if (root != null) h = root.GetComponentInChildren<HealthObject>(true);
                 // only the creature's own root (b4b-review M-4): a networked container holding creatures is not one of them
                 if (h != null && (h.Entity == null || h.Entity.PrefabRoot != root)) h = null;
-                if (h != null && !(h is PlayerHealth) && !h.HasCrippleStat && !Targets.IsDummy(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
+                if (h != null && !(h is PlayerHealth) && !Targets.IsCreature(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
                 det = null;
             }
             if (h is PlayerHealth || rh.collider.GetComponentInParent<PlayerController>() != null) { health = h; return LineHitKind.Player; }
