@@ -706,7 +706,9 @@ namespace BluesArcheryOverhaul {
 
         // Spectral hits pay their experience from the ledger, once per creature per release. Only the payment is
         // stopped: the filter still sets the Ranged path, so the player's path events see a Ranged hit.
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(BaseImpactChannelProgressionFilter), "GainExperience")]
+#endif
         static class NoSpectralXp {
             static readonly int T = Timing.Section("patch BaseImpactChannelProgressionFilter.GainExperience / Hits.NoSpectralXp");
             static bool Prefix() {
@@ -718,7 +720,9 @@ namespace BluesArcheryOverhaul {
         }
 
         // Counts the health changes a release's batched hits caused (the log's "health changes").
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(HealthObject), nameof(HealthObject.ReceiveDamage), new[] { typeof(float), typeof(float), typeof(DamageData) })]
+#endif
         static class CountHealthChanges {
             static readonly int T = Timing.Section("patch HealthObject.ReceiveDamage / Hits.CountHealthChanges");
             static void Postfix() {

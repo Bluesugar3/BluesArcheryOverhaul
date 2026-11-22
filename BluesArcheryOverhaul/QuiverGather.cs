@@ -239,7 +239,7 @@ namespace BluesArcheryOverhaul {
             static readonly int T = Timing.Section("patch PickupDocker.OnPreDocked / QuiverGather.ReturnGhost");
 #if QUEST
             static void Prefix(PickupDocker __instance, Interactor interactor, PickupDock dock) {
-                Pickup ___pickup = __instance.pickup;
+                Pickup ___pickup = __instance.pickup; QuestWatch.Once("PickupDocker.OnPreDocked (QuiverGather)");
 #else
             static void Prefix(Pickup ___pickup, Interactor interactor, PickupDock dock) {
 #endif

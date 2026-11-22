@@ -517,9 +517,17 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Q4: the line's side-orb looks failed: {e.Message}"); }
             }
             if (!ApplicationManager.IsHeadless) {
+#if QUEST
+                Q4Line.Draw(origin, end, struck, result.normal, false, weight.Tint, weight.Orbs, weight.WidthPerOrb);
+#else
                 Line.Draw(origin, end, struck, result.normal, false, weight.Tint, weight.Orbs, weight.WidthPerOrb);
+#endif
                 foreach (Pass p in passes) {
+#if QUEST
+                    if (!struck || p.hit.point != hit.point) Q4Line.PassedThrough(p.hit.point, -direction);
+#else
                     if (!struck || p.hit.point != hit.point) Line.PassedThrough(p.hit.point, -direction);
+#endif
                     // G4: a weighted line shows its weight at each creature it passes through after the first (looks only)
                     if (p.order > 0 && weight.Orbs > 0) SnapWeight.Passed(weight, arrow.Entity != null ? arrow.Entity.Identifier : 0u, p.hit, p.share);
                 }
@@ -561,7 +569,11 @@ namespace BluesArcheryOverhaul {
                 Vector3 d = NeedleDirection(r.direction, i, n);
                 bool struck = Resolve(r.origin, d, out Vector3 end, out RaycastHit hit, r.shooter, r.bow, r.bowString, arrow.transform);
                 if (struck) hits++;
+#if QUEST
+                if (!ApplicationManager.IsHeadless) Q4Line.Draw(r.origin, end, struck, struck ? hit.normal : -d, true);
+#else
                 if (!ApplicationManager.IsHeadless) Line.Draw(r.origin, end, struck, struck ? hit.normal : -d, true);
+#endif
             }
             uint id = arrow.Entity != null ? arrow.Entity.Identifier : 0u;
             if (Logs.Debug) MelonLogger.Msg($"[Archery] Line: arrow {id} {n} needle line(s), {hits} hit(s) drawn (local={local})");
@@ -580,9 +592,13 @@ namespace BluesArcheryOverhaul {
         // A ruler-straight centre line with spirals winding round it like a column. It is all there at once, holds
         // for a blink, then the spirals turn and open outward as everything fades. Where it lands: a tight, sharp
         // burst of straight spikes and a snap of light. Nothing spreads along the ground and nothing lingers.
-        class Line : MonoBehaviour {
 #if QUEST
-            public Line(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+        class Q4Line : MonoBehaviour {   // Quest: Ricochet has a component named Line too, and the game's registry is by name
+#else
+        class Line : MonoBehaviour {
+#endif
+#if QUEST
+            public Q4Line(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
 #endif
             LineRenderer core = null!;
             LineRenderer[] strands = new LineRenderer[0];
@@ -606,7 +622,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T_Draw);
                 if (Fx.LineMaterial() == null) return;
                 var go = new GameObject(needle ? "Quickdraw4Needle" : "Quickdraw4Line");
+#if QUEST
+                Q4Line l = go.AddComponent<Q4Line>();
+#else
                 Line l = go.AddComponent<Line>();
+#endif
                 l.c = needle ? Volley.NeedleLook.Colour : Colour; l.from = from; l.born = Time.time; // needles: [Needles] Colour
                 l.weight = needle ? 0f : Mathf.Clamp01(weight);
                 Vector3 d = to - from;

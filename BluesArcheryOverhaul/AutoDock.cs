@@ -313,7 +313,9 @@ namespace BluesArcheryOverhaul {
         // ItemDocked handlers never run (the skill input's SetArrowEntity: Charged statuses named a stale arrow, and
         // SendChargingStarted threw "Pre IK" errors on a null one) and the rest of the game's own server dock (weight, colliders) is
         // skipped; Auto Dock's success was never recorded. Server only, exactly that exception (headless, from the audio code).
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(BowString), "ArrowKnocked")]
+#endif
         static class HeadlessKnock {
             static readonly int T = Timing.Section("patch BowString.ArrowKnocked / AutoDock.HeadlessKnock");
             static bool logged;
@@ -607,7 +609,9 @@ namespace BluesArcheryOverhaul {
 
         // While the try-out lasts, an arrow out of its quiver docks only onto a bow string or back into that quiver: never into the
         // player's own quiver or bag, where it would stack into an arrow the game saves (fixA-review I-2).
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(PickupDock), nameof(PickupDock.CheckAllowed), new[] { typeof(Interactor), typeof(Pickup), typeof(int), typeof(PickupDock) }, new[] { ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Normal, ArgumentType.Out })]
+#endif
         static class KeepTryOutArrows {
             static readonly int T = Timing.Section("patch PickupDock.CheckAllowed / AutoDock.KeepTryOutArrows");
             static bool logged;
@@ -705,7 +709,7 @@ namespace BluesArcheryOverhaul {
             static readonly int T = Timing.Section("patch PickupDocker.OnPreDocked / AutoDock.Arriving");
 #if QUEST
             static void Prefix(PickupDocker __instance, Interactor interactor, PickupDock dock) {
-                Pickup ___pickup = __instance.pickup;
+                Pickup ___pickup = __instance.pickup; QuestWatch.Once("PickupDocker.OnPreDocked (AutoDock)");
                 using var _t = Timing.Begin(T);
                 try {
                     if (NetworkSceneManager.IsServer || interactor != null || ___pickup == null || dock == null || ___pickup.Entity == null) return;

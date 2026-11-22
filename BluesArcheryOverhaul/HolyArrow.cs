@@ -274,7 +274,9 @@ namespace BluesArcheryOverhaul {
 #endif
 
         // A Holy Arrow that never armed must not give its damage bonus to the ordinary arrow either.
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(BowDrawSkill), "OnArrowShot")]
+#endif
         static class UnarmedShot {
             static readonly int T = Timing.Section("patch BowDrawSkill.OnArrowShot / HolyArrow.UnarmedShot");
             static bool Prefix(BowDrawSkill __instance, BowString bowString) {
@@ -291,7 +293,9 @@ namespace BluesArcheryOverhaul {
         // Skyfall (admin skill): Skyfall holds a cast's arrow and the server destroys it after the relay. Holy Arrow's sacrifice (subscribed
         // when it armed, D LightBeamSkill.cs:26-31) would destroy it first, and every spectator's relayed shot would find no arrow (D Shooter.cs:50-61).
         // Everything the game's method does but the destroy is done here, the unsubscribe included, so it never sacrifices the next arrow.
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(LightBeamSkill), "DestroyShotArrow")]
+#endif
         static class SkyfallKeepsArrow {
             static readonly int T = Timing.Section("patch LightBeamSkill.DestroyShotArrow / HolyArrow.SkyfallKeepsArrow");
             static readonly MethodInfo? method = AccessTools.Method(typeof(LightBeamSkill), "DestroyShotArrow");

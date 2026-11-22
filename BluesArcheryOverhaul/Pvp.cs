@@ -109,7 +109,9 @@ namespace BluesArcheryOverhaul {
 
         // ---------------------------------------------------------------- a. the victim's own report of a flying arrow
 
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(ImpactDetector), nameof(ImpactDetector.SyncImpact))]
+#endif
         static class SelfReport {
             static readonly int TPrefix = Timing.Section("patch ImpactDetector.SyncImpact / Pvp.SelfReport prefix");
             static readonly int TFinalizer = Timing.Section("patch ImpactDetector.SyncImpact / Pvp.SelfReport finalizer");
@@ -153,7 +155,9 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch(typeof(ImpactDetector), "ShouldRefuseSyncedHit")]
+#endif
         static class AllowShotAtMe {
             static readonly int T = Timing.Section("patch ImpactDetector.ShouldRefuseSyncedHit / Pvp.AllowShotAtMe");
             static void Postfix(NetworkEntity toolEntity, IPlayer fromPlayer, ref bool __result) {

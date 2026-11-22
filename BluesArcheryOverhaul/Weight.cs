@@ -291,7 +291,9 @@ namespace BluesArcheryOverhaul {
 #endif
         };
 
+#if !QUEST   // a server's work: not patched on Quest
         [HarmonyPatch]
+#endif
         static class KnockDown {
             static IEnumerable<MethodBase> TargetMethods() {
                 foreach (Type t in KnockDownTypes) {

@@ -37,6 +37,10 @@ namespace BluesArcheryOverhaul {
             if (n < 20) MelonLogger.Msg($"[Archery] Quest watch: at {step}");
         }
 
+        static readonly HashSet<string> said = new HashSet<string>();
+        /// <summary>One line the first time a routine is reached, armed or not: proof on the headset that a patch really runs.</summary>
+        internal static void Once(string what) { if (said.Add(what)) MelonLogger.Msg($"[Archery] Quest: reached: {what}"); }
+
         internal static void Exit(int id) {
             if (!Armed) return;
             if (counts.TryGetValue(id, out int n) && n <= PerSection) MelonLogger.Msg($"[Archery] Quest watch: end {Timing.NameOf(id)}");
