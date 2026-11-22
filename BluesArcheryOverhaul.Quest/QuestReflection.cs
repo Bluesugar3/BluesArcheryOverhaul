@@ -155,7 +155,17 @@ namespace BluesArcheryOverhaul {
                 for (int i = 0; i < list.Count; i++) a.SetValue(list[i], i);
                 return a;
             }
-            if (have.IsArray && IsIl2CppArray(want)) return Activator.CreateInstance(want, value);
+            if (have.IsArray && IsIl2CppArray(want)) {
+                // A generic game class's T[] is the abstract Il2CppArrayBase<T>: make the concrete kind for T.
+                Type made = want;
+                if (want.IsAbstract && want.IsGenericType) {
+                    Type el = want.GetGenericArguments()[0];
+                    made = el == typeof(string) ? typeof(Il2CppStringArray)
+                         : el.IsValueType ? typeof(Il2CppStructArray<>).MakeGenericType(el)
+                         : typeof(Il2CppReferenceArray<>).MakeGenericType(el);
+                }
+                return Activator.CreateInstance(made, value);
+            }
 
             // a managed list written to an Il2Cpp list
             if (IsGeneric(want, "Il2CppSystem.Collections.Generic.List`1") && value is IEnumerable items && !(value is Il2CppObjectBase)) {
