@@ -66,7 +66,7 @@ Default numbers, with the orb's own path as your main path. Times count from the
 | **Burst** | At 1.5 s: 15 pellets, 4% each, 30 m range. |
 | **Seeking Volley** | Legendary. Rest your aim on a creature, or on another player when the server has PvP on, to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
 | **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage, then once more for half of that. |
-| **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s. |
+| **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s, or at once if one falls out of the world or sinks into a wall. |
 
 Stagger and interrupts work on creatures only. An interrupt cancels what the creature is doing where the game allows it: never on Wyrms, and at most once every 3 s per creature.
 
