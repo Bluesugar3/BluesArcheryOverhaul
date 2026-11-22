@@ -70,11 +70,33 @@ namespace BluesArcheryOverhaul {
                 // The game never warms the skill table itself. CheckItems (Alta.Values.dll) fills it from
                 // Resources.LoadAll<ProfessionSkill>("ProfessionSkill/"), the whole set whenever it is called, and keeps it only
                 // when non-empty (an empty or failed load is retried), so calling it early cannot cache a partial table.
+#if QUEST
+                Il2CppAlta.HashedGeneralValue<ProfessionSkill>.CheckItems();
+                items = Il2CppAlta.HashedGeneralValue<ProfessionSkill>.items;
+#else
                 Alta.HashedGeneralValue<ProfessionSkill>.CheckItems();
                 items = Traverse.Create(typeof(Alta.HashedGeneralValue<ProfessionSkill>)).Field("items").GetValue();
+#endif
             }
             catch (Exception e) { NotYet(when, $"the skill table could not be loaded yet ({e.Message})"); return false; } // may be too early: retried
             try {
+#if QUEST
+                var table = items as Il2CppSystem.Collections.Generic.Dictionary<uint, ProfessionSkill>;
+                if (table == null) { NotYet(when, "the skill table is not readable"); return false; }
+                int before = table.Count;
+                if (before < MinSkills) { NotYet(when, $"the skill table holds {before} skills"); return false; }
+
+                // The one type test: made before any copy exists. Tree.Slowdraw wins if the tree already found it.
+                BowSlowdraw? slow = Tree.Slowdraw.As<BowSlowdraw>();
+                ProfessionSkill? taken = null;
+                foreach (var e in table) {
+                    if (e.Key == SlotIds.VolleySkill) taken = e.Value;
+                    if (slow == null && e.Value != null && e.Value.Is(out BowSlowdraw b) && b.Hash != SlotIds.VolleySkill) slow = b;
+                }
+                if (slow == null) { NotYet(when, "no Slowdraw skill in the skill table yet"); return false; }
+                if (taken != null) { Fail(when, $"skill id {SlotIds.VolleySkill} is already used by '{taken.name}'"); return false; }
+                if (!slow.InputStructure.Is(out BowStringPullbackStructure slowPull) || slowPull == null) {
+#else
                 if (!(items is IDictionary table)) { NotYet(when, "the skill table is not readable"); return false; }
                 int before = table.Count;
                 if (before < MinSkills) { NotYet(when, $"the skill table holds {before} skills"); return false; }
@@ -89,6 +111,7 @@ namespace BluesArcheryOverhaul {
                 if (slow == null) { NotYet(when, "no Slowdraw skill in the skill table yet"); return false; }
                 if (taken != null) { Fail(when, $"skill id {SlotIds.VolleySkill} is already used by '{taken.name}'"); return false; }
                 if (!(slow.InputStructure is BowStringPullbackStructure slowPull) || slowPull == null) {
+#endif
                     Fail(when, "Slowdraw has no bow-string pull settings to copy");
                     return false;
                 }
@@ -131,9 +154,13 @@ namespace BluesArcheryOverhaul {
                 skill.hideFlags = HideFlags.DontUnloadUnusedAsset;
                 pull.hideFlags = HideFlags.DontUnloadUnusedAsset;
 
+#if QUEST
+                table[SlotIds.VolleySkill] = skill;
+#else
                 if (items is Dictionary<uint, ProfessionSkill> byUint) byUint[SlotIds.VolleySkill] = skill;
                 else if (items is Dictionary<int, ProfessionSkill> byInt) byInt[(int)SlotIds.VolleySkill] = skill;
                 else { Fail(when, $"the skill table is a {items.GetType().Name}, not keyed by id"); UnityEngine.Object.Destroy(skill); UnityEngine.Object.Destroy(pull); return false; }
+#endif
 
                 Skill = skill;
                 Pull = pull;
@@ -172,7 +199,12 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(BowDrawSkill), nameof(BowDrawSkill.InputChangedState))]
         static class ServerState {
             static readonly int T = Timing.Section("patch BowDrawSkill.InputChangedState / VolleySkill.ServerState");
+#if QUEST
+            static void Postfix(BowDrawSkill __instance, bool isEnabled, ISkillInputMethod input) {
+                var ___bowStrings = __instance.bowStrings;
+#else
             static void Postfix(BowDrawSkill __instance, bool isEnabled, ISkillInputMethod input, Dictionary<ISkillInputMethod, BowString> ___bowStrings) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (Skill == null || !ReferenceEquals(__instance, Skill) || !NetworkSceneManager.IsServer || input == null || ___bowStrings == null) return;
@@ -191,7 +223,13 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupBasedSkill), nameof(PickupBasedSkill.SendSerializedMessage))]
         static class ClientStatus {
             static readonly int T = Timing.Section("patch PickupBasedSkill.SendSerializedMessage / VolleySkill.ClientStatus");
+#if QUEST
+            static void Postfix(PickupBasedSkill __instance, IPlayer __0, Il2CppAlta.Serialization.Stream __1) {
+                ToolBasedSkillStatus ___status = __instance.status;
+                uint ___pickupIdentifier = __instance.pickupIdentifier;
+#else
             static void Postfix(PickupBasedSkill __instance, IPlayer __0, Alta.Serialization.Stream __1, ToolBasedSkillStatus ___status, uint ___pickupIdentifier) {
+#endif
                 using var _t = Timing.Begin(T);
                 if (__1 == null || !__1.IsReading || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer || __instance == null) return;
                 bool volley = Skill != null && ReferenceEquals(__instance, Skill);
@@ -204,7 +242,11 @@ namespace BluesArcheryOverhaul {
                 try {
                     Live(volley ? "PickupBasedSkill.SendSerializedMessage (Volley)" : charge ? "PickupBasedSkill.SendSerializedMessage (Slowdraw)"
                          : "PickupBasedSkill.SendSerializedMessage (Quickdraw)");
+#if QUEST
+                    NetworkSceneManager.Current.Spawner.WaitForSpawn(___pickupIdentifier, Il.Keep(DelegateSupport.ConvertDelegate<EntitySpawnedHandler>(new Action<NetworkEntity>(entity => {
+#else
                     NetworkSceneManager.Current.Spawner.WaitForSpawn(___pickupIdentifier, entity => {
+#endif
                         try {
                             BowString? bow = Volley.BowOf(entity);
                             if (bow == null) {
@@ -223,8 +265,13 @@ namespace BluesArcheryOverhaul {
                             if (volley) Volley.ClientVolleyStatus(bow, status, owner, local);
                             else { Volley.ClientChargeStatus(bow, status, owner, local); ChargeFx.Status(bow, status, owner, local); }
                         }
+#if QUEST
+                        catch (Exception e) { MelonLogger.Warning($"[Archery] Volley skill: status handling failed: {e.Message}"); }
+                    }))));
+#else
                         catch (Exception e) { MelonLogger.Warning($"[Archery] Volley skill: status handling failed: {e.Message}"); }
                     });
+#endif
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Volley skill: status lookup failed: {e.Message}"); }
             }

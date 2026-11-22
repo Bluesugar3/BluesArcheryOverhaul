@@ -2,6 +2,7 @@
 // bare. On Quest the same types live in Il2CppAlta.X and in the namespace Il2Cpp. This file makes the shared files' own lines
 // compile unchanged: the PC namespaces exist here as empty ones, and the Quest ones are imported everywhere.
 global using Il2Cpp;
+global using Il2CppInterop.Runtime;
 global using Il2CppAlta.Networking;
 global using Il2CppAlta.Impact;
 global using Il2CppAlta.Networking.Scripts.Player;

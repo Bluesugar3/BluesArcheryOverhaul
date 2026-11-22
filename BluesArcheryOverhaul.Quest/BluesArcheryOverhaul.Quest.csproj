@@ -22,6 +22,8 @@
     <Compile Include="..\BluesArcheryOverhaul\Lectern.cs;..\BluesArcheryOverhaul\Timing.cs;..\BluesArcheryOverhaul\Homing.cs;..\BluesArcheryOverhaul\SkyfallRules.cs;..\BluesArcheryOverhaul\TelemetryRules.cs;..\BluesArcheryOverhaul\TelemetryStats.cs;..\BluesArcheryOverhaul\JoinRules.cs;..\BluesArcheryOverhaul\SettingsSync.cs" />
     <!-- task 1: the platform layer, settings, timing, the join gate's and server-set settings' client halves -->
     <Compile Include="..\BluesArcheryOverhaul\Cfg.cs;..\BluesArcheryOverhaul\TimingHost.cs;..\BluesArcheryOverhaul\StreamBits.cs;..\BluesArcheryOverhaul\JoinGate.cs;..\BluesArcheryOverhaul\ServerSettings.cs" />
+    <!-- task 2: the tree and its icons -->
+    <Compile Include="..\BluesArcheryOverhaul\Tree.cs;..\BluesArcheryOverhaul\Paths.cs;..\BluesArcheryOverhaul\Builds.cs;..\BluesArcheryOverhaul\Fx.cs;..\BluesArcheryOverhaul\VolleySkill.cs;..\BluesArcheryOverhaul\KitHooks.cs" />
     <EmbeddedResource Include="..\BluesArcheryOverhaul\Resources\**\*" Exclude="..\BluesArcheryOverhaul\Resources\**\*.manifest;..\BluesArcheryOverhaul\Resources\**\*.meta" LogicalName="BluesArcheryOverhaul.Resources.%(Filename)%(Extension)" />
     <Reference Include="$(QuestReferences)\*.dll" Private="false" />
   </ItemGroup>

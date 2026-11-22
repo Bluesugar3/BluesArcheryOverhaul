@@ -16,7 +16,12 @@ namespace BluesArcheryOverhaul {
 
     /// <summary>The passive skill behind each side orb (one instance per orb, its own fixed id in
     /// <see cref="SlotIds.Skills"/>). No behaviour of its own: each orb's code asks whether a player owns the orb.</summary>
+#if QUEST
+    // Quest: the passive orbs' skills are plain ProfessionSkill objects (MakePassiveSkill's caller); a managed subclass of a game
+    // type would have to be injected into IL2CPP, and this one adds nothing.
+#else
     public class PassiveOrbSkill : ProfessionSkill { }
+#endif
 
     // Edits to the Ranged skill tree, made at load on BOTH server and client so they agree:
     //   - a fourth Quickdraw orb ("Quickdraw 4")
@@ -93,7 +98,11 @@ namespace BluesArcheryOverhaul {
         static bool injected;
         static DateTime iconStamp;
         static readonly Dictionary<string, ProgressionSlot> iconSlots = new Dictionary<string, ProgressionSlot>();
+#if QUEST
+        // Quest: the game's field is a property of the proxy (BowDrawSkill.damageMultiplierPerLevel), read directly below
+#else
         static AccessTools.FieldRef<BowDrawSkill, FloatValuesPerLevel>? damageTable;
+#endif
         static bool warnedMultiplier;
 
         internal static void Init() {
@@ -163,7 +172,11 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>H4: the game's banked-points cap (0 = no cap, or not readable).</summary>
         static uint BankedCap() {
+#if QUEST
+            try { return Il2CppAlta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxFreePoints; }
+#else
             try { return Alta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxFreePoints; }
+#endif
             catch { return 0u; }
         }
 
@@ -187,8 +200,12 @@ namespace BluesArcheryOverhaul {
         static float MultiplierAt(BowDrawSkill? skill, int tier, string what) {
             if (tier <= 0 || skill == null) return 1f;
             try {
+#if QUEST
+                FloatValuesPerLevel table = skill.damageMultiplierPerLevel;
+#else
                 damageTable ??= AccessTools.FieldRefAccess<BowDrawSkill, FloatValuesPerLevel>("damageMultiplierPerLevel");
                 FloatValuesPerLevel table = damageTable(skill);
+#endif
                 if (table != null) return table.GetForLevel(tier);
             }
             catch (Exception e) {
@@ -212,7 +229,11 @@ namespace BluesArcheryOverhaul {
         internal static void ClientLoad() {
             if (Ready || injected || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer || Time.unscaledTime < nextClientLoad) return;
             nextClientLoad = Time.unscaledTime + 1f;
+#if QUEST
+            if (Il2Cpp.Player.Current == null) return; // not in a world yet
+#else
             if (global::Player.Current == null) return; // not in a world yet
+#endif
             trigger = "this client, after joining (no shrine needed)";
             try { ProfessionSkillTree.GetProfessionTree(ProgressionPath.Ranged); }
             catch (Exception e) { if (!warnedClientLoad) { warnedClientLoad = true; MelonLogger.Warning($"[Archery] Tree: asking the game for the Ranged tree failed (tried again each second): {e.Message}"); } }
@@ -243,10 +264,19 @@ namespace BluesArcheryOverhaul {
         static readonly int T_Inject = Timing.Section("Tree.Inject");
         static void Inject() {
             using var _t = Timing.Begin(T_Inject);
+#if QUEST
+            var trees = ProfessionSkillTree.treeMap;
+            if (trees == null || trees.Count == 0) { injected = false; return; } // not loaded yet: try again next call
+
+            ProfessionSkillTree? tree = null;
+            foreach (ProfessionSkillTree t in trees.Values) if (t != null && t.Slots.Any(s => s.Skill.Is<BowQuickdraw>())) { tree = t; break; }
+            if (tree != null) QuestChecks.WrapperIdentity(tree);
+#else
             var trees = Traverse.Create(typeof(ProfessionSkillTree)).Field("treeMap").GetValue<Dictionary<ProgressionPath, ProfessionSkillTree>>();
             if (trees == null || trees.Count == 0) { injected = false; return; } // not loaded yet: try again next call
 
             ProfessionSkillTree? tree = trees.Values.FirstOrDefault(t => t.Slots.Any(s => s.Skill is BowQuickdraw));
+#endif
             if (tree == null) { MelonLogger.Warning("[Archery] Tree: no Quickdraw orb found in any skill tree; archery changes are off."); return; }
 
             ProgressionSlot? twoSlot = null, threeSlot = null, holySlot = null;
@@ -255,6 +285,18 @@ namespace BluesArcheryOverhaul {
             // The first pass, before any re-point: the one place Slowdraw is found by type. The Volley copy is a
             // BowSlowdraw too, so it is excluded by reference, and every later lookup compares by reference or slot id.
             foreach (ProgressionSlot s in tree.Slots) {
+#if QUEST
+                ProfessionSkill k = s.Skill;
+                if (k.Is(out BowQuickdraw q)) Quickdraw = q;
+                else if (k.Is(out BowSlowdraw sd)) {
+                    if (!ReferenceEquals(sd, VolleySkill.Skill)) {
+                        if (Slowdraw == null) Slowdraw = sd;
+                        if (ReferenceEquals(sd, Slowdraw)) chargeSlots.Add(s);
+                    }
+                }
+                else if (k.Is(out LightBeamSkill h)) { Holy = h; holySlot = s; }
+                else if (k.Is<BowMultiArrowShot>()) multi.Add(s);
+#else
                 switch (s.Skill) {
                     case BowQuickdraw q: Quickdraw = q; break;
                     case BowSlowdraw sd when !ReferenceEquals(sd, VolleySkill.Skill):
@@ -264,6 +306,7 @@ namespace BluesArcheryOverhaul {
                     case LightBeamSkill h: Holy = h; holySlot = s; break;
                     case BowMultiArrowShot _: multi.Add(s); break;
                 }
+#endif
             }
             List<ProgressionSlot> byDepth = chargeSlots.OrderBy(s => s.GetIndentLevel(tree)).ToList(); // stable, as before
             chargeSlots.Clear();
@@ -273,8 +316,13 @@ namespace BluesArcheryOverhaul {
             foreach (ProgressionSlot s in multi) {
                 bool three = (s.Name ?? "").IndexOf("Three", StringComparison.OrdinalIgnoreCase) >= 0
                              || multi.Any(o => o != s && s.Dependencies != null && s.Dependencies.Contains(o.Hash));
+#if QUEST
+                if (three) { ThreeShot = s.Skill.As<BowMultiArrowShot>(); threeSlot = s; }
+                else { TwoShot = s.Skill.As<BowMultiArrowShot>(); twoSlot = s; }
+#else
                 if (three) { ThreeShot = (BowMultiArrowShot)s.Skill; threeSlot = s; }
                 else { TwoShot = (BowMultiArrowShot)s.Skill; twoSlot = s; }
+#endif
             }
             MelonLogger.Msg($"[Archery] Tree: Two-Shot = '{twoSlot?.Name ?? "NOT FOUND"}', Three-Shot = '{threeSlot?.Name ?? "NOT FOUND"}'");
             TwoShotSlot = twoSlot;
@@ -303,7 +351,11 @@ namespace BluesArcheryOverhaul {
             ApplyCosts();
 
             // ---- Quickdraw 4
+#if QUEST
+            List<ProgressionSlot> quick = tree.Slots.Where(s => s.Skill.Is<BowQuickdraw>()).OrderBy(s => s.GetIndentLevel(tree)).ToList();
+#else
             List<ProgressionSlot> quick = tree.Slots.Where(s => s.Skill is BowQuickdraw).OrderBy(s => s.GetIndentLevel(tree)).ToList();
+#endif
             if (!tree.GetSlot(Quickdraw4SlotHash, out ProgressionSlot q4)) {
                 ProgressionSlot last = quick[quick.Count - 1];
                 ProgressionSlot prev = quick.Count > 1 ? quick[quick.Count - 2] : last;
@@ -399,7 +451,11 @@ namespace BluesArcheryOverhaul {
             try {
                 ProgressionSettings s = GlobalSettings<ProgressionSettings>.Instance;
                 string sell;
+#if QUEST
+                try { sell = Il2CppAlta.Utilities.SettingsManager.GameConfig.Settings.CanSellSkillsWithChildren.ToString(); }
+#else
                 try { sell = Alta.Utilities.SettingsManager.GameConfig.Settings.CanSellSkillsWithChildren.ToString(); }
+#endif
                 catch (Exception e) { sell = $"unknown ({e.GetType().Name})"; }
                 MelonLogger.Msg($"[Archery] Progression: slot cap {s.MaxBoughtSkills}, banked points cap {s.MaxFreePoints} (0 = no cap), sell refund {s.SellingSkillPointsRefundPercentage:0.###} | RevampedSkills {(BluesArcheryOverhaul.QuiverGather.RevampedSkillsLoaded ? "loaded" : "not loaded")}, can sell with children: {sell}");
             }
@@ -451,7 +507,11 @@ namespace BluesArcheryOverhaul {
             }
             else {
                 if (!SlotIds.Skills.TryGetValue(orb, out int skillId)) { MelonLogger.Error($"[Archery] Tree: {name} has no skill id; it is off"); return; }
+#if QUEST
+                skill = MakePassiveSkill(ScriptableObject.CreateInstance<ProfessionSkill>(), name, skillId, orb.ToString());
+#else
                 skill = MakePassiveSkill(ScriptableObject.CreateInstance<PassiveOrbSkill>(), name, skillId, orb.ToString());
+#endif
                 if (skill == null) return;
                 CopyTryOut(parents[0].Skill, skill);   // the first parent's bow, arrows, target and glyphs
             }
@@ -469,7 +529,11 @@ namespace BluesArcheryOverhaul {
         // they paid for: the old Feather orb's id now leads to the combined orb, and someone who had bought both
         // gets the second point back the next time their skills load (GathererRefund).
         static void MergeGatherers(ProfessionSkillTree tree, ProgressionSlot keep, ProgressionSlot drop) {
+#if QUEST
+            if (keep.Skill.Is(out Gatherer into) && drop.Skill.Is(out Gatherer from)) {
+#else
             if (keep.Skill is Gatherer into && drop.Skill is Gatherer from) {
+#endif
                 Item[] mine = Traverse.Create(into).Field("validItems").GetValue<Item[]>() ?? new Item[0];
                 Item[] theirs = Traverse.Create(from).Field("validItems").GetValue<Item[]>() ?? new Item[0];
                 Item[] both = mine.Union(theirs).Where(i => i != null).ToArray();
@@ -480,7 +544,11 @@ namespace BluesArcheryOverhaul {
             tree.Slots.Remove(drop);
             foreach (ProgressionSlot s in tree.Slots) InheritList(s)?.Remove(keep); // it used to hang off Quickdraw Plus too
             Traverse.Create(keep).Field("dependencies").SetValue(new List<uint>());
+#if QUEST
+            tree.slotMap[drop.Hash] = keep;
+#else
             Traverse.Create(tree).Field("slotMap").GetValue<Dictionary<uint, ProgressionSlot>>()[drop.Hash] = keep;
+#endif
             mergedGatherer = keep;
             MelonLogger.Msg($"[Archery] Tree: '{drop.Name}' orb removed; '{keep.Name}' is the one gatherer orb and needs nothing first");
         }
@@ -494,8 +562,12 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 try {
                     if (!isFromLoad || mergedGatherer == null || slot != mergedGatherer) return true;
+#if QUEST
+                    var paths = __instance.PathExperiences;
+#else
                     var paths = Traverse.Create(__instance).Property("PathExperiences").GetValue<Dictionary<ProgressionPath, PathExperience>>()
                                 ?? Traverse.Create(__instance).Field("PathExperiences").GetValue<Dictionary<ProgressionPath, PathExperience>>();
+#endif
                     if (paths == null || !paths.TryGetValue(slot.Path, out PathExperience pe) || !pe.UnlockedSlots.Contains(slot.Hash)) return true;
                     Traverse points = Traverse.Create(pe).Field("freePoints");
                     points.SetValue(points.GetValue<uint>() + slot.Cost);
@@ -518,7 +590,11 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.Serialize))]
         static class OffOrbRead {
             static readonly int TPrefix = Timing.Section("patch PathExperience.Serialize / Tree.OffOrbRead prefix");
+#if QUEST
+            static void Prefix(PathExperience __instance, Il2CppAlta.Serialization.Stream stream) {
+#else
             static void Prefix(PathExperience __instance, Alta.Serialization.Stream stream) {
+#endif
                 using var _t = Timing.Begin(TPrefix);
                 reading = stream != null && stream.IsReading && NetworkSceneManager.IsServer ? __instance : null;
             }
@@ -568,11 +644,19 @@ namespace BluesArcheryOverhaul {
         static void CopyTryOut(ProfessionSkill? source, ProfessionSkill target) {
             if (source == null) return;
             Traverse from = Traverse.Create(source), to = Traverse.Create(target);
+#if QUEST
+            var props = source.staticContentPrefabs;
+            var items = source.dynamicContentPrefabs;
+            Sprite[]? glyphs = from.Field("practiceGlyphSprites").GetValue<Sprite[]>();
+            if (props != null) target.staticContentPrefabs = Il.Copy(props);
+            if (items != null) target.dynamicContentPrefabs = Il.Copy(items);
+#else
             List<PositionedStaticPrefab>? props = from.Field("staticContentPrefabs").GetValue<List<PositionedStaticPrefab>>();
             List<PositionedNetworkPrefab>? items = from.Field("dynamicContentPrefabs").GetValue<List<PositionedNetworkPrefab>>();
             Sprite[]? glyphs = from.Field("practiceGlyphSprites").GetValue<Sprite[]>();
             if (props != null) to.Field("staticContentPrefabs").SetValue(new List<PositionedStaticPrefab>(props));
             if (items != null) to.Field("dynamicContentPrefabs").SetValue(new List<PositionedNetworkPrefab>(items));
+#endif
             if (glyphs != null) to.Field("practiceGlyphSprites").SetValue((Sprite[])glyphs.Clone());
             MelonLogger.Msg($"[Archery] Tree: '{target.name}' try-out copied from '{source.name}': {props?.Count ?? 0} prop(s), {items?.Count ?? 0} item(s), {glyphs?.Length ?? 0} glyph(s)");
         }
@@ -580,12 +664,21 @@ namespace BluesArcheryOverhaul {
         static void RepointVolley(ProfessionSkillTree tree, ProgressionSlot twoSlot, ProgressionSlot threeSlot, BowMultiArrowShot twoShot) {
             BowSlowdraw volley = VolleySkill.Skill!;
             Traverse from = Traverse.Create(twoShot), to = Traverse.Create(volley);
+#if QUEST
+            var props = twoShot.staticContentPrefabs;
+            var items = twoShot.dynamicContentPrefabs;
+            Sprite[]? glyphs = from.Field("practiceGlyphSprites").GetValue<Sprite[]>();
+            // The shrine reads these when an orb is tried out; they must not be null.
+            volley.staticContentPrefabs = props != null ? Il.Copy(props) : new Il2CppSystem.Collections.Generic.List<PositionedStaticPrefab>();
+            volley.dynamicContentPrefabs = items != null ? Il.Copy(items) : new Il2CppSystem.Collections.Generic.List<PositionedNetworkPrefab>();
+#else
             List<PositionedStaticPrefab>? props = from.Field("staticContentPrefabs").GetValue<List<PositionedStaticPrefab>>();
             List<PositionedNetworkPrefab>? items = from.Field("dynamicContentPrefabs").GetValue<List<PositionedNetworkPrefab>>();
             Sprite[]? glyphs = from.Field("practiceGlyphSprites").GetValue<Sprite[]>();
             // The shrine reads these when an orb is tried out; they must not be null.
             to.Field("staticContentPrefabs").SetValue(props != null ? new List<PositionedStaticPrefab>(props) : new List<PositionedStaticPrefab>());
             to.Field("dynamicContentPrefabs").SetValue(items != null ? new List<PositionedNetworkPrefab>(items) : new List<PositionedNetworkPrefab>());
+#endif
             to.Field("practiceGlyphSprites").SetValue(glyphs != null ? (Sprite[])glyphs.Clone() : new Sprite[0]);
             Traverse.Create(twoSlot).Field("skill").SetValue(volley);
             Traverse.Create(threeSlot).Field("skill").SetValue(volley);
@@ -668,7 +761,11 @@ namespace BluesArcheryOverhaul {
             if (Detail) foreach (KeyValuePair<uint, Orb> p in orbBySlot.OrderBy(p => p.Value)) {
                 if (!slotByOrb.TryGetValue(p.Value, out ProgressionSlot s) || s == null) continue;
                 var needs = new List<string>();
+#if QUEST
+                foreach (uint dep in s.Dependencies ?? new Il2CppSystem.Collections.Generic.List<uint>()) {
+#else
                 foreach (uint dep in s.Dependencies ?? new List<uint>()) {
+#endif
                     if (orbBySlot.TryGetValue(dep, out Orb o)) needs.Add(o.ToString());
                     else needs.Add(rangedTree.GetSlot(dep, out ProgressionSlot other) && other != null ? $"'{other.Name}'" : dep.ToString(inv));
                 }
@@ -690,7 +787,11 @@ namespace BluesArcheryOverhaul {
             else if (Detail) MelonLogger.Msg($"[Archery] Tree: {all.Count} orbs, connection list {links} of {ShrineLinks.Cap} entries");
         }
 
+#if QUEST
+        static Il2CppSystem.Collections.Generic.List<ProgressionSlot>? InheritList(ProgressionSlot s) => s.inheritSlots;
+#else
         static List<ProgressionSlot>? InheritList(ProgressionSlot s) => Traverse.Create(s).Field("inheritSlots").GetValue<List<ProgressionSlot>>();
+#endif
 
         static ProgressionSlot AddSlot(ProfessionSkillTree tree, string name, ProfessionSkill skill, ProgressionSlot after, uint hash, Vector3 position) =>
             AddSlot(tree, name, skill, new List<ProgressionSlot> { after }, hash, position);
@@ -709,7 +810,11 @@ namespace BluesArcheryOverhaul {
             t.Field("slotIcon").SetValue(after[0].SlotIcon); // replaced by ApplyIcons when the mod's icon is available
             slot.Path = tree.Path;
             tree.Slots.Add(slot);
+#if QUEST
+            tree.slotMap[hash] = slot;
+#else
             Traverse.Create(tree).Field("slotMap").GetValue<Dictionary<uint, ProgressionSlot>>()[hash] = slot;
+#endif
             slot.AddInherit(tree);
             return slot;
         }
@@ -722,11 +827,18 @@ namespace BluesArcheryOverhaul {
                 UnityEngine.Object.Destroy(skill);
                 return null;
             }
+#if QUEST
+            Il2CppAlta.HashedGeneralValue<ProfessionSkill>.CheckItems(); // loads the game's own skills first; ours is only ever added to a full table
+            var items = Il2CppAlta.HashedGeneralValue<ProfessionSkill>.items;
+            ProfessionSkill? used = null;
+            if (items != null) items.TryGetValue((uint)id, out used);
+#else
             Alta.HashedGeneralValue<ProfessionSkill>.CheckItems(); // loads the game's own skills first; ours is only ever added to a full table
             object? items = Traverse.Create(typeof(Alta.HashedGeneralValue<ProfessionSkill>)).Field("items").GetValue();
             ProfessionSkill? used = null;
             if (items is Dictionary<uint, ProfessionSkill> byUintUsed) byUintUsed.TryGetValue((uint)id, out used);
             else if (items is Dictionary<int, ProfessionSkill> byIntUsed) byIntUsed.TryGetValue(id, out used);
+#endif
             if (used != null) {
                 MelonLogger.Error($"[Archery] Tree: skill id {id} for {orb} is already used by '{used.name}'; {orb} is off");
                 UnityEngine.Object.Destroy(skill);
@@ -737,9 +849,14 @@ namespace BluesArcheryOverhaul {
             FieldInfo? hash = AccessTools.Field(typeof(ProfessionSkill), "hash");
             if (hash != null) hash.SetValue(skill, Convert.ChangeType(id, hash.FieldType));
             else MelonLogger.Error($"[Archery] Tree: could not set the {name} skill id.");
+#if QUEST
+            if (items != null) items[(uint)id] = skill;
+            else MelonLogger.Warning($"[Archery] Tree: could not register the {name} skill for lookup by id.");
+#else
             if (items is Dictionary<uint, ProfessionSkill> byUint) byUint[(uint)id] = skill;
             else if (items is Dictionary<int, ProfessionSkill> byInt) byInt[id] = skill;
             else MelonLogger.Warning($"[Archery] Tree: could not register the {name} skill for lookup by id.");
+#endif
             // The shrine reads these when an orb is tried out; they must not be null.
             Traverse s = Traverse.Create(skill);
             s.Field("staticContentPrefabs").SetValue(new List<PositionedStaticPrefab>());
@@ -787,7 +904,11 @@ namespace BluesArcheryOverhaul {
         internal static float SharedVolleySeconds => TwoShotSeconds * Paths.SharedVolleyFactor;
 
         static void SetTimer(SkillInputStructure? structure, float seconds) {
+#if QUEST
+            if (structure.Is(out BowStringPullbackStructure pull)) pull.minTimeToPullback = Mathf.Max(0f, seconds);
+#else
             if (structure is BowStringPullbackStructure pull) Traverse.Create(pull).Field("minTimeToPullback").SetValue(Mathf.Max(0f, seconds));
+#endif
             else MelonLogger.Warning("[Archery] Tree: a bow skill has no draw timer to change.");
         }
 
@@ -822,7 +943,11 @@ namespace BluesArcheryOverhaul {
                     string file = Path.Combine(IconFolder, pair.Key + ".png");
                     if (File.Exists(file)) { png = File.ReadAllBytes(file); source = file; }
                     else {
+#if QUEST
+                        using System.IO.Stream? s = Assembly.GetExecutingAssembly().GetManifestResourceStream($"BluesArcheryOverhaul.Resources.{pair.Key}.png");
+#else
                         using Stream? s = Assembly.GetExecutingAssembly().GetManifestResourceStream($"BluesArcheryOverhaul.Resources.{pair.Key}.png");
+#endif
                         if (s != null) { png = new byte[s.Length]; s.Read(png, 0, png.Length); }
                     }
                     if (png == null) {

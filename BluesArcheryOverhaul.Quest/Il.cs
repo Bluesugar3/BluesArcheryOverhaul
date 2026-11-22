@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Il2CppAlta.Networking;
+using Il2CppInterop.Runtime.InteropTypes;
+using Il2Cpp2 = Il2CppSystem.Collections.Generic;
 using Stream = Il2CppAlta.Serialization.Stream;
 
 // Quest (IL2CPP) only: the platform layer. The shared source files keep their PC lines; where a PC line cannot work on Quest, this
@@ -41,6 +44,53 @@ namespace BluesArcheryOverhaul {
         internal static bool Send(this Connection connection, ConnectionChannel? channel, MessageType type, Action<Connection, Stream> write) {
             var d = KeepAWhile((SerializeConnectionMethod)write);
             return connection.Send(channel!, type, d);
+        }
+
+        // ---------------------------------------------------------------- casts
+        // A C# cast or `is` of a game object compiles on Quest and gives null / false: the proxy object's managed type is the type the
+        // value was declared as, not the object's real type. These ask the game.
+
+        /// <summary>`o is T` for a game object.</summary>
+        internal static bool Is<T>(this Il2CppObjectBase? o) where T : Il2CppObjectBase => o != null && o.TryCast<T>() != null;
+
+        /// <summary>`o as T` for a game object.</summary>
+        internal static T? As<T>(this Il2CppObjectBase? o) where T : Il2CppObjectBase => o?.TryCast<T>();
+
+        /// <summary>`o is T t` for a game object.</summary>
+        internal static bool Is<T>(this Il2CppObjectBase? o, out T t) where T : Il2CppObjectBase {
+            t = o?.TryCast<T>()!;
+            return t != null;
+        }
+
+        // ---------------------------------------------------------------- the game's own collections
+        // The shared lines use LINQ on game lists; on Quest those are Il2CppSystem lists, which System.Linq does not know. These have
+        // LINQ's names, so the shared lines compile unchanged and read the game's list in place. Nothing here copies a game list
+        // except ToList, whose PC form also makes a new list.
+
+        /// <summary>The items of a game list, in order (a managed sequence over the list itself).</summary>
+        internal static IEnumerable<T> Each<T>(this Il2Cpp2.List<T> list) {
+            for (int i = 0; i < list.Count; i++) yield return list[i];
+        }
+
+        /// <summary>The items of any game sequence (its enumerator, through the game's own MoveNext).</summary>
+        internal static IEnumerable<T> Each<T>(this Il2Cpp2.IEnumerable<T> items) {
+            Il2Cpp2.IEnumerator<T> e = items.GetEnumerator();
+            var move = e.Cast<Il2CppSystem.Collections.IEnumerator>();
+            while (move.MoveNext()) yield return e.Current;
+        }
+
+        internal static bool Any<T>(this Il2Cpp2.List<T> list, Func<T, bool> test) => list.Each().Any(test);
+        internal static IEnumerable<T> Where<T>(this Il2Cpp2.List<T> list, Func<T, bool> test) => list.Each().Where(test);
+        internal static IEnumerable<R> Select<T, R>(this Il2Cpp2.List<T> list, Func<T, R> map) => list.Each().Select(map);
+        internal static T? FirstOrDefault<T>(this Il2Cpp2.List<T> list, Func<T, bool> test) => list.Each().FirstOrDefault(test);
+        internal static List<T> ToList<T>(this Il2Cpp2.List<T> list) => list.Each().ToList();
+        internal static bool Contains<T>(this Il2Cpp2.IEnumerable<T> items, T value) => items.Each().Contains(value);
+
+        /// <summary>A new game list with the same items (the PC line's <c>new List&lt;T&gt;(list)</c>).</summary>
+        internal static Il2Cpp2.List<T> Copy<T>(Il2Cpp2.List<T> list) {
+            var made = new Il2Cpp2.List<T>();
+            for (int i = 0; i < list.Count; i++) made.Add(list[i]);
+            return made;
         }
     }
 }

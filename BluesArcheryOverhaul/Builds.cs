@@ -47,7 +47,17 @@ namespace BluesArcheryOverhaul {
         /// <summary>Server: the play-test kit lends or hides orbs for this player (telemetry marks the shot as a test build's).</summary>
         internal static bool TestBuildFor(string? name) => Lent(name).Count > 0 || Hidden(name).Count > 0;
 
+#if QUEST
         internal static string NameOf(IPlayer? p) => p?.UserInfo?.Username ?? "?";
+        // Quest: a Player is not an IPlayer to C# (an interface is a class in IL2CPP); these take the Player itself.
+        internal static string NameOf(Player? p) => p?.UserInfo?.Username ?? "?";
+        internal static string KeyOf(Player? p, string name) {
+            int id = p?.UserInfo?.Identifier ?? 0;
+            return id != 0 ? id.ToString() : name;
+        }
+#else
+        internal static string NameOf(IPlayer? p) => p?.UserInfo?.Username ?? "?";
+#endif
 
         /// <summary>The key a player's main path is remembered under: the account id, else the username.</summary>
         internal static string KeyOf(IPlayer? p, string name) { // internal for the play-test kit (reset, snapshots)
@@ -62,7 +72,11 @@ namespace BluesArcheryOverhaul {
             var owned = new List<Orb>();
             // TryGetValue, never the indexer: a player who never earned Ranged experience has no entry yet.
             if (pm != null && TreeMapped && pm.PathExperiences.TryGetValue(Tree.RangedPath, out PathExperience exp) && exp != null)
+#if QUEST
+                foreach (uint hash in exp.UnlockedSlots.Each())
+#else
                 foreach (uint hash in exp.UnlockedSlots)
+#endif
                     if (Tree.OrbBySlot.TryGetValue(hash, out Orb o)) owned.Add(o);
             return owned;
         }
@@ -240,7 +254,11 @@ namespace BluesArcheryOverhaul {
         // Selling reaches PathExperience.LockSlot also from RemoveFreePoints/RemoveSlots, with no manager call.
         [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.LockSlot))]
         static class OnPathLockSlot {
+#if QUEST
+            static void Postfix(PathExperience __instance) => Refreshed(__instance.targetPlayer, "PathExperience.LockSlot");
+#else
             static void Postfix(PlayerProgressionManager ___targetPlayer) => Refreshed(___targetPlayer, "PathExperience.LockSlot");
+#endif
         }
 
         // UpdateCounts clears the game's skill levels and recounts them from owned slots only: the test build's
@@ -315,9 +333,19 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupBasedSkill), "SerializeInternal")]
         static class Bits {
             static readonly int T = Timing.Section("patch PickupBasedSkill.SerializeInternal / Builds.Bits");
+#if QUEST
+            static void Postfix(PickupBasedSkill __instance, Il2CppAlta.Serialization.Stream stream) {
+                uint ___pickupIdentifier = __instance.pickupIdentifier;
+                ToolBasedSkillStatus ___status = __instance.status;
+#else
             static void Postfix(PickupBasedSkill __instance, Alta.Serialization.Stream stream, uint ___pickupIdentifier, ToolBasedSkillStatus ___status) {
+#endif
                 using var _t = Timing.Begin(T);
+#if QUEST
+                if (!__instance.Is<BowDrawSkill>() || stream == null) return; // both sides know the skill, so writer and reader agree
+#else
                 if (!(__instance is BowDrawSkill) || stream == null) return; // both sides know the skill, so writer and reader agree
+#endif
                 try {
                     if (NetworkSceneManager.IsServer) {
                         if (stream.IsWriting && !loggedFired) { loggedFired = true; if (Logs.Summary) MelonLogger.Msg("[Archery] Build bits: status-message postfix fired on the server (writing)"); }
@@ -330,9 +358,17 @@ namespace BluesArcheryOverhaul {
         }
 
         static readonly int T_Write = Timing.Section("Builds.Write (status bits)");
+#if QUEST
+        static void Write(Il2CppAlta.Serialization.Stream stream) {
+#else
         static void Write(Alta.Serialization.Stream stream) {
+#endif
             using var _t = Timing.Begin(T_Write);
+#if QUEST
+            if (!owner.Is(out Player p)) return;
+#else
             if (!(owner is Player p)) return;
+#endif
             if (!Tree.Ready || Tree.OrbBySlot.Count == 0) {
                 if (!warnedNoTree) { warnedNoTree = true; MelonLogger.Warning("[Archery] Build bits: archery tree not injected; sending none"); }
                 return;
@@ -343,7 +379,11 @@ namespace BluesArcheryOverhaul {
         }
 
         static readonly int T_Read = Timing.Section("Builds.Read (status bits)");
+#if QUEST
+        static void Read(PickupBasedSkill skill, Il2CppAlta.Serialization.Stream stream, uint arrow, ToolBasedSkillStatus status) {
+#else
         static void Read(PickupBasedSkill skill, Alta.Serialization.Stream stream, uint arrow, ToolBasedSkillStatus status) {
+#endif
             using var _t = Timing.Begin(T_Read, arrow);
             var bits = new StreamBits(stream);
             WireRead result = BuildBits.TryRead(bits, out Build build, out byte check);

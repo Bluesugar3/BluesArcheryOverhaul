@@ -22,10 +22,14 @@ namespace BluesArcheryOverhaul {
             Cfg.CarryOverOldName();
             Logs.Init();
             TimingHost.Init();
+            Tree.Init();          // task 2
+            Builds.Init();
+            Paths.Init();
             JoinGate.Init();
             ServerSettings.Init();
             Cfg.Ready();
             TimingHost.Refresh();
+            VolleySkill.TryRegister("start");   // retried on every scene and at the tree load until it works
             QuestPatches.ApplyAll(HarmonyInstance);
             SelfCheck("start-up");
             Cfg.Reloaded += () => SelfCheck("settings reload");
@@ -37,19 +41,29 @@ namespace BluesArcheryOverhaul {
             try {
                 object sink;
                 sink = JoinGate.Values; sets++;
+                sink = Paths.Values; sets++;
+                sink = Tree.Stages; sets++;
+                sink = Tree.ChargeDamageTable; sets++;
                 MelonLogger.Msg($"[Archery] Self-check (Quest): {sets} value sets evaluated ({when})");
             } catch (Exception e) {
                 MelonLogger.Error($"[Archery] Self-check (Quest) FAILED after {sets} value sets ({when}): {e}");
             }
         }
 
+        public override void OnSceneWasInitialized(int buildIndex, string sceneName) {
+            if (!VolleySkill.Registered) VolleySkill.TryRegister($"scene {sceneName}");
+        }
+
         public override void OnUpdate() {
             TimingHost.Frame();
             try { ServerSettings.Tick(); }
             catch (Exception e) { MelonLogger.Error($"[Archery] Settings: tick failed: {e.Message}"); }
+            try { Tree.ClientLoad(); }   // a client loads the archery tree once it has joined (once a second until it is in)
+            catch (Exception e) { MelonLogger.Error($"[Archery] Tree: client load failed: {e.Message}"); }
             if (Time.unscaledTime >= nextSlowPoll) {
                 nextSlowPoll = Time.unscaledTime + 2f;
                 Cfg.Poll();
+                Tree.PollIcons();
             }
         }
 

@@ -169,12 +169,21 @@ namespace BluesArcheryOverhaul {
             Transform tr = got.transform;
             Vector3 original = tr.localScale;
             tr.localScale = original * k;
+#if QUEST
+            PoolChangedHandler? restore = null;
+            restore = Il.Keep(DelegateSupport.ConvertDelegate<PoolChangedHandler>(new Action<PooledObject>(p => {
+                if (p != null) p.transform.localScale = original;
+                got.remove_Released(restore);
+            })));
+            got.add_Released(restore);
+#else
             PoolChangedHandler? restore = null;
             restore = p => {
                 if (p != null) p.transform.localScale = original;
                 got.Released -= restore;
             };
             got.Released += restore;
+#endif
             return true;
         }
 
