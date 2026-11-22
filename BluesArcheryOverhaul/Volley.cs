@@ -914,6 +914,9 @@ namespace BluesArcheryOverhaul {
         // every rendered frame from the same arc. On the server a hit deals damage; everywhere it ends the arrow.
         // Spectral arrows never test against each other.
         internal class VolleySim : MonoBehaviour {
+#if QUEST
+            public VolleySim(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static bool shotFailedLogged;
             internal struct Shot {
                 public Vector3 p0, flat;    // start point; horizontal unit direction of travel
@@ -1526,6 +1529,9 @@ namespace BluesArcheryOverhaul {
         // One spectral arrow: a copy of the nocked arrow's head, plus a shaft drawn as a line that fades toward
         // the hand. No fletching. Exists only on the machine that draws it.
         internal class Ghost : MonoBehaviour {
+#if QUEST
+            public Ghost(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             LineRenderer shaft = null!;
             Transform head = null!;
             bool outer;
@@ -1999,6 +2005,9 @@ namespace BluesArcheryOverhaul {
         // it; no head or shaft mesh. Shown at release only. Settings in [Needles] (looks, not shared). If it cannot be built
         // (no line material), Volley.Launch gives that needle the old echo look (a Ghost) instead.
         internal class NeedleLook : MonoBehaviour {
+#if QUEST
+            public NeedleLook(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static MelonPreferences_Entry<float> length = null!, width = null!, trailSeconds = null!, trailWidth = null!, soundGap = null!, landSparkScale = null!;
             static MelonPreferences_Entry<string> colour = null!, sound = null!;
             static readonly Color DefaultColour = new Color(1f, 0.914f, 0.659f); // #FFE9A8
@@ -2142,6 +2151,9 @@ namespace BluesArcheryOverhaul {
         // own. Settings in [HeavyArrows]: looks (not shared), and the layout's Radius and SpreadDegrees (shared: they decide
         // where the server's heavy arrows fly). If it cannot be built, Ghost.MakeHeavy leaves the gold ghost look.
         internal class HeavyLook : MonoBehaviour {
+#if QUEST
+            public HeavyLook(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static MelonPreferences_Entry<float> scale = null!, thickness = null!, alpha = null!, pairSeconds = null!, strandTurns = null!,
                 slideVolume = null!, trailWidthScale = null!, hitEffectScale = null!, layoutRadius = null!, layoutSpread = null!;
             const float MaxSpreadDegrees = 45f;

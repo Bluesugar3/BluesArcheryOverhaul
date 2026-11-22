@@ -581,6 +581,9 @@ namespace BluesArcheryOverhaul {
         // for a blink, then the spirals turn and open outward as everything fades. Where it lands: a tight, sharp
         // burst of straight spikes and a snap of light. Nothing spreads along the ground and nothing lingers.
         class Line : MonoBehaviour {
+#if QUEST
+            public Line(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             LineRenderer core = null!;
             LineRenderer[] strands = new LineRenderer[0];
             Vector3[] buffer = new Vector3[0];

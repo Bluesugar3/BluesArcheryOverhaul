@@ -267,6 +267,9 @@ namespace BluesArcheryOverhaul {
         // ---------------------------------------------------------------- components
 
         class Flicker : MonoBehaviour {
+#if QUEST
+            public Flicker(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             internal Vector3 a, b; internal float amplitude, life, width, delay; internal int points = 6; internal Color head, tail;
             LineRenderer line = null!; float start, next;
             void Start() { start = Time.time + delay; line = NewLine(gameObject, points, width, true); line.enabled = false; }
@@ -285,6 +288,9 @@ namespace BluesArcheryOverhaul {
         }
 
         class FlashLight : MonoBehaviour {
+#if QUEST
+            public FlashLight(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             internal float brightness, range, life, delay; internal Color color;
             Light lamp = null!; float start;
             void Start() {

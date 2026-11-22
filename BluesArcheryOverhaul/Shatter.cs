@@ -556,6 +556,9 @@ namespace BluesArcheryOverhaul {
             // One pooled pellet: a line whose head travels from where it starts to where it stops: a bright head narrowing into a
             // trail that fades to nothing behind it, then its landing (Landed).
             sealed class Splinter : MonoBehaviour {
+#if QUEST
+                public Splinter(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
                 static readonly AnimationCurve Comet = AnimationCurve.Linear(0f, 1f, 1f, 0f);
                 LineRenderer line = null!;
                 Vector3 from, to, dir;

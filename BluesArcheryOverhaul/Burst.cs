@@ -243,6 +243,9 @@ namespace BluesArcheryOverhaul {
     /// Burst's range, ending in a puff of specks from the shared spark emitter when it reaches that range. Streak and puff
     /// have the colour it was made with: that of the release's ghosts (Volley.Launch).</summary>
     internal class PelletStreak : MonoBehaviour {
+#if QUEST
+        public PelletStreak(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
         const float EndFraction = 0.3f;                // width and alpha at the range, from the spec
         const float PuffSpread = 80f, PuffSpeed = 0.8f; // a soft puff, not a spray
         LineRenderer line = null!;

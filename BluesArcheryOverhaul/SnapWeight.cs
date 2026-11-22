@@ -616,6 +616,9 @@ namespace BluesArcheryOverhaul {
         /// <summary>The brief ring of the interrupt's cue: a circle lying on the struck surface round the hit, opening from one
         /// radius to another while it fades (as the charged hit's dust ring, ChargeFx.DustRing, in the charge's orange).</summary>
         sealed class CueRing : MonoBehaviour {
+#if QUEST
+            public CueRing(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             const float Lift = 0.03f; // off the surface, so it is not buried in it
             LineRenderer lr = null!;
             Color colour;

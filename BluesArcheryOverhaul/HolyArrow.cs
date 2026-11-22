@@ -565,6 +565,9 @@ namespace BluesArcheryOverhaul {
 
         // Server: a beam this fast can step straight through a thin target between physics ticks. Check the gap.
         class TunnelGuard : MonoBehaviour {
+#if QUEST
+            public TunnelGuard(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             internal Projectile projectile = null!;
             internal BeamInfo? info;
             Vector3 previous;
@@ -801,6 +804,9 @@ namespace BluesArcheryOverhaul {
 
         // The arrow flies dead straight; the trail it leaves is a jagged, flickering bolt along that path.
         class Trail : MonoBehaviour {
+#if QUEST
+            public Trail(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             Projectile projectile = null!;
             LineRenderer line = null!;
             readonly List<Vector3> path = new List<Vector3>();
@@ -902,6 +908,9 @@ namespace BluesArcheryOverhaul {
         // bright near the centre and short and faint near the edge, then the ground keeps crackling for a while,
         // thinning out. No dome. Every part has its own setting.
         class Impact : MonoBehaviour {
+#if QUEST
+            public Impact(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             LineRenderer[] rings = new LineRenderer[0];
             Vector3 point, normal, u, w;
             float born, nextCrackle;
@@ -1001,6 +1010,9 @@ namespace BluesArcheryOverhaul {
         // Like a taser: a few thin, fast arcs snapping across whatever was stunned, in bursts that thin out.
         // Few at once, each very brief, sharp kinks, clinging to the body: that is what keeps it from being clutter.
         class StunMarker : MonoBehaviour {
+#if QUEST
+            public StunMarker(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             Collider target = null!;
             float born, life, nextBurst;
 

@@ -53,6 +53,9 @@ namespace BluesArcheryOverhaul {
     /// seen to become the real one, inside the core's burst. Follows the arrow while it fades (it may be stuck in a creature that
     /// moves) and ends with it. One small object for a third of a second per locked release.</summary>
     internal sealed class SeekReveal : MonoBehaviour {
+#if QUEST
+        public SeekReveal(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
         const float Length = 0.7f, Scale = 1.1f;
         Arrow? arrow;
         Volley.Ghost? ghost;

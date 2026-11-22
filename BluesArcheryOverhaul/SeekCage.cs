@@ -322,6 +322,9 @@ namespace BluesArcheryOverhaul {
         }
 
         sealed class Host : MonoBehaviour {
+#if QUEST
+            public Host(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static readonly int TLateUpdate = Timing.Section("LateUpdate LockCage (the locks' cages, per frame)");
 
             // LateUpdate: after the frame's animation and movement, so a cage sits on its creature as it is drawn this frame

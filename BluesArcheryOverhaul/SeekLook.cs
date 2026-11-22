@@ -465,6 +465,9 @@ namespace BluesArcheryOverhaul {
         // One object holding the rings (pooled LineRenderers, one per lock and one for the filling), facing the camera; they hide
         // themselves when no frame came for a moment (the string was let go, the shot left).
         sealed class PlainRings : MonoBehaviour {
+#if QUEST
+            public PlainRings(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static PlainRings? instance;
             readonly List<LineRenderer> rings = new List<LineRenderer>();
             LineRenderer? fillRing;

@@ -134,6 +134,9 @@ namespace BluesArcheryOverhaul {
         }
 
         sealed class FaceCamera : MonoBehaviour {
+#if QUEST
+            public FaceCamera(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             static readonly int TLateUpdate = Timing.Section("LateUpdate Tutorial.FaceCamera");
             void LateUpdate() {
                 using var _t = Timing.Begin(TLateUpdate);

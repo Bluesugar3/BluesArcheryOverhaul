@@ -699,6 +699,9 @@ namespace BluesArcheryOverhaul {
             }
 
             sealed class Arc : MonoBehaviour {
+#if QUEST
+                public Arc(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
                 LineRenderer line = null!;
                 Vector3 from, to;
                 Color colour;
@@ -766,6 +769,9 @@ namespace BluesArcheryOverhaul {
         // One fading line on its own object (one Renderer): the skip's kink and the jump's arc. Points are set once; each frame only
         // the colours change (no allocation).
         sealed class Line : MonoBehaviour {
+#if QUEST
+            public Line(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             LineRenderer line = null!;
             Color colour;
             float born, life, tailAlpha;

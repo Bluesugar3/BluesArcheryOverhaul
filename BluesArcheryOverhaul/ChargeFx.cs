@@ -1534,6 +1534,9 @@ namespace BluesArcheryOverhaul {
         /// <summary>A charged arrow's ember trail in flight: back colour to transparent, from release until the arrow stops
         /// or 3 s; it then fades out where it is.</summary>
         internal sealed class EmberTrail : MonoBehaviour {
+#if QUEST
+            public EmberTrail(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             const float MaxSeconds = 3f, StoppedSpeed = 0.5f, StoppedSeconds = 0.1f, VertexDistance = 0.05f;
             TrailRenderer trail = null!;
             float born, still;
@@ -1604,6 +1607,9 @@ namespace BluesArcheryOverhaul {
         /// <summary>Charge 2 and 3: a dust-coloured circle on the ground under the hit, growing from DustRingFrom to
         /// DustRingTo over DustRingSeconds while it fades.</summary>
         internal sealed class DustRing : MonoBehaviour {
+#if QUEST
+            public DustRing(System.IntPtr pointer) : base(pointer) { }   // Quest: a component of the mod is made by the game from its pointer
+#endif
             const float Width = 0.03f, Lift = 0.03f; // internal, not settings
             static readonly Color Dust = new Color(0.76f, 0.66f, 0.5f, 0.8f);
             LineRenderer lr = null!;
