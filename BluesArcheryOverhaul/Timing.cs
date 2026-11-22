@@ -17,7 +17,11 @@ namespace BluesArcheryOverhaul {
         internal TimingScope(int id, long start) { Id = id; Start = start; }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if QUEST
+        public void Dispose() { QuestWatch.Exit(Id); if (Start != 0) Timing.End(Id, Start, Stopwatch.GetTimestamp()); }
+#else
         public void Dispose() { if (Start != 0) Timing.End(Id, Start, Stopwatch.GetTimestamp()); }
+#endif
     }
 
     /// <summary>G5: in-memory timing of everything the mod runs. Unity-free (tested in TimingTests.cs); the settings, the console
@@ -90,15 +94,27 @@ namespace BluesArcheryOverhaul {
         internal static int Depth => depth;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if QUEST
+        internal static TimingScope Begin(int id) { QuestWatch.Enter(id); return On ? BeginAt(id, Stopwatch.GetTimestamp(), null, NoNumber) : new TimingScope(id, 0); }
+#else
         internal static TimingScope Begin(int id) => On ? BeginAt(id, Stopwatch.GetTimestamp(), null, NoNumber) : default;
+#endif
 
         /// <summary>With a short context for the spike line (a player, an asset name). The string must already exist.</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if QUEST
+        internal static TimingScope Begin(int id, string? context) { QuestWatch.Enter(id); return On ? BeginAt(id, Stopwatch.GetTimestamp(), context, NoNumber) : new TimingScope(id, 0); }
+#else
         internal static TimingScope Begin(int id, string? context) => On ? BeginAt(id, Stopwatch.GetTimestamp(), context, NoNumber) : default;
+#endif
 
         /// <summary>With a number for the spike line (an arrow or creature id).</summary>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if QUEST
+        internal static TimingScope Begin(int id, uint context) { QuestWatch.Enter(id); return On ? BeginAt(id, Stopwatch.GetTimestamp(), null, context) : new TimingScope(id, 0); }
+#else
         internal static TimingScope Begin(int id, uint context) => On ? BeginAt(id, Stopwatch.GetTimestamp(), null, context) : default;
+#endif
 
         internal static TimingScope BeginAt(int id, long now, string? text, long number) {
             int d = depth++;

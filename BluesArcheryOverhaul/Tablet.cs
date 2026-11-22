@@ -974,7 +974,27 @@ namespace BluesArcheryOverhaul {
                 how = $"mesh '{mesh!.name}' with material '{material!.name}' from the prefab '{prefab.name}'";
                 return;
             }
+#if QUEST
+            // Quest: the headset's models carry other mesh names (its arrow's parts are '..._LOD1_Atlased'): the prefab's first
+            // mesh whose name starts with the plain name, else the names it has go into the log line.
+            string questMeshes = "";
+            if (prefab != null) {
+                foreach (MeshFilter f in prefab.GetComponentsInChildren<MeshFilter>(true)) {
+                    if (f == null || f.sharedMesh == null) continue;
+                    var r = f.GetComponent<MeshRenderer>();
+                    if (f.sharedMesh.name.StartsWith(meshNames[meshNames.Length - 1]) && r != null && r.sharedMaterial != null) {
+                        mesh = f.sharedMesh; material = r.sharedMaterial;
+                        how = $"mesh '{mesh.name}' with material '{material.name}' from the prefab '{prefab.name}' (Quest name)";
+                        return;
+                    }
+                    questMeshes += (questMeshes.Length > 0 ? ", " : "") + f.sharedMesh.name;
+                }
+            }
+            questMeshes = prefab == null ? $" (Quest: no prefab at '{prefabPath}')" : $" (Quest: the prefab's meshes: {questMeshes})";
             // 2. any loaded object that shows the crystal with the game's atlas material (a crystal in the world, a prefab under another path)
+#else
+            // 2. any loaded object that shows the crystal with the game's atlas material (a crystal in the world, a prefab under another path)
+#endif
             if (Pair(Resources.FindObjectsOfTypeAll<MeshFilter>(), meshNames, true, out mesh, out material)) {
                 how = $"mesh '{mesh!.name}' with material '{material!.name}' from a loaded object";
                 return;
@@ -984,7 +1004,11 @@ namespace BluesArcheryOverhaul {
             foreach (Mesh m in Resources.FindObjectsOfTypeAll<Mesh>()) if (m != null && m.name == meshNames[0]) { mesh = m; break; }
             foreach (Material m in Resources.FindObjectsOfTypeAll<Material>()) if (m != null && m.name == CrystalMaterial) { material = m; break; }
             if (mesh != null && material != null) { how = $"mesh '{mesh.name}' and material '{material.name}' by name"; return; }
+#if QUEST
+            how = (mesh == null ? $"no mesh '{meshNames[0]}'" : "") + (mesh == null && material == null ? ", " : "") + (material == null ? $"no material '{CrystalMaterial}'" : "") + questMeshes;
+#else
             how = (mesh == null ? $"no mesh '{meshNames[0]}'" : "") + (mesh == null && material == null ? ", " : "") + (material == null ? $"no material '{CrystalMaterial}'" : "");
+#endif
             mesh = null; material = null;
         }
 
