@@ -170,7 +170,11 @@ namespace BluesArcheryOverhaul {
             using var _t = Timing.Begin(T_PutTargets);
             try {
                 if (!Targets.Wanted(Builds.LocalBuild())) return;
+#if QUEST
+                Vector3? head = Targets.HeadOf(Player.Current?.TryCast<Player>());
+#else
                 Vector3? head = Targets.HeadOf(Player.Current as Player);
+#endif
                 if (!head.HasValue) return;
                 // after any lock (H1), each id once, at most the wire's six; with no lock exactly the list ForShot gives (LockClaim.Merge)
                 LockClaim.Merge(claim.Targets, Targets.ForShot(pickup.transform.position, pickup.transform.forward, head.Value), ShotClaimWire.MaxTargets);

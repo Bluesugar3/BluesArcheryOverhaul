@@ -88,7 +88,11 @@ namespace BluesArcheryOverhaul {
 
         static Pickup? Held(Controller? hand) {
             Interactor i = hand != null ? hand.Interactor : null!;
+#if QUEST
+            return i != null ? i.InteractingWith.As<Pickup>() : null;
+#else
             return i != null ? i.InteractingWith as Pickup : null;
+#endif
         }
 
         /// <summary>Server, Holy Arrow's KeepsArrow: where a kept arrow goes back: the quiver last drawn from by hand if still
@@ -411,7 +415,11 @@ namespace BluesArcheryOverhaul {
 
         static NetworkEntity? Spawn(uint hash, SkillShrineTestingArea area, Vector3 at, Quaternion rot) {
             if (hash == 0u || PrefabManager.GetPrefab(hash) == null) return null;
+#if QUEST
+            return SpawnHelper.Spawn(hash, SpawnData.Default, area.Entity != null ? area.Entity.Chunk : null!, at, rot, Il.Keep(DelegateSupport.ConvertDelegate<SpawnHelper.SpawningCallback>(new Action<NetworkEntity>(e => { if (e != null && e.Prefab != null) e.Prefab.SaveMode = SaveMode.Ignore; }))));
+#else
             return SpawnHelper.Spawn(hash, SpawnData.Default, area.Entity != null ? area.Entity.Chunk : null!, at, rot, e => { if (e != null && e.Prefab != null) e.Prefab.SaveMode = SaveMode.Ignore; });
+#endif
         }
 
         static readonly int T_Track = Timing.Section("event AutoDock.Track (try-out quiver undock)");
@@ -421,7 +429,11 @@ namespace BluesArcheryOverhaul {
             NetworkEntity e = p.Entity;
             if (!t.Arrows.Contains(e)) {
                 t.Arrows.Add(e);
+#if QUEST
+                e.add_DestroyedByScene(UntrackGame);
+#else
                 e.DestroyedByScene += Untrack;
+#endif
             }
             t.Ids[e.Identifier] = e;
             tracked[e.Identifier] = e;
@@ -430,7 +442,12 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>A tracked arrow was destroyed (stacked back into a quiver, shot and gone, ...): its id is free for the game to reuse.</summary>
         static readonly int T_Untrack = Timing.Section("event AutoDock.Untrack (entity destroyed)");
+#if QUEST
+        static readonly EntityDespawnedHandler UntrackGame = Il.Keep(DelegateSupport.ConvertDelegate<EntityDespawnedHandler>(new Action<NetworkEntity, bool>(Untrack)));
         static void Untrack(NetworkEntity entity, bool isUnload) {
+#else
+        static void Untrack(NetworkEntity entity, bool isUnload) {
+#endif
             using var _t = Timing.Begin(T_Untrack);
             try { Forget(entity != null ? entity.Identifier : 0u, entity); }
             catch { }
@@ -536,7 +553,11 @@ namespace BluesArcheryOverhaul {
             foreach (NetworkEntity a in t.Arrows) {
                 try {
                     if (a == null || a.IsBeingDestroyed) continue;
+#if QUEST
+                    a.remove_DestroyedByScene(UntrackGame);
+#else
                     a.DestroyedByScene -= Untrack;
+#endif
                     a.SceneDestroy();
                     gone++;
                 }
@@ -678,10 +699,18 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupDocker), "OnPreDocked")]
         static class Arriving {
             static readonly int T = Timing.Section("patch PickupDocker.OnPreDocked / AutoDock.Arriving");
+#if QUEST
+            static void Prefix(PickupDocker __instance, Interactor interactor, PickupDock dock) {
+                Pickup ___pickup = __instance.pickup;
+                using var _t = Timing.Begin(T);
+                try {
+                    if (NetworkSceneManager.IsServer || interactor != null || ___pickup == null || dock == null || ___pickup.Entity == null) return;
+#else
             static void Prefix(Pickup ___pickup, Interactor interactor, PickupDock dock) {
                 using var _t = Timing.Begin(T);
                 try {
                     if (NetworkSceneManager.IsServer || interactor != null || ___pickup == null || dock == null || ___pickup.Entity == null) return;
+#endif
                     uint id = ___pickup.Entity.Identifier;
                     if (___pickup.GetComponent<Arrow>() == null) return;
                     if (dock.GetComponent<Quiver>() != null) return; // cheap first: a quiver is never a bow string (b3-review I-1)
@@ -725,7 +754,11 @@ namespace BluesArcheryOverhaul {
             try {
                 float secs = Mathf.Max(0f, ghostSeconds.Value);
                 if (secs <= 0f || ghosts.Count >= Cap) return "no ghost";
+#if QUEST
+                var g = GlobalSettings<PickupTypeSettings>.Instance.PickupMovingGhost.Get(pickup.transform).As<MovingObjectsBetweenDocks>();
+#else
                 var g = GlobalSettings<PickupTypeSettings>.Instance.PickupMovingGhost.Get(pickup.transform) as MovingObjectsBetweenDocks;
+#endif
                 if (g == null) return "no ghost (the game's ghost is missing)";
                 MeshRenderer[] renderers = pickup.GetComponentsInChildren<MeshRenderer>(false);
                 g.SetupRenderers(renderers);

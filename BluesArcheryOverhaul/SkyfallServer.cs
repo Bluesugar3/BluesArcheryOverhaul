@@ -86,7 +86,11 @@ namespace BluesArcheryOverhaul {
         static Player? Online(int account) {
             if (account == 0) return null;
             foreach (IPlayer ip in Player.AllPlayers) {
+#if QUEST
+                try { if (ip.Is(out Player p) && p.UserInfo != null && p.UserInfo.Identifier == account) return p; }
+#else
                 try { if (ip is Player p && p != null && p.UserInfo != null && p.UserInfo.Identifier == account) return p; }
+#endif
                 catch { }   // a player still joining: not this one
             }
             return null;
@@ -176,10 +180,18 @@ namespace BluesArcheryOverhaul {
 
             // players: their heads (as Ricochet's candidates; SkyfallStrike tests their feet, and skips the caster and the safe circle)
             foreach (IPlayer ip in Player.AllPlayers) {
+#if QUEST
+                if (!ip.Is(out Player p)) continue;
+#else
                 if (!(ip is Player p) || p == null) continue;
+#endif
                 try {
                     PlayerController pc = p.PlayerController;
+#if QUEST
+                    if (pc == null || !(pc.Health.Is(out PlayerHealth ph)) || ph == null) continue;
+#else
                     if (pc == null || !(pc.Health is PlayerHealth ph) || ph == null) continue;
+#endif
                     Vector3? head = Targets.HeadOf(p);
                     if (!head.HasValue) continue;
                     var body = new SkyBody { At = Seek.H(head.Value), Player = true, Alive = ph.Health > 0f && pc.IsAlive, Account = p.UserInfo?.Identifier ?? 0 };
@@ -212,11 +224,19 @@ namespace BluesArcheryOverhaul {
         // Collider.ClosestPoint takes only a box, sphere, capsule or convex mesh; any other (a non-convex mesh, a CharacterController)
         // is measured by its bounds, which errs toward the kill by at most the bounds' corners
         static bool ClosestTakes(Collider c) =>
+#if QUEST
+            c.Is<BoxCollider>() || c.Is<SphereCollider>() || c.Is<CapsuleCollider>() || (c.Is(out MeshCollider mc) && mc.convex);
+#else
             c is BoxCollider || c is SphereCollider || c is CapsuleCollider || (c is MeshCollider mc && mc.convex);
+#endif
 
         // the creature's PositionHandler point (a ColliderPositionHelper's closest point, else its origin); its transform if that throws
         static Vector3 Origin(HealthObject h, Vector3 point) {
+#if QUEST
+            try { if (h.PositionHandler != null) return h.PositionHandler.GetPosition.Invoke(point); }
+#else
             try { if (h.PositionHandler != null) return h.PositionHandler.GetPosition(point); }
+#endif
             catch { }
             return h.transform.position;
         }
@@ -260,7 +280,11 @@ namespace BluesArcheryOverhaul {
         static bool Kill(Player p, Running r, SkyImpact i, Vector3 point) {
             using var _t = Timing.Begin(TKill, r.S.ArrowId);
             PlayerController pc = p.PlayerController;
+#if QUEST
+            if (pc == null || !(pc.Health.Is(out PlayerHealth ph)) || ph == null) return false;
+#else
             if (pc == null || !(pc.Health is PlayerHealth ph) || ph == null) return false;
+#endif
             if (r.Wielder != null && pc == r.Wielder) {   // the caster's own body, whatever its account reads now (SkyfallStrike skips it by account)
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Skyfall: '{Builds.NameOf(p)}' is the caster of arrow {r.S.ArrowId}'s storm: never killed");
                 return false;

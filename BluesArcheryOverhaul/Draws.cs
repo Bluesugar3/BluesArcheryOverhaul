@@ -136,8 +136,13 @@ namespace BluesArcheryOverhaul {
         /// <summary>Server: this skill's input on this bow string is active (charged, or inside Quickdraw's window).</summary>
         internal static bool InputActive(BowDrawSkill? skill, BowString bow) {
             if (skill == null || bow == null) return false;
+#if QUEST
+            var map = InputsOf(skill);
+            return map != null && map.TryGetValue(bow, out ISkillInputMethod input) && input != null && input.IsActive;
+#else
             Dictionary<BowString, ISkillInputMethod>? map = InputsOf(skill);
             return map != null && map.TryGetValue(bow, out ISkillInputMethod input) && input != null && input.IsActive;
+#endif
         }
 
         // ---------------------------------------------------------------- the release
@@ -146,7 +151,11 @@ namespace BluesArcheryOverhaul {
         /// or its settings are missing.</summary>
         internal static int QuickdrawWindowMs {
             get {
+#if QUEST
+                var settings = Tree.Quickdraw != null ? Tree.Quickdraw.InputStructure.As<BowStringPullbackStructure>() : null;
+#else
                 var settings = Tree.Quickdraw != null ? Tree.Quickdraw.InputStructure as BowStringPullbackStructure : null;
+#endif
                 return settings != null && settings.IsTimingOut ? Ms(settings.TimeoutDuration) : 1000000;
             }
         }
@@ -318,7 +327,13 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(BowString), "HeldUpdate")]
         static class Clock {
             static readonly int T = Timing.Section("patch BowString.HeldUpdate / Draws.Clock");
+#if QUEST
+            static void Postfix(BowString __instance) {
+                Interactor ___interactorHoldingBowString = __instance.interactorHoldingBowString;
+                float ___currentZ = __instance.currentZ;
+#else
             static void Postfix(BowString __instance, Interactor ___interactorHoldingBowString, float ___currentZ) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (!NetworkSceneManager.IsServer && (___interactorHoldingBowString == null || !___interactorHoldingBowString.IsLocal)) return;
@@ -415,7 +430,11 @@ namespace BluesArcheryOverhaul {
                     if (byInput == null) continue;
                     bool owned = pm == null || pm.GetLevel(skill) > 0; // a manager that cannot be read keeps the holder's own inputs
                     var drop = new List<ISkillInputMethod>();
+#if QUEST
+                    foreach (var kv in byInput) {
+#else
                     foreach (KeyValuePair<ISkillInputMethod, BowString> kv in byInput) {
+#endif
 #if QUEST
                         if (kv.Key == null || !Il.Same(kv.Value, bow)) continue;
 #else
@@ -434,7 +453,11 @@ namespace BluesArcheryOverhaul {
                         try { if (old.IsActive) skill.InputChangedState(false, old); }
                         catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: switching off another holder's {Label(skill)} input failed: {e.Message}"); }
                         byInput.Remove(old);
+#if QUEST
+                        // Quest: the game's own Clear below is enough here; this sweep is the server's (a Quest game is never one)
+#else
                         try { old.ChangedActive -= skill.InputChangedState; } catch { }
+#endif
                         OwnTime.Forget(old);
                         DrawGrace.Forget(old);
                         try { old.Clear(); } catch (Exception e) { MelonLogger.Warning($"[Archery] Draw: clearing another holder's input failed: {e.Message}"); }
@@ -639,7 +662,11 @@ namespace BluesArcheryOverhaul {
         // The game cancels every bow skill the instant the string reads at or below the draw threshold, even for a
         // single update. From the 68% crossing on, a dip only counts once it has lasted RelaxGraceSeconds, for every
         // input in range (Quickdraw's included). Low priority: after RevampedSkills' pull rewrite.
+#if QUEST
+        // Quest: not patched: CheckForPullback runs only on the server (the class stays for DrawGrace.Forget)
+#else
         [HarmonyPatch(typeof(BowStringPullbackInputMethod), "CheckForPullback")]
+#endif
         static class DrawGrace {
             static readonly int T = Timing.Section("patch BowStringPullbackInputMethod.CheckForPullback / Draws.DrawGrace");
 #if QUEST
@@ -648,7 +675,11 @@ namespace BluesArcheryOverhaul {
             static readonly Dictionary<BowStringPullbackInputMethod, float> belowSince = new Dictionary<BowStringPullbackInputMethod, float>();
 #endif
 
+#if QUEST
+            internal static void Forget(ISkillInputMethod input) { if (input.Is(out BowStringPullbackInputMethod b)) belowSince.Remove(b); }
+#else
             internal static void Forget(ISkillInputMethod input) { if (input is BowStringPullbackInputMethod b) belowSince.Remove(b); }
+#endif
 
             [HarmonyPriority(Priority.Low)]
             static bool Prefix(BowStringPullbackInputMethod __instance, float currentPull, bool ___isInPullbackRange,
@@ -669,14 +700,22 @@ namespace BluesArcheryOverhaul {
                     // fix batch D (diagnosis-holy.md): which string, whose input (live or stale), how far into the draw, which arrow
                     // G2: Summary for a STALE input (it traces an open bug), Debug for a live one; nothing here acts, it only reads
                     if (!Logs.Summary) return true;
+#if QUEST
+                    var map = (___skill as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out BowDrawSkill b) ? InputsOf(b) : null;
+#else
                     var map = ___skill is BowDrawSkill b ? InputsOf(b) : null;
+#endif
 #if QUEST
                     bool live = map != null && map.TryGetValue(___bowString, out ISkillInputMethod cur) && Il.Same(cur, __instance);
 #else
                     bool live = map != null && map.TryGetValue(___bowString, out ISkillInputMethod cur) && ReferenceEquals(cur, __instance);
 #endif
                     if (live && !Logs.Debug) return true;
+#if QUEST
+                    HeldPickupHandler h = __instance.Cast<ISkillInputMethod>().Handler;
+#else
                     HeldPickupHandler h = ((ISkillInputMethod)__instance).Handler;
+#endif
                     string who = h != null && h.PlayerHelper != null && h.PlayerHelper.Player != null ? Builds.NameOf(h.PlayerHelper.Player) : "?";
                     int? ms = ElapsedMs(___bowString);
                     MelonLogger.Msg($"[Archery] Draw: {Label(___skill)} lost on '{___bowString.name}' of '{who}' ({(live ? "live" : "STALE")} input), the string stayed relaxed at {currentPull:0.00} " +
@@ -727,8 +766,13 @@ namespace BluesArcheryOverhaul {
         static HeldPickupHandler? HandlerOf(BowString bow) {
             foreach (BowDrawSkill? skill in new[] { Tree.Quickdraw, Tree.Slowdraw, VolleySkill.Skill, Tree.Holy }) { // a Volley-only archer too
                 if (skill == null) continue;
+#if QUEST
+                var map = InputsOf(skill);
+                if (map != null && map.TryGetValue(bow, out ISkillInputMethod input) && input != null && input.Handler != null) return input.Handler;
+#else
                 Dictionary<BowString, ISkillInputMethod>? map = InputsOf(skill);
                 if (map != null && map.TryGetValue(bow, out ISkillInputMethod input) && input != null && input.Handler != null) return input.Handler;
+#endif
             }
             return null;
         }

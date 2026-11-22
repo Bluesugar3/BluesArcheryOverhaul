@@ -127,7 +127,11 @@ namespace BluesArcheryOverhaul {
 #else
             var me = global::Player.Current;
 #endif
+#if QUEST
+            return me == null || (me.Is(out UnityEngine.Object o) && o == null);
+#else
             return me == null || (me is UnityEngine.Object o && o == null);
+#endif
         }
 
         /// <summary>Main.OnLateUpdate (clients): every hold drawn from its arrow's pose this frame. One count test while none. A throw

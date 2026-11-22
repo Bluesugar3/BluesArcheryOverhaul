@@ -129,7 +129,11 @@ namespace BluesArcheryOverhaul {
             if (main != MainPath.None) {
                 Color colour = PathColour(main);
                 foreach (var end in byHash.Values) {
+#if QUEST
+                    var deps = end.game.Slot.Dependencies;
+#else
                     List<uint>? deps = end.game.Slot.Dependencies;
+#endif
                     if (deps == null) continue;
                     foreach (uint dep in deps) {
                         if (!byHash.TryGetValue(dep, out var start) || !TreeTint.LinkTinted(end.orb, start.orb, main)) continue;

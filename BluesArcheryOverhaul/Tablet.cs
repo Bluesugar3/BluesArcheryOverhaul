@@ -162,7 +162,11 @@ namespace BluesArcheryOverhaul {
             if (ApplicationManager.IsHeadless) return;
             ShrineView.Changed += () => textDirty = true;
             Cfg.Reloaded += () => { geometryDirty = true; textDirty = true; };
+#if QUEST
+            Font.add_textureRebuilt(Il.Keep(DelegateSupport.ConvertDelegate<Il2CppSystem.Action<Font>>(new Action<Font>(FontRebuilt))));
+#else
             Font.textureRebuilt += FontRebuilt;
+#endif
         }
 
         // ---------------------------------------------------------------- state
@@ -838,7 +842,11 @@ namespace BluesArcheryOverhaul {
                 Collider col = hit.collider;
                 if (col == null) continue;
                 bool own = (oldRoot != null && col.transform.IsChildOf(oldRoot)) || (root != null && col.transform.IsChildOf(root.transform));
+#if QUEST
+                if (own || col.attachedRigidbody != null || col.Is<CharacterController>() || col.GetComponentInParent<Player>() != null) { skipped++; continue; }
+#else
                 if (own || col.attachedRigidbody != null || col is CharacterController || col.GetComponentInParent<Player>() != null) { skipped++; continue; }
+#endif
                 if (hit.distance >= best) continue;
                 best = hit.distance; y = hit.point.y; name = col.name;
             }
@@ -1045,7 +1053,11 @@ namespace BluesArcheryOverhaul {
             if (string.Equals(wanted, "font", StringComparison.OrdinalIgnoreCase)) { how = $"on the font's own material '{Fx.ShaderName(own)}' (TextShader = font): drawn over everything"; return own; }
             bool auto = wanted.Length == 0 || string.Equals(wanted, "auto", StringComparison.OrdinalIgnoreCase);
             Texture atlas = own.mainTexture;
+#if QUEST
+            bool alphaOnly = !(atlas.Is(out Texture2D t2)) || t2.format == TextureFormat.Alpha8;
+#else
             bool alphaOnly = !(atlas is Texture2D t2) || t2.format == TextureFormat.Alpha8;
+#endif
             string passed = "";
             foreach (string name in auto ? AutoTextShaders : new[] { wanted }) {
                 Shader s = Shader.Find(name);
@@ -1176,7 +1188,11 @@ namespace BluesArcheryOverhaul {
             ProgressionSlot slot = held.Slot;
             bool parent = ShrineView.ParentOwned(slot, out string parents);
             uint cap = 0u;
+#if QUEST
+            try { cap = Il2CppAlta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxBoughtSkills; } catch { }
+#else
             try { cap = Alta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxBoughtSkills; } catch { }
+#endif
             return new BuyFacts {
                 Orb = orb, Status = ShrineView.Says(status), ParentOwned = parent, Parents = parents,
                 SlotsHeld = ShrineView.SlotsHeld(), SlotCap = (int)cap, FreePoints = ShrineView.FreePoints(), Cost = (int)slot.Cost,

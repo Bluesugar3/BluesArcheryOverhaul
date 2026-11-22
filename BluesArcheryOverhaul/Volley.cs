@@ -1043,7 +1043,11 @@ namespace BluesArcheryOverhaul {
                 string from;
                 if (cam != null) { eye = cam.transform; from = cam.name; }
                 else {
+#if QUEST
+                    Player? me = Player.Current?.TryCast<Player>();
+#else
                     Player? me = Player.Current as Player;
+#endif
                     PlayerController pc = me != null ? me.PlayerController : null!;
                     Transform head = pc != null ? pc.Head : null!;
                     if (head != null) { eye = head; from = "head"; }
@@ -1160,7 +1164,11 @@ namespace BluesArcheryOverhaul {
                                 try {
                                     ImpactDetector det = hit.collider.GetComponentInParent<ImpactDetector>();
                                     HealthObject h = det != null ? det.HealthTarget : null!;
+#if QUEST
+                                    if (h != null && !(h.Is<PlayerHealth>())) Balance.Hit(h, Draws.ReleaseOf(s.release)?.ChargedTier ?? 0);
+#else
                                     if (h != null && !(h is PlayerHealth)) Balance.Hit(h, Draws.ReleaseOf(s.release)?.ChargedTier ?? 0);
+#endif
                                 }
                                 catch (Exception e) { MelonLogger.Error($"[Archery] Balance: spectral hit failed: {e.Message}"); }
                             }
@@ -1676,7 +1684,11 @@ namespace BluesArcheryOverhaul {
             }
 
             // a pooled game effect parented to the tip (the Fill's knot flash) is not the arrow's own mesh
+#if QUEST
+            static bool Drawn(Renderer? r) => r != null && r.enabled && r.gameObject.activeInHierarchy && r.Is<MeshRenderer>()
+#else
             static bool Drawn(Renderer? r) => r != null && r.enabled && r.gameObject.activeInHierarchy && r is MeshRenderer
+#endif
                                               && r.GetComponentInParent<PooledObject>() == null;
 
             static void Add(List<MeshFilter> list, Renderer r) {

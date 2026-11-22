@@ -108,7 +108,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>A creature for the mod's own targeting (target lists, Ricochet's jumps, Shatter's trigger and blast, the Quickdraw 4
         /// line passing through): a thing with health and a stagger pool that is not a player; G3: or a combat dummy (IsDummy). Stagger
         /// and interrupt test the pool themselves (Weight), so a dummy is never staggered.</summary>
+#if QUEST
+        internal static bool IsCreature(HealthObject? h) => h != null && !(h.Is<PlayerHealth>()) && (h.HasCrippleStat || IsDummy(h));
+#else
         internal static bool IsCreature(HealthObject? h) => h != null && !(h is PlayerHealth) && (h.HasCrippleStat || IsDummy(h));
+#endif
 
         // G3 (play-test 8, diagnosis 5): [Targets] DummiesCount and DummyNames (shared: the server's targets depend on them)
         static MelonPreferences_Entry<bool>? dummiesCount;
@@ -123,7 +127,11 @@ namespace BluesArcheryOverhaul {
         /// its root), and its prefab root's name matches [Targets] DummyNames. Remembered per health object (names never change; the
         /// memo is dropped on a settings reload).</summary>
         internal static bool IsDummy(HealthObject? h) {
+#if QUEST
+            if (h == null || h.Is<PlayerHealth>() || h.HasCrippleStat || dummiesCount == null || !dummiesCount.Value) return false;
+#else
             if (h == null || h is PlayerHealth || h.HasCrippleStat || dummiesCount == null || !dummiesCount.Value) return false;
+#endif
             int key = h.GetInstanceID();
             if (dummyMemo.TryGetValue(key, out bool known)) return known;
             NetworkEntity e = h.Entity;
@@ -136,7 +144,11 @@ namespace BluesArcheryOverhaul {
             if (yes && Logs.Debug) MelonLogger.Msg($"[Archery] Targets: '{name}' counts as a creature (a combat dummy: [Targets] DummiesCount)");
             return yes;
         }
+#if QUEST
+        internal static bool IsPlayer(HealthObject? h) => h.Is<PlayerHealth>() || (h != null && h.Entity != null && h.Entity.PrefabRoot != null && h.Entity.PrefabRoot.GetComponent<PlayerController>() != null);
+#else
         internal static bool IsPlayer(HealthObject? h) => h is PlayerHealth || (h != null && h.Entity != null && h.Entity.PrefabRoot != null && h.Entity.PrefabRoot.GetComponent<PlayerController>() != null);
+#endif
 
         /// <summary>A player's position: their head (a Player entity's own transform never moves).</summary>
         internal static Vector3? HeadOf(Player? p) {

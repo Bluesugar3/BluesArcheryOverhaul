@@ -220,8 +220,16 @@ namespace BluesArcheryOverhaul {
                 try {
                     float before = __instance.Health;
                     if (!(before > 0f)) return; // already dead: the game deals nothing
+#if QUEST
+                    ImpactHit? hit = impact.As<ImpactHit>();
+#else
                     ImpactHit? hit = impact as ImpactHit;
+#endif
+#if QUEST
+                    ImpactHitWithTool? withTool = impact.As<ImpactHitWithTool>();
+#else
                     ImpactHitWithTool? withTool = impact as ImpactHitWithTool;
+#endif
                     ImpactTool? tool = withTool != null ? withTool.Tool : null;
                     Arrow? arrow = tool != null ? Weight.ArrowOf(tool) : null;
                     uint beam = 0u;
@@ -265,7 +273,11 @@ namespace BluesArcheryOverhaul {
                         Source = __state.Source, TargetId = Targets.IdOf(__instance),
                         Raw = healthDamage, Dealt = dealt, Cripple = crippleDamage, Killed = killed, MaxHealth = __instance.MaxHealth,
                     };
+#if QUEST
+                    if (__instance.Is(out PlayerHealth ph)) {
+#else
                     if (__instance is PlayerHealth ph) {
+#endif
                         PlayerController p = ph.Player;
                         row.Target = Builds.NameOf(p != null ? p.NetworkPlayer : null);
                         row.Victim = Victim.Player;

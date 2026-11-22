@@ -7,7 +7,12 @@ using MelonLoader;
 using UnityEngine;
 
 [assembly: MelonInfo(typeof(BluesArcheryOverhaul.Main), "Blue's Archery Overhaul", BluesArcheryOverhaul.Main.Version, "Blue")]
+#if QUEST
+[assembly: MelonGame("Alta", "Att_Quest")]
+[assembly: HarmonyDontPatchAll]   // Quest: QuestPatches.ApplyAll applies each patch class on its own and logs the ones that fail
+#else
 [assembly: MelonGame("Alta", "A Township Tale")]
+#endif
 
 namespace BluesArcheryOverhaul {
     // Archery mod for A Township Tale. One DLL, loaded by the server and by every client.
@@ -117,7 +122,12 @@ namespace BluesArcheryOverhaul {
                 LoggerInstance.Error($"[Archery] Blue's Archery Overhaul v{Info.Version} DID NOT START: the old {OldName}.dll is installed too ({oldCopy}). Delete that file (this mod replaces it) and restart. Until then only the old {OldName} runs; nothing of this one was patched or loaded.");
                 return;
             }
+#if QUEST
+            LoggerInstance.Msg($"[Archery] Blue's Archery Overhaul v{Info.Version} (Quest; wire {JoinWire.Version})");
+            QuestSkills.Register();   // before anything makes a later orb's skill
+#else
             LoggerInstance.Msg($"[Archery] Blue's Archery Overhaul v{Info.Version} ({(ApplicationManager.IsHeadless ? "server" : "client")})");
+#endif
             Cfg.CarryOverOldName(); // before anything reads a setting: UserData\QuickshotRing.cfg and UserData\QuickshotRing\ copied to the new names when those do not exist yet
 
             Logs.Init(); // first: every later line reads [Log] Level
@@ -157,8 +167,15 @@ namespace BluesArcheryOverhaul {
             ServerSettings.Init(); // server-set settings: sees MelonLoader's file loads and its quit (no entries of its own)
             Cfg.Ready();
             TimingHost.Refresh(); // G5: after any reset or migration; measures its own overhead once when [Timing] Enabled
+#if !QUEST
             if (ApplicationManager.IsHeadless) SkyfallCommands.Register(); // Skyfall: the skyfall console module, on the dedicated server only (its own try/catch)
+#endif
+#if QUEST
             VolleySkill.TryRegister("start"); // retried on every scene and at the tree load until it works
+            QuestPatches.ApplyAll(HarmonyInstance);
+#else
+            VolleySkill.TryRegister("start"); // retried on every scene and at the tree load until it works
+#endif
             SelfCheck.Run("start-up"); // fixF: every settings-derived value and the tablet's text, once, so a cycle shows here
             Cfg.Reloaded += () => SelfCheck.Run("settings reload"); // subscribed last: runs after every other reload handler
 
@@ -340,9 +357,16 @@ namespace BluesArcheryOverhaul {
         // Server -> everyone: "this player's Quickdraw is now charging / charged / cancelled / used".
         [HarmonyPatch(typeof(PickupBasedSkill), nameof(PickupBasedSkill.SendSerializedMessage))]
         static class SkillMessage {
+#if QUEST
+            static void Postfix(PickupBasedSkill __instance, IPlayer __0, Il2CppAlta.Serialization.Stream __1) {
+                ToolBasedSkillStatus ___status = __instance.status;
+                using var _t = Timing.Begin(TSkillMessage);
+                if (!__1.IsReading || !__instance.Is<BowQuickdraw>() || __0 == null || !__0.IsLocalPlayer) return;
+#else
             static void Postfix(PickupBasedSkill __instance, IPlayer __0, Alta.Serialization.Stream __1, ToolBasedSkillStatus ___status) {
                 using var _t = Timing.Begin(TSkillMessage);
                 if (!__1.IsReading || !(__instance is BowQuickdraw) || __0 == null || !__0.IsLocalPlayer) return;
+#endif
                 ownsQuickdraw = true;
                 switch (___status) {
                     case ToolBasedSkillStatus.ChargingStarted: expired = false; SetState(State.Charging); break;
@@ -360,15 +384,28 @@ namespace BluesArcheryOverhaul {
         // Runs on the client every frame the local player holds a bow string.
         [HarmonyPatch(typeof(BowString), "HeldUpdate")]
         static class Draw {
+#if QUEST
+            static void Postfix(BowString __instance) {
+                Interactor ___interactorHoldingBowString = __instance.interactorHoldingBowString;
+#else
             static void Postfix(BowString __instance, Interactor ___interactorHoldingBowString) {
+#endif
                 using var _t = Timing.Begin(TDraw);
                 if (___interactorHoldingBowString == null || !___interactorHoldingBowString.IsLocal) return;
 
                 BowQuickdraw? skill = FindQuickdraw();
+#if QUEST
+                var settings = skill?.InputStructure?.As<BowStringPullbackStructure>();
+#else
                 var settings = skill?.InputStructure as BowStringPullbackStructure;
+#endif
                 if (skill == null || settings == null) return;
 
+#if QUEST
+                if (!ownsQuickdraw && Player.Current.Is(out Player me) && me.ProgressionManager != null)
+#else
                 if (!ownsQuickdraw && Player.Current is Player me && me.ProgressionManager != null)
+#endif
                     ownsQuickdraw = me.ProgressionManager.SkillUnlocked(skill);
                 if (!ownsQuickdraw) return;
 
@@ -423,7 +460,11 @@ namespace BluesArcheryOverhaul {
                 }
 
                 Transform t = ring!.transform;
+#if QUEST
+                if (!Il.Same(t.parent, tip)) t.SetParent(tip, false); // parented so it can't lag behind the hand in VR
+#else
                 if (t.parent != tip) t.SetParent(tip, false); // parented so it can't lag behind the hand in VR
+#endif
                 t.localPosition = Vector3.zero;
                 t.rotation = Quaternion.LookRotation(arrowPickup.transform.forward); // docked arrows point +Z at the bow hand
                 float parentScale = tip.lossyScale.x;

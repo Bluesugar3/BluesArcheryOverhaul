@@ -165,7 +165,11 @@ namespace BluesArcheryOverhaul {
         /// the meander repeats along u), named Archery_Skyfall_{name}; null (warned) when missing or unreadable.</summary>
         static Texture2D? Embedded(string name, bool repeatU) {
             byte[]? png = null;
+#if QUEST
+            using (System.IO.Stream? s = Assembly.GetExecutingAssembly().GetManifestResourceStream($"BluesArcheryOverhaul.Resources.Skyfall_{name}.png")) {
+#else
             using (Stream? s = Assembly.GetExecutingAssembly().GetManifestResourceStream($"BluesArcheryOverhaul.Resources.Skyfall_{name}.png")) {
+#endif
                 if (s != null) {
                     png = new byte[s.Length];
                     int read = 0;

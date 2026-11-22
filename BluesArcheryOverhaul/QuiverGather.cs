@@ -237,7 +237,12 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupDocker), "OnPreDocked")]
         static class ReturnGhost {
             static readonly int T = Timing.Section("patch PickupDocker.OnPreDocked / QuiverGather.ReturnGhost");
+#if QUEST
+            static void Prefix(PickupDocker __instance, Interactor interactor, PickupDock dock) {
+                Pickup ___pickup = __instance.pickup;
+#else
             static void Prefix(Pickup ___pickup, Interactor interactor, PickupDock dock) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless || interactor != null || ___pickup == null || dock == null || ___pickup.Entity == null) return;
@@ -245,7 +250,11 @@ namespace BluesArcheryOverhaul {
                     if (dock.GetComponent<Quiver>() == null) return;
                     if ((___pickup.transform.position - dock.transform.position).magnitude < ghostMinDistance.Value) return;
 
+#if QUEST
+                    var ghost = GlobalSettings<PickupTypeSettings>.Instance.PickupMovingGhost.Get(___pickup.transform).As<MovingObjectsBetweenDocks>();
+#else
                     var ghost = GlobalSettings<PickupTypeSettings>.Instance.PickupMovingGhost.Get(___pickup.transform) as MovingObjectsBetweenDocks;
+#endif
                     if (ghost == null) return;
                     ghost.SetupRenderers(___pickup.GetComponentsInChildren<MeshRenderer>(true));
                     ghost.transform.parent = dock.SnapPoint;

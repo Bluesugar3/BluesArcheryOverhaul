@@ -514,7 +514,11 @@ namespace BluesArcheryOverhaul {
 #else
                 var me = global::Player.Current;
 #endif
+#if QUEST
+                if (me == null || (me.Is(out UnityEngine.Object o) && o == null)) {
+#else
                 if (me == null || (me is UnityEngine.Object o && o == null)) {
+#endif
                     if (runs.Count > 0) Clear();
                     return;
                 }

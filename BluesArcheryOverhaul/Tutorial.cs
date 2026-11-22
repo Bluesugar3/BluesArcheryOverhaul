@@ -96,7 +96,13 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Open", new Type[0])]
         static class Opened {
             static readonly int T = Timing.Section("patch SkillShrineTestingArea.Open / Tutorial.Opened");
+#if QUEST
+            static void Postfix(SkillShrineTestingArea __instance) {
+                SkillOrb ___openSkillOrb = __instance.openSkillOrb;
+                ActionGlyphsPlacer ___actionGlyphPlacer = __instance.actionGlyphPlacer;
+#else
             static void Postfix(SkillOrb ___openSkillOrb, ActionGlyphsPlacer ___actionGlyphPlacer) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless) return;

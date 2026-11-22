@@ -509,7 +509,11 @@ namespace BluesArcheryOverhaul {
             if (!struck || hit.collider == null) return null;
             ImpactDetector det = hit.collider.GetComponentInParent<ImpactDetector>();
             HealthObject h = det != null ? det.HealthTarget : null!;
+#if QUEST
+            return h != null && !(h.Is<PlayerHealth>()) && h.HasCrippleStat ? h : null;
+#else
             return h != null && !(h is PlayerHealth) && h.HasCrippleStat ? h : null;
+#endif
         }
 
         // ---------------------------------------------------------------- the hit
@@ -525,7 +529,11 @@ namespace BluesArcheryOverhaul {
             if (!flights.TryGetValue(arrowId, out Flight f)) return;
             flights.Remove(arrowId); // the first hit only
             if (!On || Time.time - f.At > FlightSeconds) return;
+#if QUEST
+            if (creature == null || creature.Is<PlayerHealth>() || !creature.HasCrippleStat) return;
+#else
             if (creature == null || creature is PlayerHealth || !creature.HasCrippleStat) return;
+#endif
             Show(arrowId, point, normal, creature, f.Orbs, f.Interrupts, f.Local, "quick shot", 1f);
         }
 

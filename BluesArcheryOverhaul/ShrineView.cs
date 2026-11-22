@@ -230,7 +230,11 @@ namespace BluesArcheryOverhaul {
         static bool IsLocal(SkillShrine s) {
             IPlayer? me = Player.Current;
             PlayerProgressionManager? pm = s.CurrentManager;
+#if QUEST
+            return me != null && pm != null && pm.Player != null && Il.Same(pm.Player, me);
+#else
             return me != null && pm != null && pm.Player != null && pm.Player.Identifier == me.Identifier;
+#endif
         }
 
         static bool IsRanged(SkillShrine s) => Tree.Ready && s.CurrentPath == Tree.RangedPath;
@@ -282,7 +286,11 @@ namespace BluesArcheryOverhaul {
 
         static BoughtSkillVisualizer? Ring() {
             if (shrine == null) return null;
+#if QUEST
+            foreach (SkillShrineVisualizer v in shrine.Visualizers.Each()) if (v.Is(out BoughtSkillVisualizer b)) return b;
+#else
             foreach (SkillShrineVisualizer v in shrine.Visualizers) if (v is BoughtSkillVisualizer b && b != null) return b;
+#endif
             return null;
         }
 
@@ -312,7 +320,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>The local player has practised this slot (the game sends the practised slots to every client: Player.OnConnected
         /// -> SyncPracticedToPlayer, and each new one to everyone in range); null when this client has no record for its path.</summary>
         internal static bool? Practised(ProgressionSlot slot) {
+#if QUEST
+            Player? me = Player.Current?.TryCast<Player>();
+#else
             Player? me = Player.Current as Player;
+#endif
             PlayerProgressionManager? pm = me != null ? me.ProgressionManager : null;
             if (pm == null || slot == null || !pm.PathExperiences.TryGetValue(slot.Path, out PathExperience pe) || pe == null) return null;
             return pe.IsSlotPracticed(slot.Hash);
@@ -337,7 +349,11 @@ namespace BluesArcheryOverhaul {
         /// parent, which this list does not leave out).</summary>
         internal static string OwnedAbove(ProgressionSlot slot) {
             var names = new List<string>();
+#if QUEST
+            foreach (ProgressionSlot child in slot.InheritSlots.Each())
+#else
             foreach (ProgressionSlot child in slot.InheritSlots)
+#endif
                 foreach (SkillOrb so in orbs)
                     if (so != null && so.Slot != null && so.Slot.Hash == child.Hash && IsOwned(so.Status)) {
                         names.Add(Tree.OrbBySlot.TryGetValue(child.Hash, out Orb o) ? Lines.Name(o) : child.Name);
@@ -479,7 +495,13 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Open", new Type[0])]
         static class TryOutOpened {
             static readonly int T = Timing.Section("patch SkillShrineTestingArea.Open / ShrineView.TryOutOpened");
+#if QUEST
+            static void Postfix(SkillShrineTestingArea __instance) {
+                SkillOrb ___openSkillOrb = __instance.openSkillOrb;
+                SkillShrine ___shrine = __instance.shrine;
+#else
             static void Postfix(SkillOrb ___openSkillOrb, SkillShrine ___shrine) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless || shrine == null || ___shrine != shrine || Held == ___openSkillOrb) return;
@@ -493,7 +515,12 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(SkillShrineTestingArea), nameof(SkillShrineTestingArea.Disable))]
         static class TryOutClosed {
             static readonly int T = Timing.Section("patch SkillShrineTestingArea.Disable / ShrineView.TryOutClosed");
+#if QUEST
+            static void Postfix(SkillShrineTestingArea __instance) {
+                SkillShrine ___shrine = __instance.shrine;
+#else
             static void Postfix(SkillShrine ___shrine) {
+#endif
                 using var _t = Timing.Begin(T);
                 try {
                     if (ApplicationManager.IsHeadless || shrine == null || ___shrine != shrine || Held is null) return;

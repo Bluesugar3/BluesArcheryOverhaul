@@ -128,7 +128,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>Whether a hit on <paramref name="h"/> (or, with no health, on the detector's thing) shatters, and its id.</summary>
         static bool StruckBy(ImpactDetector? detector, HealthObject? h, bool tryingOut, out uint id, out string name) {
             id = 0u; name = h != null ? h.name : detector != null ? detector.name : "?";
+#if QUEST
+            bool player = h.Is<PlayerHealth>();
+#else
             bool player = h is PlayerHealth;
+#endif
             bool creature = Targets.IsCreature(h);
             // the try-out target counts only as a networked thing (never the ground or a static world object)
             bool thing = tryingOut && (h != null || (detector != null && detector.GetComponentInParent<NetworkEntity>() != null));
@@ -153,8 +157,16 @@ namespace BluesArcheryOverhaul {
                 ImpactDetector det = c.GetComponentInParent<ImpactDetector>();
                 HealthObject h = det != null ? det.HealthTarget : null!;
                 if (h == null || h == struckHealth || !seenHealth.Add(h) || !(h.Health > 0f)) continue;
+#if QUEST
+                bool player = h.Is<PlayerHealth>();
+#else
                 bool player = h is PlayerHealth;
+#endif
+#if QUEST
+                if (player ? !players || (shooter != null && h.Cast<PlayerHealth>().Player == shooter) : !Targets.IsCreature(h)) continue;
+#else
                 if (player ? !players || (shooter != null && ((PlayerHealth)h).Player == shooter) : !Targets.IsCreature(h)) continue;
+#endif
                 uint id = Targets.IdOf(h);
                 if (id == 0u) id = (uint)h.GetInstanceID();
                 if (id == struck) continue;
@@ -239,7 +251,11 @@ namespace BluesArcheryOverhaul {
                 Vector3 normal = (point - at).sqrMagnitude > 1e-6f ? (point - at).normalized : -axis;
                 bool hitOne = false; string how = "no detector";
                 foreach (object o in h.ImpactDetectors) {
+#if QUEST
+                    if (!(o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector det)) continue;
+#else
                     if (!(o is ImpactDetector det) || det == null) continue;
+#endif
                     // cripple 0 (b3-review I-3): the charged arrow's stagger is Weight's ledger's; the blast adds none of its own
                     if (Hits.Apply(tool, det, at, normal, multiplier, out how, 0f)) { hitOne = true; break; }
                 }

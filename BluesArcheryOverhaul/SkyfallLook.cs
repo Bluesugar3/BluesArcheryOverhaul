@@ -194,7 +194,11 @@ namespace BluesArcheryOverhaul {
             if (lods != null) {
                 LOD[] all = lods.GetLODs();
                 if (all.Length > 0 && all[0].renderers != null)
+#if QUEST
+                    foreach (Renderer r in all[0].renderers) if (r.Is(out MeshRenderer mr) && mr != null) renderers.Add(mr);
+#else
                     foreach (Renderer r in all[0].renderers) if (r is MeshRenderer mr && mr != null) renderers.Add(mr);
+#endif
             }
             if (renderers.Count == 0)
                 foreach (MeshRenderer mr in prefab.GetComponentsInChildren<MeshRenderer>(true))
@@ -489,12 +493,21 @@ namespace BluesArcheryOverhaul {
                 pt.localScale = pt.localScale * k;
             }
             PoolChangedHandler? restore = null;
+#if QUEST
+            restore = DelegateSupport.ConvertDelegate<PoolChangedHandler>(new Action<PooledObject>(p => {
+                if (p != null) p.transform.localScale = original;
+                for (int i = 0; i < locals.Count; i++) if (locals[i] != null) locals[i].localScale = scales[i];
+                got.remove_Released(restore);
+            }));
+            got.add_Released(restore);
+#else
             restore = p => {
                 if (p != null) p.transform.localScale = original;
                 for (int i = 0; i < locals.Count; i++) if (locals[i] != null) locals[i].localScale = scales[i];
                 got.Released -= restore;
             };
             got.Released += restore;
+#endif
             return true;
         }
 
@@ -602,7 +615,11 @@ namespace BluesArcheryOverhaul {
                 if (!Finite(centre)) return;
                 if (!caster) {
 #if QUEST
+#if QUEST
+                    Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current?.TryCast<Il2Cpp.Player>());
+#else
                     Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current as Il2Cpp.Player);
+#endif
 #else
                     Vector3? head = Targets.HeadOf(global::Player.Current as global::Player);
 #endif
@@ -723,8 +740,13 @@ namespace BluesArcheryOverhaul {
 #else
             var me = global::Player.Current;
 #endif
+#if QUEST
+            if (me == null || (me.Is(out UnityEngine.Object o) && o == null)) {
+                playerSince = -1f;
+#else
             if (me == null || (me is UnityEngine.Object o && o == null)) {
                 playerSince = -1f;
+#endif
                 if (runs.Count > 0 || scorches.Count > 0) Clear();
                 return;
             }

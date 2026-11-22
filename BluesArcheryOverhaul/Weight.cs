@@ -59,7 +59,12 @@ namespace BluesArcheryOverhaul {
             public float At;
             public bool Local, Done; // Done: the real arrow has had its first creature (or terrain) hit
             public Embeddable? Embed;              // clients: the embed fallback's subscription (Task 11)
+#if QUEST
             public Action<Embeddable>? OnEmbed;
+            public Il2CppSystem.Action<Embeddable>? OnEmbedGame;   // Quest: the game's copy of OnEmbed, kept to unsubscribe it
+#else
+            public Action<Embeddable>? OnEmbed;
+#endif
         }
 
         static void Unwatch(Armed a) {
@@ -67,7 +72,13 @@ namespace BluesArcheryOverhaul {
             Action<Embeddable>? h = a.OnEmbed;
             a.Embed = null; a.OnEmbed = null;
             if (e == null || h == null) return;
+#if QUEST
+            Il2CppSystem.Action<Embeddable>? g = a.OnEmbedGame;
+            a.OnEmbedGame = null;
+            try { if (g != null) e.remove_Embedded(g); } catch { }
+#else
             try { e.Embedded -= h; } catch { }
+#endif
         }
 
         static void Drop(uint arrowId) {
@@ -134,7 +145,12 @@ namespace BluesArcheryOverhaul {
             Armed me = a;
             a.Embed = e;
             a.OnEmbed = emb => Embedded(id, me, emb);
+#if QUEST
+            a.OnEmbedGame = a.OnEmbed;
+            e.add_Embedded(a.OnEmbedGame);
+#else
             e.Embedded += a.OnEmbed;
+#endif
         }
 
         static readonly int T_Embedded = Timing.Section("Weight.Embedded");
@@ -148,7 +164,11 @@ namespace BluesArcheryOverhaul {
                 NetworkEntity root = other != null ? other.PrefabRoot : null!;
                 if (root == null || root.GetComponent<PlayerController>() != null) return;
                 HealthObject h = root.GetComponentInChildren<HealthObject>(true);
+#if QUEST
+                if (h == null || h.Is<PlayerHealth>() || !h.HasCrippleStat) return; // creatures only, as the Balance Ring
+#else
                 if (h == null || h is PlayerHealth || !h.HasCrippleStat) return; // creatures only, as the Balance Ring
+#endif
                 a.Done = true;
                 Arrow arrow = emb.GetComponent<Arrow>();
                 Transform tipT = arrow != null && arrow.ArrowTip != null ? arrow.ArrowTip.transform : emb.transform;
@@ -221,7 +241,11 @@ namespace BluesArcheryOverhaul {
             if (NetworkSceneManager.IsServer && h.HasCrippleStat && h.CrippleStat != null) {
                 Creature me = c;
                 c.Pool = h.CrippleStat;
+#if QUEST
+                c.OnPool = DelegateSupport.ConvertDelegate<StatHandler>(new Action<Stat>(s => { if (s != null && s.Value >= s.Maximum - 0.0001f) me.FullSinceKnockDown = true; }));
+#else
                 c.OnPool = s => { if (s != null && s.Value >= s.Maximum - 0.0001f) me.FullSinceKnockDown = true; };
+#endif
                 c.Pool.Changed += c.OnPool;
             }
             creatures[key] = c;
@@ -237,7 +261,12 @@ namespace BluesArcheryOverhaul {
             if (!float.IsNaN(c.Spiritual)) return c.Spiritual;
             float m = 1f;
             try {
+#if QUEST
+                var map = c.Health != null ? c.Health.impactTypeMultipliers : null;   // Quest: the game's own dictionary, read in place
+                if (map != null && map.TryGetValue(ImpactType.Spiritual, out float v)) m = v;
+#else
                 if (typeMultipliersField?.GetValue(c.Health) is Dictionary<ImpactType, float> map && map.TryGetValue(ImpactType.Spiritual, out float v)) m = v;
+#endif
             }
             catch (Exception e) { MelonLogger.Warning($"[Archery] Weight: reading '{c.Name}' impact type multipliers failed: {e.Message}"); }
             return c.Spiritual = m;
@@ -331,7 +360,12 @@ namespace BluesArcheryOverhaul {
         static class RealHit {
             static readonly int TPrefix = Timing.Section("patch ImpactDetector.OnToolHit / Weight.RealHit prefix");
             static readonly int TPostfix = Timing.Section("patch ImpactDetector.OnToolHit / Weight.RealHit postfix");
+#if QUEST
+            static void Prefix(ImpactDetector __instance, ImpactHitWithTool impactWithTool, out HitState __state) {
+                var ___hitCooldowns = __instance.hitCooldowns;
+#else
             static void Prefix(ImpactDetector __instance, ImpactHitWithTool impactWithTool, Dictionary<ImpactTool, float> ___hitCooldowns, out HitState __state) {
+#endif
                 using var _t = Timing.Begin(TPrefix);
                 __state = new HitState { Before = float.NaN, Passes = false };
                 try {
@@ -348,7 +382,11 @@ namespace BluesArcheryOverhaul {
                 try {
                     if (Hits.Dealing || !__state.Passes || impactWithTool == null) return;
                     HealthObject h = __instance.HealthTarget;
+#if QUEST
+                    if (h.Is<PlayerHealth>()) return;
+#else
                     if (h is PlayerHealth) return;
+#endif
                     Arrow? arrow = ArrowOf(impactWithTool.Tool);
                     if (arrow == null || arrow.Entity == null) return;
                     uint id = arrow.Entity.Identifier;
@@ -458,7 +496,11 @@ namespace BluesArcheryOverhaul {
         static readonly int T_AddSpectral = Timing.Section("Weight.AddSpectral");
         internal static void AddSpectral(uint release, HealthObject target, float shares, int ghosts) {
             using var _t = Timing.Begin(T_AddSpectral, release);
+#if QUEST
+            if (target == null || target.Is<PlayerHealth>() || !target.HasCrippleStat || !(shares > 0f)) return; // G3: never a combat dummy
+#else
             if (target == null || target is PlayerHealth || !target.HasCrippleStat || !(shares > 0f)) return; // G3: never a combat dummy
+#endif
             Armed? a = Find(release);
             if (a == null) return;
             float stagger = (a.Carry.GhostStaggerPerShare > 0f ? shares * a.Carry.GhostStaggerPerShare : 0f)
@@ -482,7 +524,11 @@ namespace BluesArcheryOverhaul {
             try {
                 if (!creatures.TryGetValue(d.Creature, out Creature c) || c.Health == null) return; // gone
                 HealthObject h = c.Health;
+#if QUEST
+                if (h.Is<PlayerHealth>()) return; // never: players are not staggered
+#else
                 if (h is PlayerHealth) return; // never: players are not staggered
+#endif
                 float now = Time.time;
                 if (WeightRules.Immune(now, c.LastKnockDown, knockDownImmunity.Value)) {
                     if (Logs.Debug) MelonLogger.Msg(Inv($"[Archery] Weight: arrow {d.Release} '{c.Name}' stagger {d.Stagger:0.00} skipped: knocked down by the game {now - c.LastKnockDown:0.0} s ago"));
@@ -549,7 +595,11 @@ namespace BluesArcheryOverhaul {
                 if (a == null) return;
                 if (first) a.Done = true; // the line is the arrow's hit; the placed arrow acts on nothing else
                 if (!(a.Carry.Stagger > 0f || a.Carry.Interrupt)) return;
+#if QUEST
+                if (h == null || h.Is<PlayerHealth>() || !h.HasCrippleStat) return; // G3: never a combat dummy (no stagger pool)
+#else
                 if (h == null || h is PlayerHealth || !h.HasCrippleStat) return; // G3: never a combat dummy (no stagger pool)
+#endif
                 Creature c = CreatureOf(h);
                 float stagger = a.Carry.Stagger * (first ? 1f : Mathf.Max(0f, share));
                 if (stagger > 0f) {
@@ -584,7 +634,11 @@ namespace BluesArcheryOverhaul {
         static void TryInterrupt(Creature c) {
             using var _t = Timing.Begin(T_TryInterrupt);
             HealthObject h = c.Health;
+#if QUEST
+            if (h == null || h.Is<PlayerHealth>()) return;
+#else
             if (h == null || h is PlayerHealth) return;
+#endif
             float now = Time.time;
 #if QUEST
             Il2CppAlta.Intelligence.Agent? agent = AgentOf(c);
@@ -597,7 +651,7 @@ namespace BluesArcheryOverhaul {
 #endif
             bool cancellable = action != null && action.GeneralSettings != null && action.GeneralSettings.IsCancellable;
 #if QUEST
-            bool wyrm = agent is Il2CppAlta.Intelligence.Wyrm;
+            bool wyrm = agent.Is<Il2CppAlta.Intelligence.Wyrm>();
 #else
             bool wyrm = agent is Alta.Intelligence.Wyrm;
 #endif

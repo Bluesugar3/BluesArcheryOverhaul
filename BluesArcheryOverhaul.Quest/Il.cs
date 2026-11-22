@@ -86,6 +86,21 @@ namespace BluesArcheryOverhaul {
         internal static List<T> ToList<T>(this Il2Cpp2.List<T> list) => list.Each().ToList();
         internal static bool Contains<T>(this Il2Cpp2.IEnumerable<T> items, T value) => items.Each().Contains(value);
 
+        /// <summary>A managed sequence as a game sequence (a new game list behind the game's IEnumerable).</summary>
+        internal static Il2Cpp2.IEnumerable<T> Game<T>(IEnumerable<T> items) {
+            var made = new Il2Cpp2.List<T>();
+            foreach (T t in items) made.Add(t);
+            return made.Cast<Il2Cpp2.IEnumerable<T>>();
+        }
+
+        // The PC lines hand a managed array or list where the Quest game takes its own IEnumerable, or ask Unity to fill a list.
+        internal static void SetupRenderers(this MovingObjectsBetweenDocks g, IEnumerable<UnityEngine.MeshRenderer> r) => g.SetupRenderers(Game(r));
+        internal static void InitializeEffect(this ToolBasedEffectBase e, IEnumerable<UnityEngine.MeshRenderer> r) => e.InitializeEffect(Game(r));
+        internal static void GetComponentsInChildren<T>(this UnityEngine.Component c, bool includeInactive, List<T> into) where T : UnityEngine.Component {
+            into.Clear();
+            into.AddRange(c.GetComponentsInChildren<T>(includeInactive));
+        }
+
         /// <summary>A new game list with the same items (the PC line's <c>new List&lt;T&gt;(list)</c>).</summary>
         internal static Il2Cpp2.List<T> Copy<T>(Il2Cpp2.List<T> list) {
             var made = new Il2Cpp2.List<T>();

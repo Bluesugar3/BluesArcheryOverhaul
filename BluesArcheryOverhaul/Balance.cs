@@ -88,7 +88,11 @@ namespace BluesArcheryOverhaul {
         static readonly int T_Hit = Timing.Section("look start Balance.Hit");
         internal static void Hit(HealthObject target, int chargeTier = 0) {
             using var _t = Timing.Begin(T_Hit);
+#if QUEST
+            if (ApplicationManager.IsHeadless || enabled == null || !enabled.Value || target == null || target.Is<PlayerHealth>()) return;
+#else
             if (ApplicationManager.IsHeadless || enabled == null || !enabled.Value || target == null || target is PlayerHealth) return;
+#endif
             if (!target.HasCrippleStat) return; // creatures only: a target or prop with health has no balance to show
             try {
                 int key = target.GetInstanceID();
@@ -141,7 +145,11 @@ namespace BluesArcheryOverhaul {
                 Ring me = r;
                 r.Pool = target.CrippleStat;
                 r.Shown = BalanceRule.Drained(r.Pool.Value, r.Pool.Minimum, r.Pool.Maximum);
+#if QUEST
+                r.OnPool = DelegateSupport.ConvertDelegate<StatHandler>(new Action<Stat>(s => Received(me, s)));
+#else
                 r.OnPool = s => Received(me, s);
+#endif
                 r.Pool.Changed += r.OnPool;
             }
             Place(r);

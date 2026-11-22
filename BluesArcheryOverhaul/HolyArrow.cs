@@ -279,7 +279,11 @@ namespace BluesArcheryOverhaul {
             static readonly int T = Timing.Section("patch BowDrawSkill.OnArrowShot / HolyArrow.UnarmedShot");
             static bool Prefix(BowDrawSkill __instance, BowString bowString) {
                 using var _t = Timing.Begin(T);
+#if QUEST
+                if (!(__instance.Is<LightBeamSkill>()) || !NetworkSceneManager.IsServer || bowString == null) return true;
+#else
                 if (!(__instance is LightBeamSkill) || !NetworkSceneManager.IsServer || bowString == null) return true;
+#endif
                 return armed.Remove(bowString);
             }
         }
@@ -628,15 +632,27 @@ namespace BluesArcheryOverhaul {
             }
             // The directly hit target already took the direct hit; it does not take the blast on top.
             // Players are the exception: the beam's direct hit never deals to a player, so they get the blast (with PvP only).
+#if QUEST
+            if (directHealth != null && !(directHealth.Is<PlayerHealth>())) healths.Remove(directHealth);
+#else
             if (directHealth != null && !(directHealth is PlayerHealth)) healths.Remove(directHealth);
+#endif
 
             int count = 0, pvpSpared = 0; string stunLog = "";
             foreach (HealthObject h in healths) {
                 if (h == null) continue;
+#if QUEST
+                Vector3 at = h.PositionHandler != null ? h.PositionHandler.GetPosition.Invoke(point) : h.transform.position;
+#else
                 Vector3 at = h.PositionHandler != null ? h.PositionHandler.GetPosition(point) : h.transform.position;
+#endif
                 float f = BlastMath.Fraction(Vector3.Distance(at, point), fullRadius.Value, radius.Value, edgeFraction.Value);
                 if (f <= 0f) continue;
+#if QUEST
+                bool player = h.Is<PlayerHealth>();
+#else
                 bool player = h is PlayerHealth;
+#endif
                 // play-test 7: a plain ImpactHit never meets the game's PvP gate, so the blast applies it itself (PvpRule.HolyBlast):
                 // nothing with the server's PvP off or on the archer, else the server's PVPMultiplier / PVPCrippleMultiplier
                 float healthK = 1f, crippleK = 1f;
@@ -686,15 +702,27 @@ namespace BluesArcheryOverhaul {
             static void Postfix(PickupBasedSkill __instance, IPlayer __0, Alta.Serialization.Stream __1, ToolBasedSkillStatus ___status, uint ___pickupIdentifier) {
 #endif
                 using var _t = Timing.Begin(T);
+#if QUEST
+                if (!__instance.Is<LightBeamSkill>() || __1 == null || !__1.IsReading || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer) return;
+#else
                 if (!(__instance is LightBeamSkill) || __1 == null || !__1.IsReading || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer) return;
+#endif
                 ToolBasedSkillStatus status = ___status;
                 bool local = __0 != null && __0.IsLocalPlayer;
                 try {
+#if QUEST
+                    NetworkSceneManager.Current.Spawner.WaitForSpawn(___pickupIdentifier, Il.Keep(DelegateSupport.ConvertDelegate<EntitySpawnedHandler>(new Action<NetworkEntity>(entity => {
+                        try {
+                            BowString? bow = Volley.BowOf(entity);
+                            if (bow == null) return;
+                            ChargeFx.NoteArcher(bow, Builds.NameOf(__0), local);
+#else
                     NetworkSceneManager.Current.Spawner.WaitForSpawn(___pickupIdentifier, entity => {
                         try {
                             BowString? bow = Volley.BowOf(entity);
                             if (bow == null) return;
                             ChargeFx.NoteArcher(bow, Builds.NameOf(__0), local);
+#endif
                             try { ChargeFx.Holy(bow, status, entity.Identifier); } // the Fill's squeeze and armed core
                             catch (Exception e) { MelonLogger.Warning($"[Archery] Fill: Holy status failed: {e.Message}"); }
                             if (status == ToolBasedSkillStatus.ChargingStarted) Volley.SetHolyCharging(bow, true);
@@ -705,14 +733,23 @@ namespace BluesArcheryOverhaul {
                                 Arrow arrow = entity.GetComponent<Arrow>();
                                 Vector3 at = arrow != null && arrow.ArrowTip != null ? arrow.ArrowTip.transform.position : entity.transform.position;
                                 if (readyFlash.Value > 0f) Fx.Flash(at, Gold, readyFlash.Value, 3f, 0.25f);
+#if QUEST
+                                if (local && Player.Current.Is(out Player me) && me.PlayerController != null) {
+#else
                                 if (local && Player.Current is Player me && me.PlayerController != null) {
+#endif
                                     me.PlayerController.LeftController?.TriggerHaptic(1f, 0.2f);
                                     me.PlayerController.RightController?.TriggerHaptic(1f, 0.2f);
                                 }
                             }
                         }
+#if QUEST
+                        catch (Exception e) { MelonLogger.Warning($"[Archery] Holy: status handling failed: {e.Message}"); }
+                    }))));
+#else
                         catch (Exception e) { MelonLogger.Warning($"[Archery] Holy: status handling failed: {e.Message}"); }
                     });
+#endif
                 }
                 catch (Exception e) { MelonLogger.Warning($"[Archery] Holy: status lookup failed: {e.Message}"); }
             }

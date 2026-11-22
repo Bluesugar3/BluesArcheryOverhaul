@@ -345,7 +345,11 @@ namespace BluesArcheryOverhaul {
 #else
                 IPlayer? me = global::Player.Current;
 #endif
+#if QUEST
+                if (me.Is(out UnityEngine.Object o) && o == null) return 0;   // a destroyed player counts as none
+#else
                 if (me is UnityEngine.Object o && o == null) return 0;   // a destroyed player counts as none
+#endif
                 return me?.UserInfo?.Identifier ?? 0;
             }
         }

@@ -162,9 +162,16 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(BowString), "HeldUpdate")]
         static class Held {
             static readonly int T = Timing.Section("patch BowString.HeldUpdate / Seek.Held (the shooter's lock)");
+#if QUEST
+            static void Postfix(BowString __instance) {
+                Interactor ___interactorHoldingBowString = __instance.interactorHoldingBowString;
+                using var _t = Timing.Begin(T);
+                if (NetworkSceneManager.IsServer || ApplicationManager.IsHeadless) return;
+#else
             static void Postfix(BowString __instance, Interactor ___interactorHoldingBowString) {
                 using var _t = Timing.Begin(T);
                 if (NetworkSceneManager.IsServer || ApplicationManager.IsHeadless) return;
+#endif
                 if (___interactorHoldingBowString == null || !___interactorHoldingBowString.IsLocal) return;
                 try { Frame(__instance); }
                 catch (Exception e) {
@@ -210,7 +217,11 @@ namespace BluesArcheryOverhaul {
             HomingValues v = Values;
             Transform tipT = arrow.ArrowTip != null ? arrow.ArrowTip.transform : arrow.transform;
             Vector3 origin = tipT.position, fwd = docked.transform.forward;
+#if QUEST
+            Vector3 eye = Targets.HeadOf(Player.Current?.TryCast<Player>()) ?? origin;
+#else
             Vector3 eye = Targets.HeadOf(Player.Current as Player) ?? origin;
+#endif
             float dt = aim.LastUpdate >= 0f ? Mathf.Max(0f, now - aim.LastUpdate) : 0f;
             bool isStill = aim.LastForward == Vector3.zero || dt <= 0f || Vector3.Angle(aim.LastForward, fwd) / dt < v.StillDegreesPerSecond;
             aim.LastForward = fwd;

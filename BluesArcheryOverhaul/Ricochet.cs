@@ -140,7 +140,11 @@ namespace BluesArcheryOverhaul {
         static void Describe(Collider c, out bool player, out bool creature, out string layer, out bool entity) {
             ImpactDetector det = c.GetComponentInParent<ImpactDetector>();
             HealthObject h = det != null ? det.HealthTarget : null!;
+#if QUEST
+            player = h.Is<PlayerHealth>();
+#else
             player = h is PlayerHealth;
+#endif
             creature = h != null && !player && h.HasCrippleStat;
             layer = LayerMask.LayerToName(c.gameObject.layer) ?? "";
             entity = c.GetComponentInParent<NetworkEntity>() != null;
@@ -224,9 +228,17 @@ namespace BluesArcheryOverhaul {
             for (int i = 0; i < ids.Count; i++) into.Add(new JumpCandidate(ids[i], centres[i].x, centres[i].y, centres[i].z, rec.Struck.Contains(ids[i]), false));
             if (players) {
                 foreach (IPlayer ip in Player.AllPlayers) {
+#if QUEST
+                    if (!ip.Is(out Player p)) continue;
+#else
                     if (!(ip is Player p) || p == null) continue;
+#endif
                     PlayerController pc = p.PlayerController;
+#if QUEST
+                    if (pc == null || pc == shooter || !(pc.Health.Is(out PlayerHealth ph)) || ph == null || !(ph.Health > 0f)) continue;
+#else
                     if (pc == null || pc == shooter || !(pc.Health is PlayerHealth ph) || ph == null || !(ph.Health > 0f)) continue;
+#endif
                     Vector3? head = Targets.HeadOf(p);
                     if (!head.HasValue) continue;
                     uint pid = (uint)ph.GetInstanceID();
@@ -310,7 +322,11 @@ namespace BluesArcheryOverhaul {
             Vector3 normal = (fromC - at).sqrMagnitude > 1e-6f ? (fromC - at).normalized : Vector3.up;
             bool dealt = false; how = "no detector";
             foreach (object o in target.ImpactDetectors) {
+#if QUEST
+                if (!(o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector det)) continue;
+#else
                 if (!(o is ImpactDetector det) || det == null) continue;
+#endif
                 // cripple 0: the ghosts carry no native stagger (FlushSpectral), so neither do their jumps (b3-review I-3)
                 if (copyOf != null ? Hits.Copy(copyOf, det, at, normal, out how, multiplier) : tool != null && Hits.Apply(tool, det, at, normal, multiplier, out how, 0f)) { dealt = true; break; }
             }

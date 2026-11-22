@@ -70,7 +70,11 @@ namespace BluesArcheryOverhaul {
 #else
             var me = global::Player.Current;
 #endif
+#if QUEST
+            return me == null || (me.Is(out UnityEngine.Object o) && o == null);   // a destroyed player counts as none
+#else
             return me == null || (me is UnityEngine.Object o && o == null);   // a destroyed player counts as none
+#endif
         }
 
         static readonly int T_FindDial = Timing.Section("asset SkyfallSky.FindDial (DayTimeManager)");
@@ -87,7 +91,11 @@ namespace BluesArcheryOverhaul {
                 AtmospherePlugin[] plugins = am.AtmospherePlugins;
                 if (plugins == null) return;
                 foreach (AtmospherePlugin p in plugins) {
+#if QUEST
+                    if (!(p.Is(out DayTimeManager d)) || d == null) continue;
+#else
                     if (!(p is DayTimeManager d) || d == null) continue;
+#endif
                     Traverse t = Traverse.Create(d);
                     Traverse lt = t.Field("LightIntensityModifier"), ft = t.Field("skyColorFade");
                     if (!lt.FieldExists() || !ft.FieldExists()) throw new MissingFieldException("DayTimeManager", !lt.FieldExists() ? "LightIntensityModifier" : "skyColorFade");
@@ -128,7 +136,11 @@ namespace BluesArcheryOverhaul {
 
             float want = 0f;
 #if QUEST
+#if QUEST
+            Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current?.TryCast<Il2Cpp.Player>());
+#else
             Vector3? head = Targets.HeadOf(Il2Cpp.Player.Current as Il2Cpp.Player);
+#endif
 #else
             Vector3? head = Targets.HeadOf(global::Player.Current as global::Player);
 #endif

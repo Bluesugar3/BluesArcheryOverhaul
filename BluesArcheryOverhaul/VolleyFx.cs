@@ -258,17 +258,29 @@ namespace BluesArcheryOverhaul {
                     main.loop = true;
                     main.playOnAwake = false;
                     main.simulationSpace = ParticleSystemSimulationSpace.World;
+#if QUEST
+                    main.startLifetimeMultiplier = Life;
+#else
                     main.startLifetime = Life;
+#endif
                     main.startSize = Size;
                     main.startSpeed = 0f;
+#if QUEST
+                    main.gravityModifierMultiplier = GravityModifier;
+#else
                     main.gravityModifier = GravityModifier;
+#endif
                     main.maxParticles = MaxParticles;
                     ParticleSystem.EmissionModule emission = ps.emission;
                     emission.enabled = false;
                     ParticleSystem.ShapeModule shape = ps.shape;
                     shape.enabled = false;
                     ParticleSystem.ColorOverLifetimeModule fade = ps.colorOverLifetime;
+#if QUEST
+                    // ponytail: the Quest build's ColorOverLifetime has no setter for enabled, so sparks there end without fading
+#else
                     fade.enabled = true;
+#endif
                     var gradient = new Gradient();
                     gradient.SetKeys(new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
                                      new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0f, 1f) });
@@ -320,6 +332,13 @@ namespace BluesArcheryOverhaul {
                 if (ps == null) return;
                 Vector3 axis = dir.sqrMagnitude > 1e-6f ? dir.normalized : Vector3.up;
                 float cone = Mathf.Tan(Mathf.Clamp(spread, 0f, 85f) * Mathf.Deg2Rad);
+#if QUEST
+                float size = Size * Mathf.Max(0f, sizeScale);   // the Quest build's EmitParams has no setters: the older Emit takes the same values
+                for (int i = 0; i < count; i++) {
+                    Vector3 d = (axis + UnityEngine.Random.insideUnitSphere * cone).normalized;
+                    ps.Emit(at, d * speed * UnityEngine.Random.Range(0.5f, 1f), size, Life, c);
+                }
+#else
                 var ep = new ParticleSystem.EmitParams { position = at, startColor = c, applyShapeToPosition = false };
                 if (sizeScale != 1f) ep.startSize = Size * Mathf.Max(0f, sizeScale);
                 for (int i = 0; i < count; i++) {
@@ -327,6 +346,7 @@ namespace BluesArcheryOverhaul {
                     ep.velocity = d * speed * UnityEngine.Random.Range(0.5f, 1f);
                     ps.Emit(ep, 1);
                 }
+#endif
             }
         }
 

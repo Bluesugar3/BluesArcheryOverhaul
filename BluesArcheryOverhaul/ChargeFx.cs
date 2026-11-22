@@ -1207,7 +1207,11 @@ namespace BluesArcheryOverhaul {
                 List<MeshRenderer> head = HeadRenderers(arrow);
                 PooledObjectDefinition? def = head.Count > 0 ? GlobalSettings<ProgressionSettings>.Instance.DissipateToolBasedEffect : null;
                 PooledObject? got = def != null ? def.Get() : null;
+#if QUEST
+                if (got.Is(out ToolBasedEffectBase effect)) { effect.InitializeEffect(head); return true; }
+#else
                 if (got is ToolBasedEffectBase effect) { effect.InitializeEffect(head); return true; }
+#endif
                 if (got != null) got.Release();
                 if (head.Count == 0 && !headMissLogged) { headMissLogged = true; MelonLogger.Warning($"[Archery] Fill: no arrowhead mesh found on '{arrow.name}'; the head flash is skipped"); } // G5 (M-5): every level
             }
@@ -1381,12 +1385,20 @@ namespace BluesArcheryOverhaul {
                 effects[j] = got;
                 int slot = j;
 #if QUEST
+#if QUEST
+                PoolChangedHandler handler = DelegateSupport.ConvertDelegate<PoolChangedHandler>(new Action<PooledObject>(p => { if (Il.Same(p, effects[slot])) effects[slot] = null; }));
+#else
                 PoolChangedHandler handler = p => { if (Il.Same(p, effects[slot])) effects[slot] = null; };
+#endif
 #else
                 PoolChangedHandler handler = p => { if (ReferenceEquals(p, effects[slot])) effects[slot] = null; };
 #endif
                 onReleased[j] = handler;
+#if QUEST
+                got.add_Released(handler); // released by its own timer: never touch it again
+#else
                 got.Released += handler; // released by its own timer: never touch it again
+#endif
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Fill: knot {j + 1} on '{bowName}' (effect '{def.name}')");
                 return true;
             }

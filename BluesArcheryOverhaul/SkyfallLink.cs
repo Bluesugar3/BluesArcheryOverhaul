@@ -41,8 +41,13 @@ namespace BluesArcheryOverhaul {
         internal static int QueueHolders() {
             int n = 0;
             foreach (IPlayer ip in Player.AllPlayers) {
+#if QUEST
+                if (!ip.Is(out Player p) || p.UserInfo == null) continue;
+                int account = p.UserInfo.Identifier;
+#else
                 if (!(ip is Player p) || p == null || p.UserInfo == null) continue;
                 int account = p.UserInfo.Identifier;
+#endif
                 if (!Skyfall.Holds(account)) continue;
                 Queue(account);
                 n++;
@@ -66,7 +71,11 @@ namespace BluesArcheryOverhaul {
                 nextPoll = now + PollSeconds;
                 polled.Clear();
                 foreach (IPlayer ip in Player.AllPlayers) {
+#if QUEST
+                    if (!ip.Is(out Player p) || p.UserInfo == null) continue;   // still joining: seen at a later poll
+#else
                     if (!(ip is Player p) || p == null || p.UserInfo == null) continue;   // still joining: seen at a later poll
+#endif
                     polled.Add(new KeyValuePair<int, uint>(p.UserInfo.Identifier, p.Identifier));
                 }
                 foreach (int account in seen.Changed(polled))
@@ -99,7 +108,11 @@ namespace BluesArcheryOverhaul {
                 return;
             }
             bool holds = Skyfall.Holds(account), festival = Skyfall.Festival;
+#if QUEST
+            messages.SendMessageToPlayer(p.Cast<IPlayer>(), SkyfallSignal.Format(holds, festival, Cfg.SharedShort), 0f);   // 0 s, as CustomIngots
+#else
             messages.SendMessageToPlayer(p, SkyfallSignal.Format(holds, festival, Cfg.SharedShort), 0f);   // 0 s, as CustomIngots
+#endif
             Done(account);
             if (Logs.Summary) MelonLogger.Msg($"[Archery] Skyfall: told '{Builds.NameOf(p)}''s game quietly: {(holds ? "holds Skyfall" : "does not hold Skyfall")}, festival mode {(festival ? "on" : "off")}");
         }
@@ -114,7 +127,11 @@ namespace BluesArcheryOverhaul {
         // and throws while one has none yet (the server adds a Player to AllPlayers before InitializePlayerOnServer sets its UserInfo).
         static Player? OnlinePlayer(int account) {
             foreach (IPlayer ip in Player.AllPlayers)
+#if QUEST
+                if (ip.Is(out Player p) && p.UserInfo != null && p.UserInfo.Identifier == account) return p;
+#else
                 if (ip is Player p && p != null && p.UserInfo != null && p.UserInfo.Identifier == account) return p;
+#endif
             return null;
         }
 
@@ -129,7 +146,11 @@ namespace BluesArcheryOverhaul {
 #else
             IPlayer? now = global::Player.Current;
 #endif
+#if QUEST
+            if (now.Is(out UnityEngine.Object o) && o == null) now = null;   // a destroyed player counts as none
+#else
             if (now is UnityEngine.Object o && o == null) now = null;   // a destroyed player counts as none
+#endif
 #if QUEST
             if (!Il.Same(now, lastPlayer) && lastPlayer != null) {
 #else

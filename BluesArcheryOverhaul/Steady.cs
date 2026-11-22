@@ -114,7 +114,11 @@ namespace BluesArcheryOverhaul {
             return false;
         }
 
+#if QUEST
+        static int RemoveOurs(Arrow arrow) => arrow.FlightModifiers.RemoveAll(DelegateSupport.ConvertDelegate<Il2CppSystem.Predicate<ArrowFlightSettingsModifier>>(new Func<ArrowFlightSettingsModifier, bool>(IsOurs)));
+#else
         static int RemoveOurs(Arrow arrow) => arrow.FlightModifiers.RemoveAll(IsOurs);
+#endif
 
         static float NetworkMax() {
             try { return PhysicsSerializationSettings.VelocityMax - 1f; }

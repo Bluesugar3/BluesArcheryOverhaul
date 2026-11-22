@@ -143,10 +143,18 @@ namespace BluesArcheryOverhaul {
                 if (root != null) h = root.GetComponentInChildren<HealthObject>(true);
                 // only the creature's own root (b4b-review M-4): a networked container holding creatures is not one of them
                 if (h != null && (h.Entity == null || h.Entity.PrefabRoot != root)) h = null;
+#if QUEST
+                if (h != null && !(h.Is<PlayerHealth>()) && !h.HasCrippleStat && !Targets.IsDummy(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
+#else
                 if (h != null && !(h is PlayerHealth) && !h.HasCrippleStat && !Targets.IsDummy(h)) h = null; // not a creature's part (nor a combat dummy, G3): a plain surface
+#endif
                 det = null;
             }
+#if QUEST
+            if (h.Is<PlayerHealth>() || rh.collider.GetComponentInParent<PlayerController>() != null) { health = h; return LineHitKind.Player; }
+#else
             if (h is PlayerHealth || rh.collider.GetComponentInParent<PlayerController>() != null) { health = h; return LineHitKind.Player; }
+#endif
             if (!Targets.IsCreature(h)) { health = h; return LineHitKind.Solid; }
             health = h;
             id = Targets.IdOf(h!);
@@ -198,7 +206,11 @@ namespace BluesArcheryOverhaul {
             // the part it met refused (or had no detector): the creature's other detectors (b4b-review M-3; Trace counts only a
             // creature one of them accepts)
             foreach (object o in p.h.ImpactDetectors)
+#if QUEST
+                if ((o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector d) && !Il.Same(d, p.det) && Hits.Apply(tool, d, p.hit.point, p.hit.normal, multiplier, out what)) return true;
+#else
                 if (o is ImpactDetector d && d != null && d != p.det && Hits.Apply(tool, d, p.hit.point, p.hit.normal, multiplier, out what)) return true;
+#endif
             return false;
         }
 
@@ -220,6 +232,7 @@ namespace BluesArcheryOverhaul {
 
         // BowDrawSkill.OnArrowShot only runs where skills are judged (the server), and only matters when charged.
         // The line fires when this arrow's release (Draws.Release, decided earlier in the same OnShootingEntity) said Line.
+#if !QUEST // server-only: BowDrawSkill.OnArrowShot runs only where skills are judged
         [HarmonyPatch(typeof(BowDrawSkill), "OnArrowShot")]
         static class ServerShot {
             static readonly int TPrefix = Timing.Section("patch BowDrawSkill.OnArrowShot / Quickdraw4.ServerShot prefix");
@@ -227,7 +240,11 @@ namespace BluesArcheryOverhaul {
             static void Prefix(BowDrawSkill __instance, BowString bowString, NetworkEntity shotEntity, Dictionary<BowString, ISkillInputMethod> ___inputs, out Player? __state) {
                 using var _t = Timing.Begin(TPrefix);
                 __state = null;
+#if QUEST
+                if (!(__instance.Is<BowQuickdraw>()) || bowString == null || shotEntity == null) return;
+#else
                 if (!(__instance is BowQuickdraw) || bowString == null || shotEntity == null) return;
+#endif
                 DrawRecord rec = Draws.Get(bowString);
                 if (rec.LastArrow != shotEntity.Identifier || rec.Last?.Ultimate != UltimateUse.Line) return;
                 Player? player = null;
@@ -245,6 +262,7 @@ namespace BluesArcheryOverhaul {
                 Fire(bowString, shotEntity, __state);
             }
         }
+#endif
 
         // server: arrows whose line was fired by the game's own Quickdraw path (ServerShot) in the shot now being made. The mark
         // lives from ServerShot to this shot's OnShoot postfix (FromRelease removes it), so a re-shot arrow is never skipped.
@@ -354,7 +372,11 @@ namespace BluesArcheryOverhaul {
                         // play-test 7 (PvP ruling): a line that stops at a player after passing creatures deals that player its place's
                         // share (Hits.Apply: only with the server's PvP on, at [PvP] ModHitShare, never the shooter); it still stops there
                         if (passes.Count > 0 && struck && hit.collider != null && hit.collider.GetComponentInParent<ImpactDetector>() is ImpactDetector pd
+#if QUEST
+                            && pd != null && pd.HealthTarget.Is<PlayerHealth>()) {
+#else
                             && pd != null && pd.HealthTarget is PlayerHealth) {
+#endif
                             float share = LinePierce.Share(passes.Count, PierceShares);
                             bool dealtPlayer = Hits.Apply(tool, hit, damage.Value * share, out string pw);
                             pierced?.Append(System.FormattableString.Invariant($"{(pierced.Length > 0 ? ", " : "")}player '{pw}' x{damage.Value * share:0.##}{(dealtPlayer ? "" : " (not dealt)")}"));

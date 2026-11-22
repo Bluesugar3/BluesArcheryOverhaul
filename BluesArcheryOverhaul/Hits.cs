@@ -214,7 +214,11 @@ namespace BluesArcheryOverhaul {
             what = detector != null ? detector.name : "nothing";
             if (tool == null || detector == null) return false;
             // Play-test 7 (PvP, Pvp.cs): a player takes [PvP] ModHitShare of it, only with the server's PvP on, never the shooter.
+#if QUEST
+            if (detector.HealthTarget.Is(out PlayerHealth ph)) {
+#else
             if (detector.HealthTarget is PlayerHealth ph) {
+#endif
                 float pvp = players ? Pvp.PlayerShare(tool, ph) : 0f;
                 if (!(pvp > 0f)) { what += players ? " (player: PvP is off for the mod's hits)" : " (player: not by this hit)"; return false; }
                 multiplier *= pvp;
@@ -277,7 +281,11 @@ namespace BluesArcheryOverhaul {
         static int watchLines;
 
         static void Watch(HealthObject? h, string what) {
+#if QUEST
+            if (!Logs.Debug || h == null || h.Is<PlayerHealth>() || watchLines >= WatchLines || !NetworkSceneManager.IsServer) return;
+#else
             if (!Logs.Debug || h == null || h is PlayerHealth || watchLines >= WatchLines || !NetworkSceneManager.IsServer) return;
+#endif
             try {
                 Transform root = Targets.RootOf(h);
                 Rigidbody rb = root.GetComponentInChildren<Rigidbody>();
@@ -378,9 +386,17 @@ namespace BluesArcheryOverhaul {
         /// (hardness and a shared channel, as <see cref="Apply(ImpactTool, ImpactDetector, Vector3, Vector3, float, out string, float)"/>
         /// checks). Reads data only, so clients can ask too (Quickdraw 4's line, b4b-review M-3).</summary>
         internal static bool CanDamage(ImpactTool tool, HealthObject h) {
+#if QUEST
+            if (tool == null || h == null || h.Is<PlayerHealth>()) return false;
+#else
             if (tool == null || h == null || h is PlayerHealth) return false;
+#endif
             foreach (object o in h.ImpactDetectors)
+#if QUEST
+                if ((o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector d) && BestPart(tool, d, out _, out _, out _)) return true;
+#else
                 if (o is ImpactDetector d && d != null && BestPart(tool, d, out _, out _, out _)) return true;
+#endif
             return false;
         }
 
@@ -501,7 +517,11 @@ namespace BluesArcheryOverhaul {
             if (tool == null || hit.collider == null || !(share > 0f)) return false;
             ImpactDetector detector = hit.collider.GetComponentInParent<ImpactDetector>();
             if (detector == null) return false;
+#if QUEST
+            if (detector.HealthTarget.Is(out PlayerHealth ph)) {   // play-test 7: only with PvP on, at [PvP] ModHitShare (Pvp.cs)
+#else
             if (detector.HealthTarget is PlayerHealth ph) {   // play-test 7: only with PvP on, at [PvP] ModHitShare (Pvp.cs)
+#endif
                 float pvp = Pvp.PlayerShare(shooter != null ? shooter.PlayerController : Pvp.ShooterOf(tool), ph); // fixA-review M-6: the release's own shooter
                 if (!(pvp > 0f)) return false;
                 share *= pvp;
@@ -603,7 +623,11 @@ namespace BluesArcheryOverhaul {
                         info.names[creature] = target != null ? target.name : pl.detector.name;
                         info.hits.TryGetValue(creature, out int h); info.hits[creature] = h + n;
                         // The ghosts' stagger joins the release's one cripple hit per creature (Weight; players never).
+#if QUEST
+                        if (target != null && !(target.Is<PlayerHealth>())) {
+#else
                         if (target != null && !(target is PlayerHealth)) {
+#endif
                             rp.Value.ghosts.TryGetValue(key, out int ghostHits);
                             try { Weight.AddSpectral(rp.Key, target, sum, ghostHits); }
                             catch (Exception ex) { MelonLogger.Error($"[Archery] Weight: spectral stagger on '{target.name}' failed: {ex.Message}"); }
@@ -615,7 +639,11 @@ namespace BluesArcheryOverhaul {
                         }
                         // Experience as the game would pay it for this hit (ImpactDetector.RunPlayerEvents and
                         // CombatImpactProgressionFilter.ApplyImpact), but once per creature per release.
+#if QUEST
+                        if (target != null && !(target.Is<PlayerHealth>()) && target.IsCombatant && pl.detector.Settings != null && pl.detector.Settings.ProvideExperienceWhenHit && pl.tool.ProvidesExperience)
+#else
                         if (target != null && !(target is PlayerHealth) && target.IsCombatant && pl.detector.Settings != null && pl.detector.Settings.ProvideExperienceWhenHit && pl.tool.ProvidesExperience)
+#endif
                             ledger.Add(rp.Key, creature, sum);
                     }
                 }

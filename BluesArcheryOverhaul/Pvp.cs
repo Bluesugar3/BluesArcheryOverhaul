@@ -123,7 +123,11 @@ namespace BluesArcheryOverhaul {
                 OwnBody = false; Who = null; Accepted = null;
                 try {
                     if (!NetworkSceneManager.IsServer || __instance == null || player == null) return;
+#if QUEST
+                    if (!(__instance.HealthTarget.Is(out PlayerHealth ph)) || ph.Player == null || ph.Player.NetworkPlayer == null) return;
+#else
                     if (!(__instance.HealthTarget is PlayerHealth ph) || ph.Player == null || ph.Player.NetworkPlayer == null) return;
+#endif
 #if QUEST
                     OwnBody = Il.Same(ph.Player.NetworkPlayer, player);
 #else
