@@ -13,9 +13,13 @@ namespace BluesArcheryOverhaul {
         static float until = -1f;
         static readonly Dictionary<int, int> counts = new Dictionary<int, int>();
 
-        static bool Armed => Time.unscaledTime < until;
+        // Off unless the file UserData/BluesArcheryOverhaul/quest-watch.txt exists at start: the trace wrote about 15,000 log lines in
+        // a ten-minute session (every grab and shot), which the owner felt as lag. To trace a crash, create that (empty) file.
+        static readonly bool on = System.IO.File.Exists(System.IO.Path.Combine(MelonLoader.Utils.MelonEnvironment.UserDataDirectory, "BluesArcheryOverhaul", "quest-watch.txt"));
+        static bool Armed => on && Time.unscaledTime < until;
 
         internal static void Arm(string why, float seconds = Seconds) {
+            if (!on) return;
             counts.Clear();
             until = Time.unscaledTime + seconds;
             MelonLogger.Msg($"[Archery] Quest watch: {why}; logging the mod's routines for {seconds:0} s");
