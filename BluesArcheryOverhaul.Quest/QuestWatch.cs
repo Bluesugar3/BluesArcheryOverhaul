@@ -15,10 +15,10 @@ namespace BluesArcheryOverhaul {
 
         static bool Armed => Time.unscaledTime < until;
 
-        internal static void Arm(string why) {
+        internal static void Arm(string why, float seconds = Seconds) {
             counts.Clear();
-            until = Time.unscaledTime + Seconds;
-            MelonLogger.Msg($"[Archery] Quest watch: {why}; logging the mod's routines for {Seconds:0} s");
+            until = Time.unscaledTime + seconds;
+            MelonLogger.Msg($"[Archery] Quest watch: {why}; logging the mod's routines for {seconds:0} s");
         }
 
         internal static void Enter(int id) {
@@ -48,6 +48,11 @@ namespace BluesArcheryOverhaul {
                 Arm($"a try-out is opening ({(orb != null ? orb.name : "no orb")})");
             }
             static void Postfix() { MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
+        }
+
+        [HarmonyPatch(typeof(BowString), "StringGrabbed")]
+        static class Grabbed {
+            static void Prefix() { Arm("a bow string was grabbed", 8f); }
         }
 
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Open", new System.Type[0])]
