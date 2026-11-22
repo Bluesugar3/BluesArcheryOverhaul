@@ -50,6 +50,12 @@ namespace BluesArcheryOverhaul {
             static void Postfix() { MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
         }
 
+        [HarmonyPatch(typeof(Shooter), nameof(Shooter.Shoot))]
+        static class Shooting {
+            [HarmonyPriority(1000)]
+            static void Prefix() { Arm("a shot", 8f); }
+        }
+
         [HarmonyPatch(typeof(BowString), "StringGrabbed")]
         static class Grabbed {
             static void Prefix() { Arm("a bow string was grabbed", 8f); }

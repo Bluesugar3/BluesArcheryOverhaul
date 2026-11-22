@@ -169,7 +169,9 @@ namespace BluesArcheryOverhaul {
 
         // The client handler (PlayerCommunicationManager.HandlePlayerMessage) serializes the message first, then shows it: so this
         // reads the text whether or not this game has a body yet. As Claims.Bits for the ShootArguments struct.
+#if !QUEST
         [HarmonyPatch(typeof(PlayerTextMessage), nameof(PlayerTextMessage.Serialize))]
+#endif
         static class Latch {
             static readonly int T = Timing.Section("patch PlayerTextMessage.Serialize / SkyfallLink.Latch");
 #if QUEST
@@ -222,7 +224,14 @@ namespace BluesArcheryOverhaul {
             static readonly int T = Timing.Section("patch PlayerMessageDisplay.Display / SkyfallLink.Swallow");
             static bool Prefix(string? message) {
                 using var _t = Timing.Begin(T);
+#if QUEST
+                // Quest: a patch on the struct method PlayerTextMessage.Serialize never runs there (as ShootArguments.Serialize), so
+                // the message is read here, where the game shows it. The server sends it only once this player has a body, so
+                // Display is always reached.
+                try { if (!SkyfallSignal.Hidden(message)) return true; Read(message); return false; }
+#else
                 try { return !SkyfallSignal.Hidden(message); }
+#endif
                 catch { return true; }
             }
         }
