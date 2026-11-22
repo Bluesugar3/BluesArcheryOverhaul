@@ -83,8 +83,10 @@ namespace BluesArcheryOverhaul {
 #endif
                 if (am == null) { s.PlayAtPosition(at); return; }
 #if QUEST
-                // Quest: the game's "params" list is a plain argument there, and leaving it out passes null, where PC passes an empty one
-                am.PlaySoundEffectAt(s, at, null!, out AudioControl control, new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<ISoundProperty>(0));
+                // ponytail: on Quest a quiet sound plays at full volume. The game's "params" list is a plain argument there (left out
+                // it is null, where PC passes an empty one), and the mod making a game-side array to pass ended the game process
+                // (2026-11-22, Il.cs). Quieter sounds on Quest once that is understood.
+                AudioControl control = null!; s.PlayAtPosition(at);
 #else
                 am.PlaySoundEffectAt(s, at, null!, out AudioControl control);
 #endif

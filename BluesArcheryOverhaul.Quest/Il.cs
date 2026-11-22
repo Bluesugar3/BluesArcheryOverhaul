@@ -129,37 +129,36 @@ namespace BluesArcheryOverhaul {
         internal static IEqualityComparer<T> ByPointer<T>() where T : class => PointerComparer<T>.Instance;
 
         // Physics queries that fill a caller's buffer. On Quest a managed array handed to Unity is COPIED in, so the results never
-        // come back: the count is right and every entry is empty. These ask with an array the game owns and copy the results out.
+        // come back: the count is right and every entry is empty. And the mod making a game-side array for Unity to fill ended the
+        // game process the moment the array was made (2026-11-22, no message; the cause is not known). So these ask the game for
+        // the hits (RaycastAll, SphereCastAll, OverlapSphere: the game makes the array) and copy them out.
         // "Full" is still reported as results.Length, so the callers' grow-and-ask-again loops work as on PC.
-        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit> rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(64);
-        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider> colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(64);
-
-        static int Out(int n, UnityEngine.RaycastHit[] results) {
+        // ponytail: one game array per query (garbage). If the headset's timing report shows it, find out why the mod's own
+        // Il2CppStructArray<RaycastHit> could not be made and go back to the NonAlloc calls.
+        static int Out(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit> all, UnityEngine.RaycastHit[] results) {
             QuestWatch.Mark("Il cast: the game returned");
-            n = Math.Min(n, results.Length);
-            for (int i = 0; i < n; i++) results[i] = rayNative[i];
+            int n = all == null ? 0 : Math.Min(all.Length, results.Length);
+            for (int i = 0; i < n; i++) results[i] = all![i];
             QuestWatch.Mark("Il cast: hits copied out");
             return n;
         }
 
         internal static int RaycastNonAlloc(UnityEngine.Vector3 origin, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
-            QuestWatch.Mark("Il cast: RaycastNonAlloc starts");
-            return Out(UnityEngine.Physics.RaycastNonAlloc(origin, direction, rayNative, maxDistance, mask, triggers), results);
+            QuestWatch.Mark("Il cast: RaycastAll starts");
+            return Out(UnityEngine.Physics.RaycastAll(origin, direction, maxDistance, mask, triggers), results);
         }
 
         internal static int SphereCastNonAlloc(UnityEngine.Vector3 origin, float radius, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            if (rayNative.Length < results.Length) rayNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit>(results.Length);
-            QuestWatch.Mark("Il cast: SphereCastNonAlloc starts");
-            return Out(UnityEngine.Physics.SphereCastNonAlloc(origin, radius, direction, rayNative, maxDistance, mask, triggers), results);
+            QuestWatch.Mark("Il cast: SphereCastAll starts");
+            return Out(UnityEngine.Physics.SphereCastAll(origin, radius, direction, maxDistance, mask, triggers), results);
         }
 
         internal static int OverlapSphereNonAlloc(UnityEngine.Vector3 centre, float radius, UnityEngine.Collider[] results, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            if (colNative.Length < results.Length) colNative = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<UnityEngine.Collider>(results.Length);
             QuestWatch.Mark("Il overlap: starts");
-            int n = Math.Min(UnityEngine.Physics.OverlapSphereNonAlloc(centre, radius, colNative, mask, triggers), results.Length);
+            var all = UnityEngine.Physics.OverlapSphere(centre, radius, mask, triggers);
             QuestWatch.Mark("Il overlap: the game returned");
-            for (int i = 0; i < n; i++) results[i] = colNative[i];
+            int n = all == null ? 0 : Math.Min(all.Length, results.Length);
+            for (int i = 0; i < n; i++) results[i] = all![i];
             QuestWatch.Mark("Il overlap: colliders copied out");
             return n;
         }
