@@ -92,5 +92,25 @@ namespace BluesArcheryOverhaul {
             for (int i = 0; i < list.Count; i++) made.Add(list[i]);
             return made;
         }
+
+        // ---------------------------------------------------------------- identity
+        // On Quest the interop hands back a NEW managed object each time a game object is read (its object cache is off: the
+        // garbage-collector hook it needs is not found in this game build), so ReferenceEquals, == on a plain game object, and a
+        // Dictionary or HashSet keyed by game objects all fail silently. These compare the game's own object address.
+
+        /// <summary>The PC line's ReferenceEquals(a, b): the same game object (by address), or the same managed object.</summary>
+        internal static bool Same(object? a, object? b) {
+            if (a is Il2CppObjectBase x && b is Il2CppObjectBase y) return x.Pointer == y.Pointer;
+            return ReferenceEquals(a, b);
+        }
+
+        /// <summary>A comparer for a Dictionary or HashSet keyed by game objects.</summary>
+        internal static IEqualityComparer<T> ByPointer<T>() where T : class => PointerComparer<T>.Instance;
+
+        sealed class PointerComparer<T> : IEqualityComparer<T> where T : class {
+            internal static readonly PointerComparer<T> Instance = new PointerComparer<T>();
+            public bool Equals(T? a, T? b) => Same(a, b);
+            public int GetHashCode(T o) => o is Il2CppObjectBase b ? b.Pointer.GetHashCode() : System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(o);
+        }
     }
 }

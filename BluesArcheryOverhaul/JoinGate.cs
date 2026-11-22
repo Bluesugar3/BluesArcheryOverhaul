@@ -88,7 +88,11 @@ namespace BluesArcheryOverhaul {
         /// again if the game makes a new one). One reference comparison per frame otherwise; nothing on a client.</summary>
         internal static void Tick() {
             ServerHandler current = ServerHandler.Current;
+#if QUEST
+            if (current == null || Il.Same(current, installedOn)) return;
+#else
             if (current == null || ReferenceEquals(current, installedOn)) return;
+#endif
             installedOn = current;
             if (current.IsDummyLocalServer) return;                     // a client's stand-in server: nobody joins it, and it has no step list
 #if QUEST
@@ -239,7 +243,11 @@ namespace BluesArcheryOverhaul {
                     return;
                 }
                 ModVersion own = OwnVersion;
+#if QUEST
+                if (!Il.Same(greetedBy, connection)) {
+#else
                 if (!ReferenceEquals(greetedBy, connection)) {
+#endif
                     greetedBy = connection;
                     if (Logs.Summary) MelonLogger.Msg($"[Archery] Join: this server runs {JoinRule.ModName} {here.Version} (wire {here.Wire})");
                     if (here.Wire > JoinWire.Version)

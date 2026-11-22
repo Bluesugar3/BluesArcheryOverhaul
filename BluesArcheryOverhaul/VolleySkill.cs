@@ -168,8 +168,13 @@ namespace BluesArcheryOverhaul {
                 MelonLogger.Msg($"[Archery] Volley skill: registered '{skill.name}' id {skill.Hash} at {when} (skill table {before} -> {table.Count})");
 
                 object? ownInputs = Traverse.Create(skill).Field("inputs").GetValue(), slowInputs = Traverse.Create(slow).Field("inputs").GetValue();
+#if QUEST
+                bool ownMaps = ownInputs != null && !Il.Same(ownInputs, slowInputs);
+                bool separate = !Il.Same(pull, slowPull) && Il.Same(skill.InputStructure, pull) && !Il.Same(skill.InputStructure, slow.InputStructure);
+#else
                 bool ownMaps = ownInputs != null && !ReferenceEquals(ownInputs, slowInputs);
                 bool separate = !ReferenceEquals(pull, slowPull) && ReferenceEquals(skill.InputStructure, pull) && !ReferenceEquals(skill.InputStructure, slow.InputStructure);
+#endif
                 bool noAchievement = achievement.GetValue(skill) == null;
                 MelonLogger.Msg($"[Archery] Volley skill: own pull settings: threshold {pull.PullbackValue}, {pull.MinTimeToPullback} s, timeout {pull.IsTimingOut}; " +
                                 $"Slowdraw keeps threshold {slowPull.PullbackValue}, {slowPull.MinTimeToPullback} s; separate settings objects: {(separate ? "yes" : "NO")}; " +
@@ -207,7 +212,11 @@ namespace BluesArcheryOverhaul {
 #endif
                 using var _t = Timing.Begin(T);
                 try {
+#if QUEST
+                    if (Skill == null || !Il.Same(__instance, Skill) || !NetworkSceneManager.IsServer || input == null || ___bowStrings == null) return;
+#else
                     if (Skill == null || !ReferenceEquals(__instance, Skill) || !NetworkSceneManager.IsServer || input == null || ___bowStrings == null) return;
+#endif
                     Live(ref live0, "BowDrawSkill.InputChangedState");
                     if (!___bowStrings.TryGetValue(input, out BowString bow) || bow == null) return;
                     HeldPickupHandler handler = input.Handler;
@@ -232,9 +241,15 @@ namespace BluesArcheryOverhaul {
 #endif
                 using var _t = Timing.Begin(T);
                 if (__1 == null || !__1.IsReading || ApplicationManager.IsHeadless || NetworkSceneManager.IsServer || __instance == null) return;
+#if QUEST
+                bool volley = Skill != null && Il.Same(__instance, Skill);
+                bool charge = !volley && Il.Same(__instance, Tree.Slowdraw);
+                bool quick = !volley && !charge && Il.Same(__instance, Tree.Quickdraw); // to note the archer (Charge2Sound) and for SnapWeight's ember
+#else
                 bool volley = Skill != null && ReferenceEquals(__instance, Skill);
                 bool charge = !volley && ReferenceEquals(__instance, Tree.Slowdraw);
                 bool quick = !volley && !charge && ReferenceEquals(__instance, Tree.Quickdraw); // to note the archer (Charge2Sound) and for SnapWeight's ember
+#endif
                 if (!volley && !charge && !quick) return;
                 ToolBasedSkillStatus status = ___status;
                 bool local = __0 != null && __0.IsLocalPlayer;
@@ -295,9 +310,15 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(T);
                 try {
                     if (__instance == null) return true;
+#if QUEST
+                    bool slow = Il.Same(__instance, Tree.Slowdraw);
+                    bool volley = !slow && Skill != null && Il.Same(__instance, Skill);
+                    bool holy = !slow && !volley && Il.Same(__instance, Tree.Holy);
+#else
                     bool slow = ReferenceEquals(__instance, Tree.Slowdraw);
                     bool volley = !slow && Skill != null && ReferenceEquals(__instance, Skill);
                     bool holy = !slow && !volley && ReferenceEquals(__instance, Tree.Holy);
+#endif
                     if (!slow && !volley && !holy) return true;
                     // Only a Charge main (or no main path) has the charge and Holy Arrow: an off-path archer's glow never shows.
                     if ((slow || holy) && ChargeFx.OffPath(entity, MainPath.Charge, out MainPath main, out string archer)) {
@@ -344,7 +365,11 @@ namespace BluesArcheryOverhaul {
                 using var _t = Timing.Begin(TPrefix);
                 __state = null;
                 try {
+#if QUEST
+                    if (Skill == null || !Il.Same(__instance, Skill) || !NetworkSceneManager.IsServer || shotEntity == null) return;
+#else
                     if (Skill == null || !ReferenceEquals(__instance, Skill) || !NetworkSceneManager.IsServer || shotEntity == null) return;
+#endif
                     if (!Draws.InputActive(Skill, bowString)) return; // the original does nothing then
                     ImpactTool tool = shotEntity.GetComponent<ImpactTool>();
                     if (tool == null) return;

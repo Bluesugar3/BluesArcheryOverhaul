@@ -76,7 +76,11 @@ namespace BluesArcheryOverhaul {
         static ProfessionSkillTree? rangedTree;
         static readonly List<KeyValuePair<ProgressionSlot, MelonPreferences_Entry<string>>> placed = new List<KeyValuePair<ProgressionSlot, MelonPreferences_Entry<string>>>();
         /// <summary>The position "auto" means for a placed slot, worked out once in Inject.</summary>
+#if QUEST
+        static readonly Dictionary<ProgressionSlot, Vector3> autoPosition = new Dictionary<ProgressionSlot, Vector3>(Il.ByPointer<ProgressionSlot>());
+#else
         static readonly Dictionary<ProgressionSlot, Vector3> autoPosition = new Dictionary<ProgressionSlot, Vector3>();
+#endif
 
         /// <summary>Seconds at full draw until Holy Arrow is ready.</summary>
         internal static float HolySeconds => holySeconds != null ? holySeconds.Value : DrawTimeline.HolyTotal;
@@ -298,9 +302,9 @@ namespace BluesArcheryOverhaul {
                 ProfessionSkill k = s.Skill;
                 if (k.Is(out BowQuickdraw q)) Quickdraw = q;
                 else if (k.Is(out BowSlowdraw sd)) {
-                    if (!ReferenceEquals(sd, VolleySkill.Skill)) {
+                    if (!Il.Same(sd, VolleySkill.Skill)) {
                         if (Slowdraw == null) Slowdraw = sd;
-                        if (ReferenceEquals(sd, Slowdraw)) chargeSlots.Add(s);
+                        if (Il.Same(sd, Slowdraw)) chargeSlots.Add(s);
                     }
                 }
                 else if (k.Is(out LightBeamSkill h)) { Holy = h; holySlot = s; }
@@ -538,7 +542,7 @@ namespace BluesArcheryOverhaul {
             else {
                 if (!SlotIds.Skills.TryGetValue(orb, out int skillId)) { MelonLogger.Error($"[Archery] Tree: {name} has no skill id; it is off"); return; }
 #if QUEST
-                skill = MakePassiveSkill(ScriptableObject.CreateInstance<ProfessionSkill>(), name, skillId, orb.ToString());
+                skill = MakePassiveSkill(QuestSkills.NewPassive(name), name, skillId, orb.ToString());
 #else
                 skill = MakePassiveSkill(ScriptableObject.CreateInstance<PassiveOrbSkill>(), name, skillId, orb.ToString());
 #endif
@@ -591,7 +595,11 @@ namespace BluesArcheryOverhaul {
             static bool Prefix(PlayerProgressionManager __instance, ProgressionSlot slot, bool isFromLoad) {
                 using var _t = Timing.Begin(T);
                 try {
+#if QUEST
+                    if (!isFromLoad || mergedGatherer == null || !Il.Same(slot, mergedGatherer)) return true;
+#else
                     if (!isFromLoad || mergedGatherer == null || slot != mergedGatherer) return true;
+#endif
 #if QUEST
                     var paths = __instance.PathExperiences;
 #else
@@ -904,7 +912,11 @@ namespace BluesArcheryOverhaul {
             side = side.normalized * step.magnitude;
             Vector3 best = from + step; float bestGap = -1f;
             foreach (Vector3 c in new[] { from + step, from + step * 0.6f + side * 0.8f, from + step * 0.6f - side * 0.8f, from + side, from - side }) {
+#if QUEST
+                float gap = tree.Slots.Where(s => !Il.Same(s, self)).Select(s => (s.Position - c).magnitude).DefaultIfEmpty(float.MaxValue).Min();
+#else
                 float gap = tree.Slots.Where(s => s != self).Select(s => (s.Position - c).magnitude).DefaultIfEmpty(float.MaxValue).Min();
+#endif
                 if (gap > 0.6f * step.magnitude) return c;
                 if (gap > bestGap) { bestGap = gap; best = c; }
             }

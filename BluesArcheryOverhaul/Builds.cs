@@ -17,9 +17,17 @@ namespace BluesArcheryOverhaul {
         static bool loggedWrite, loggedRead, warnedNoTree, warnedUnknown, loggedMatch, warnedMismatch, loggedFired;
         static readonly Dictionary<string, string> serverLogged = new Dictionary<string, string>(); // player name -> build text last logged
         static readonly Dictionary<string, Build> clientCache = new Dictionary<string, Build>();    // player name -> build from the server
+#if QUEST
+        static readonly Dictionary<PlayerProgressionManager, Build> serverCache = new Dictionary<PlayerProgressionManager, Build>(Il.ByPointer<PlayerProgressionManager>());
+#else
         static readonly Dictionary<PlayerProgressionManager, Build> serverCache = new Dictionary<PlayerProgressionManager, Build>();
+#endif
         // Managers whose save is being loaded: their orbs arrive one at a time, so refreshes wait for the end of LoadFrom.
+#if QUEST
+        static readonly HashSet<PlayerProgressionManager> loading = new HashSet<PlayerProgressionManager>(Il.ByPointer<PlayerProgressionManager>());
+#else
         static readonly HashSet<PlayerProgressionManager> loading = new HashSet<PlayerProgressionManager>();
+#endif
         static readonly HashSet<string> livePatches = new HashSet<string>();
         const int CacheTrimAt = 64;
 

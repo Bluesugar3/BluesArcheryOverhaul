@@ -113,7 +113,11 @@ namespace BluesArcheryOverhaul {
         }
 
         static void Enqueue(Connection c, Send s) {
+#if QUEST
+            foreach (Job j in outbox) if (Il.Same(j.Connection, c)) { j.Send = s; j.Next = 0; return; }   // the newer send, whole
+#else
             foreach (Job j in outbox) if (ReferenceEquals(j.Connection, c)) { j.Send = s; j.Next = 0; return; }   // the newer send, whole
+#endif
             outbox.Add(new Job { Connection = c, Send = s });
         }
 
@@ -280,7 +284,11 @@ namespace BluesArcheryOverhaul {
                 if (Logs.Debug) MelonLogger.Msg($"[Archery] Settings: a part from wire {part.Wire} (this game: {JoinWire.Version}): ignored");
                 return;
             }
+#if QUEST
+            if (!Il.Same(connection, inboxConnection)) { inboxConnection = connection; inbox = new SettingsInbox(); }
+#else
             if (!ReferenceEquals(connection, inboxConnection)) { inboxConnection = connection; inbox = new SettingsInbox(); }
+#endif
             if (!inbox.Add(part.Sequence, part.Part, part.Parts, part.Check, part.Payload, out byte[] whole, out uint check)) return;
             if (!SettingsSync.TryUnpack(whole, out List<KeyValuePair<string, string>> changed)) {
                 MelonLogger.Warning($"[Archery] Settings: the server's settings arrived damaged ({whole.Length} bytes, send {part.Sequence}): this game keeps what it has");
