@@ -87,7 +87,12 @@ namespace BluesArcheryOverhaul {
             ArrowFlightSettingsDevianceMultiplierModifier? m = modifiers[tier];
             if (m != null) return m;
             m = ScriptableObject.CreateInstance<ArrowFlightSettingsDevianceMultiplierModifier>();
+#if QUEST
+            if (m == null) return null;   // Quest: CreateInstance has given null for a game type before (QuestSkills)
             m.name = $"QuickshotRing Steady {tier}";
+#else
+            m.name = $"QuickshotRing Steady {tier}";
+#endif
             m.hideFlags = HideFlags.DontUnloadUnusedAsset;
             if (!SetMultiplier(m, SteadyRule.Wobble(tier, Values))) { UnityEngine.Object.Destroy(m); return null; }
             modifiers[tier] = m;

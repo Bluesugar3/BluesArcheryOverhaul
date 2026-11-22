@@ -82,7 +82,12 @@ namespace BluesArcheryOverhaul {
                 AudioManager am = Alta.Utilities.SingletonBehaviour<AudioManager>.Instance;
 #endif
                 if (am == null) { s.PlayAtPosition(at); return; }
+#if QUEST
+                // Quest: the game's "params" list is a plain argument there, and leaving it out passes null, where PC passes an empty one
+                am.PlaySoundEffectAt(s, at, null!, out AudioControl control, new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppReferenceArray<ISoundProperty>(0));
+#else
                 am.PlaySoundEffectAt(s, at, null!, out AudioControl control);
+#endif
                 AkGameObj ak = control != null ? control.AkGameObj : null!;
                 if (ak == null) return;
                 if (SetVolume(ak.gameObject, volume) == 0) QuietFailed("no audio listener");
@@ -92,7 +97,11 @@ namespace BluesArcheryOverhaul {
 
         static int SetVolume(GameObject emitter, float volume) {
             int n = 0;
+#if QUEST
+            foreach (AkAudioListener l in AkAudioListener.DefaultListeners.ListenerList.Each()) {
+#else
             foreach (AkAudioListener l in AkAudioListener.DefaultListeners.ListenerList) {
+#endif
                 if (l == null) continue;
                 AkSoundEngine.SetGameObjectOutputBusVolume(emitter, l.gameObject, volume);
                 n++;

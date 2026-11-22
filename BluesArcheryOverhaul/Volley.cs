@@ -430,7 +430,11 @@ namespace BluesArcheryOverhaul {
             static bool seeded;
             static readonly int TSeed = Timing.Section("scene Volley.BowRegistry seed (once, FindObjectsOfType<BowString>)");
 
+#if QUEST
+            internal static void Add(BowString bs) { if (bs != null && !Il.Has(bows, bs)) bows.Add(bs); }
+#else
             internal static void Add(BowString bs) { if (bs != null && !bows.Contains(bs)) bows.Add(bs); }
+#endif
 
             internal static List<BowString> All() {
                 if (!seeded) {
@@ -1637,6 +1641,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>Head size (times the real arrowhead's) and shaft width in metres. The head's parts keep their places
             /// inside the head; nothing is set when nothing changed.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Resize(float headScale, float shaftMetres) {
                 if (head.localScale.x != headScale) head.localScale = Vector3.one * headScale;
                 baseWidth = shaftMetres; // put on the line by Paint, with the tone's factor (every frame it is drawn)
@@ -1699,7 +1706,11 @@ namespace BluesArcheryOverhaul {
 
             static void Add(List<MeshFilter> list, Renderer r) {
                 MeshFilter mf = r.GetComponent<MeshFilter>();
+#if QUEST
+                if (mf != null && mf.sharedMesh != null && !Il.Has(list, mf)) list.Add(mf);
+#else
                 if (mf != null && mf.sharedMesh != null && !list.Contains(mf)) list.Add(mf);
+#endif
             }
 
             /// <summary>Every drawn renderer under <paramref name="root"/> at its highest detail: those in LOD0 of a LODGroup that
@@ -1762,6 +1773,9 @@ namespace BluesArcheryOverhaul {
             /// while a release would home (SeekLook.BowGreen); 1 in a locked release's flight. The shaft is painted through
             /// GhostColour; the head takes the green copy of its material from half-way on (SeekLook.HeadMaterial: the ghosts' own
             /// head material with its colours set, as a heavy arrow's head is made; its own material again below half).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal float Green {
                 get => green;
                 set {
@@ -1774,6 +1788,9 @@ namespace BluesArcheryOverhaul {
             bool headGreen;
             Material? ownHead;
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void HeadGreen(bool on) {
                 headGreen = on;
                 if (heavy != null || headParts.Count == 0) return;
@@ -1793,6 +1810,9 @@ namespace BluesArcheryOverhaul {
             static float taperFor = -1f;
 
             /// <summary>This ghost at <paramref name="k"/> times its size: head and shaft width (and its glint with the head).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Bigger(float k) {
                 if (!(k > 0f) || k == size) return;
                 float by = k / size;
@@ -1804,6 +1824,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>In flight this ghost's shaft is a trail <paramref name="lengthFactor"/> times as long, narrowing to
             /// <paramref name="taper"/> of its width at its end and fading to nothing.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Trail(float lengthFactor, float taper) {
                 trail = true;
                 trailLength = Mathf.Max(0.1f, lengthFactor);
@@ -1812,23 +1835,41 @@ namespace BluesArcheryOverhaul {
                 shaft.numCornerVertices = 2;
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal bool HasTrail => trail;
             /// <summary>Metres of trail behind this ghost in flight.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal float TrailMetres => flightLength * trailLength;
 
             /// <summary>Gold once the shot is charged; other archers' ghosts at OtherArcherBrightness.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Style(bool isCharged, float bright) { tone = GoldHold.Tone.Plain(isCharged); brightness = bright; }
 
             /// <summary>G4: one arrow of a multi-arrow main's hold stages (GoldHold): how gold, how bright and wide, the shimmer
             /// toward the next stage, the glint on its head.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Style(in GoldHold.Tone look, float bright) { tone = look; brightness = bright; }
 
             /// <summary>The heavy look this ghost wears (a Charge main's heavy arrow), or null.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal HeavyLook? Heavy => heavy;
 
             /// <summary>Dresses this ghost as a heavy arrow (HeavyLook), once; false when the look cannot be built, and the
             /// ghost then keeps its own (gold) look. True again on later calls once dressed.</summary>
             static readonly int T_MakeHeavy = Timing.Section("look Volley.Ghost.MakeHeavy");
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal bool MakeHeavy() {
                 using var _t = Timing.Begin(T_MakeHeavy);
                 if (heavy != null) return true;
@@ -1840,6 +1881,9 @@ namespace BluesArcheryOverhaul {
                 return true;
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Paint(Vector3 tip, Vector3 direction, float drawnLength, float tipAlpha, float tailAlpha, bool held) {
                 Color c;
                 float k;
@@ -1883,6 +1927,9 @@ namespace BluesArcheryOverhaul {
             /// where it has reached, the shaft is tinted toward the next stage's colour and a little more opaque. A line's
             /// colours are set at its points, so the shaft is drawn with ShaftPoints evenly spaced ones while it shimmers
             /// (point 0 = the tip, as always).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void PaintShimmer(Vector3 tip, Vector3 direction, float drawnLength, float tipAlpha, float tailAlpha, Color c, float k) {
                 int n = GoldStages.ShaftPoints;
                 if (!manyPoints) { shaft.positionCount = n; manyPoints = true; }
@@ -1905,6 +1952,9 @@ namespace BluesArcheryOverhaul {
             /// down the shaft from behind: there it is seen face-on, in front of the head, and not hidden inside or behind
             /// it), in [GoldHold] GlintColour. Made when first shown; if it cannot be made, one log line and no ghost shows
             /// a glint (everything else stays).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void PaintGlint(Vector3 tip, Vector3 direction, float tipAlpha) {
                 float a = tone.Glint * brightness;
                 if (a <= 0.01f || tipAlpha <= 0.5f) {
@@ -1940,6 +1990,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>The arrow landed or its life ended: a heavy arrow's embers are let go to fade where they are, then the
             /// ghost goes.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void End() {
                 if (heavy != null) heavy.LetGo();
                 Destroy(gameObject);
@@ -1947,6 +2000,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>The full-volley ripple (VolleyFx.Beats): the heads' _Progress through a property block (1 = the material's
             /// own value, so the block is cleared), the shafts' brightness factor.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Ripple(float progress, float boost) {
                 shaftBoost = boost;
                 if (Mathf.Abs(progress - headProgress) < 1e-4f) return;
@@ -1957,9 +2013,15 @@ namespace BluesArcheryOverhaul {
             }
 
             /// <summary>While the bow is held: only the front of the arrow, fading to nothing toward the hand.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Hold(Vector3 tip, Vector3 direction, float drawnLength, float alpha) => Paint(tip, direction, drawnLength, alpha, 0f, true);
 
             /// <summary>Released: the whole arrow, glowing (a heavy arrow drops its strand and starts its embers).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Fly(Vector3 tip, Vector3 direction, float length) {
                 Ripple(1f, 1f);
                 flightLength = length;
@@ -1970,6 +2032,9 @@ namespace BluesArcheryOverhaul {
 
             float flightLength = 0.7f;
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void MoveTo(Vector3 tip, Vector3 velocity) {
                 if (velocity.sqrMagnitude > 0.01f) Paint(tip, velocity.normalized, trail ? TrailMetres : flightLength, 1f, trail ? 0f : 0.6f, false);
             }
@@ -1978,6 +2043,9 @@ namespace BluesArcheryOverhaul {
             /// <paramref name="points"/>[0] flying along <paramref name="velocity"/>, its shaft and trail through the first
             /// <paramref name="count"/> points (the flight's own curve behind it), full at the head, narrowing and fading to nothing
             /// at the end. No allocation: the line copies the points.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void MoveAlong(Vector3[] points, int count, Vector3 velocity) {
                 if (count < 2 || velocity.sqrMagnitude <= 0.01f) { MoveTo(points[0], velocity); return; }
                 Vector3 direction = velocity.normalized;
@@ -1997,6 +2065,9 @@ namespace BluesArcheryOverhaul {
             }
 
             /// <summary>H2: the whole arrow at <paramref name="alpha"/> (SeekReveal: a green ghost fading out over the real arrow).</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Fade(Vector3 tip, Vector3 direction, float length, float alpha) => Paint(tip, direction, length, alpha, alpha * 0.6f, false);
         }
 
@@ -2078,6 +2149,9 @@ namespace BluesArcheryOverhaul {
 
             // The hairline trail lives on a child object: a GameObject holds one Renderer, and the streak's LineRenderer is on
             // the root. A trail that cannot be made only loses the trail (logged once); the streak stays.
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void AddTrail(Material mat, Color c, float a) {
                 try {
                     var child = new GameObject("trail");
@@ -2109,6 +2183,9 @@ namespace BluesArcheryOverhaul {
             }
 
             /// <summary>Every rendered frame (VolleySim.LateUpdate): the streak's head at <paramref name="tip"/>. No allocation.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void MoveTo(Vector3 tip, Vector3 velocity) {
                 if (velocity.sqrMagnitude < 1e-6f) return;
                 transform.position = tip; // the trail child follows the head
@@ -2118,6 +2195,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>The needle landed or its life ended: the streak goes now; the trail is let go where it is and fades out
             /// over its own TrailSeconds before it is destroyed.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void End() {
                 if (trailGo != null) {
                     trailGo.transform.SetParent(null, true);
@@ -2202,6 +2282,9 @@ namespace BluesArcheryOverhaul {
             internal static float SlideDelay(int index) => (index / 2) * (pairSeconds != null ? Mathf.Max(0f, pairSeconds.Value) : 0.08f);
 
             /// <summary>The shaft's colour this frame: Colour, toward white with the charge's brightness.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal Color ShaftColour => Brighter(colour != null ? Cfg.Colour(colour, DefaultColour) : DefaultColour, Glow);
 
             static Color Brighter(Color c, float k) => k <= 1f ? c : Color.Lerp(c, Color.white, 1f - 1f / k);
@@ -2289,6 +2372,9 @@ namespace BluesArcheryOverhaul {
             }
 
             // The strand lives on a child object: a GameObject holds one Renderer. One that cannot be made loses only the strand.
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void AddStrand() {
                 try {
                     if (Fx.LineMaterial() == null) { StrandFailed("no line material"); return; }
@@ -2312,6 +2398,9 @@ namespace BluesArcheryOverhaul {
             /// <summary>Every frame the ghost is drawn (Ghost.Paint): held, one turn of strand round the drawn front from its
             /// back end to the head, closing onto the head (StrandShape), at <paramref name="a"/> (the ghost's alpha times its
             /// brightness); in flight, none. No allocation.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Painted(Vector3 tip, Vector3 dir, float len, float a, bool held) {
                 if (strand == null) return;
                 float turns = strandTurns.Value;
@@ -2347,6 +2436,9 @@ namespace BluesArcheryOverhaul {
             }
 
             /// <summary>Released (Ghost.Fly): the strand goes, the ember trail starts on the head.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Flown(Transform head) {
                 if (strand != null) strand.enabled = false;
                 if (trail != null || head == null) return;
@@ -2357,6 +2449,9 @@ namespace BluesArcheryOverhaul {
             }
 
             /// <summary>The heavy arrow is about to go (Ghost.End): its embers fade out where they are.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void LetGo() {
                 if (trail != null) trail.LetGo();
                 trail = null;

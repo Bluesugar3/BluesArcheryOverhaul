@@ -1594,6 +1594,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>Stopped, out of time, or its carrier is about to go (a heavy arrow landing): what is drawn fades
             /// where it is and the trail destroys itself.</summary>
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void LetGo() {
                 if (!enabled) return;
                 // stopped (or out of time): let what is drawn fade where it is, never ride along on a stuck or picked-up arrow
@@ -1630,6 +1633,9 @@ namespace BluesArcheryOverhaul {
                 d.Frame(0f);
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Frame(float k) {
                 transform.localScale = Vector3.one * Mathf.Lerp(from, to, k);
                 Color c = WithAlpha(Dust, Dust.a * (1f - k));

@@ -838,6 +838,9 @@ namespace BluesArcheryOverhaul {
 
             /// <summary>A seen beam: close the bolt at the landing point the server sent (the end point is never jittered).</summary>
             /// A seen trail gets in-between points every 0.6 m (as the shooter's trail samples its beam) so it kinks the same way.
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void EndAt(Vector3 point) {
                 if (endedAt >= 0f || path.Count == 0) return;
                 Vector3 last = path[path.Count - 1];

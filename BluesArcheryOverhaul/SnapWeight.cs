@@ -642,6 +642,9 @@ namespace BluesArcheryOverhaul {
                 return true;
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Frame(float k) {
                 float eased = 1f - (1f - k) * (1f - k); // fast out, slowing: a snap
                 transform.localScale = Vector3.one * Mathf.Lerp(from, to, eased);

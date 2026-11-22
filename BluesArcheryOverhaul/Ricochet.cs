@@ -708,13 +708,22 @@ namespace BluesArcheryOverhaul {
                 float lift, side, born, draw, fade, volume, shown, leaveVolume;
                 int sparks, leaveSparks;
                 bool landed;
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal bool Busy => gameObject.activeSelf;
 
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal void Build() {
                     line = Fx.NewLine(gameObject, JumpArc.Points, 0.01f, false);
                     gameObject.SetActive(false);
                 }
 
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal void Go(Vector3 a, Vector3 b, float liftMetres, float sideMetres, Color c, float width, float drawSeconds, float fadeSeconds, int landSparks, float landVolume, float delaySeconds,
                                  int departSparks, float departVolume) {
                     from = a; to = b; lift = liftMetres; side = sideMetres; colour = c; draw = drawSeconds; fade = fadeSeconds;
@@ -731,6 +740,9 @@ namespace BluesArcheryOverhaul {
                 }
 
                 // the points are spread over the part drawn so far, so the line grows from the hit toward its target
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 void Frame(float age) {
                     float drawn = JumpArc.Drawn(age, draw);
                     if (drawn != shown) {
@@ -786,6 +798,9 @@ namespace BluesArcheryOverhaul {
                 l.Paint(1f);
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Paint(float k) {
                 line.startColor = new Color(colour.r, colour.g, colour.b, colour.a * tailAlpha * k);
                 line.endColor = new Color(colour.r, colour.g, colour.b, colour.a * k);

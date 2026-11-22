@@ -258,6 +258,9 @@ namespace BluesArcheryOverhaul {
 
         /// <summary>H2 (SeekLook.Dress): this pellet flies in a locked release: its streak <paramref name="widthScale"/> times as
         /// wide and <paramref name="trailScale"/> times as long, with no fall-off toward Burst's range.</summary>
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         internal void Homing(float widthScale, float trailScale) {
             width *= Mathf.Max(0f, widthScale);
             lengthScale = Mathf.Max(0f, trailScale);
@@ -281,6 +284,9 @@ namespace BluesArcheryOverhaul {
         /// <summary>The pellet had its own arrow on the bow (Burst.Held): the streak starts there, <paramref name="from"/> off
         /// its real path's <paramref name="start"/>, and joins the path over <paramref name="seconds"/> (BurstPattern.Join).
         /// Drawn at once, so there is no frame with neither the held arrow nor the streak.</summary>
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         internal void StartFrom(Vector3 from, float seconds, Vector3 start, Vector3 dir) {
             offset = from;
             joinFrom = Time.time;
@@ -289,6 +295,9 @@ namespace BluesArcheryOverhaul {
         }
 
         /// <summary>Place the streak with its front at <paramref name="at"/>, <paramref name="travelled"/> metres from the release point.</summary>
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         internal void Move(Vector3 at, Vector3 dir, float travelled) {
             if (dir.sqrMagnitude < 1e-6f) return;
             if (joinSeconds > 0f) {
@@ -307,6 +316,9 @@ namespace BluesArcheryOverhaul {
         }
 
         /// <summary>The pellet is gone: a puff of specks when it reached its range (not when it hit something), then removed.</summary>
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         internal void End(bool puff, Vector3 at, Vector3 dir) {
             if (puff) VolleyFx.Sparks.Emit(at, dir, Burst.PuffSpecks, new Color(colour.r, colour.g, colour.b, brightness), PuffSpread, PuffSpeed);
             Destroy(gameObject);

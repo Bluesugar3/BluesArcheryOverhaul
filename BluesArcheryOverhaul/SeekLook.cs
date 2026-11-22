@@ -484,6 +484,9 @@ namespace BluesArcheryOverhaul {
 
             internal static void HideAll() { if (instance != null) instance.Hide(); }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             LineRenderer NewRing(float width) {
                 var go = new GameObject("ring");
                 go.transform.SetParent(transform, false);
@@ -504,6 +507,9 @@ namespace BluesArcheryOverhaul {
             }
 
             static readonly int T_Show = Timing.Section("look Seek.Look.Show (plain lock rings, the fallback)");
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             internal void Show(List<Vector3> locks, List<float> radii, bool filling, Vector3 fillAt, float fillRadius, float fill) {
                 using var _t = Timing.Begin(T_Show);
                 if (Fx.LineMaterial() == null) return;
@@ -522,6 +528,9 @@ namespace BluesArcheryOverhaul {
                 lastShown = Time.time;
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Hide() {
                 foreach (LineRenderer r in rings) if (r != null && r.gameObject.activeSelf) r.gameObject.SetActive(false);
                 if (fillRing != null && fillRing.gameObject.activeSelf) fillRing.gameObject.SetActive(false);

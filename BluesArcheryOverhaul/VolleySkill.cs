@@ -201,7 +201,9 @@ namespace BluesArcheryOverhaul {
         }
 
         // Server: the Volley skill's input on a bow string became active (its timer ran out above 68%) or not.
+#if !QUEST
         [HarmonyPatch(typeof(BowDrawSkill), nameof(BowDrawSkill.InputChangedState))]
+#endif
         static class ServerState {
             static readonly int T = Timing.Section("patch BowDrawSkill.InputChangedState / VolleySkill.ServerState");
 #if QUEST
@@ -357,7 +359,9 @@ namespace BluesArcheryOverhaul {
         // BowDrawSkill.OnArrowShot assigns the arrow's one-off multiplier from the skill's table, and handlers run in
         // subscription order: the copy's flat x1 would overwrite Slowdraw's charge if it ran last. The copy still
         // consumes (practice, the consumed status); the arrow keeps whatever it had before the copy's handler.
+#if !QUEST
         [HarmonyPatch(typeof(BowDrawSkill), "OnArrowShot")]
+#endif
         static class KeepMultiplier {
             static readonly int TPrefix = Timing.Section("patch BowDrawSkill.OnArrowShot / VolleySkill.KeepMultiplier prefix");
             static readonly int TPostfix = Timing.Section("patch BowDrawSkill.OnArrowShot / VolleySkill.KeepMultiplier postfix");

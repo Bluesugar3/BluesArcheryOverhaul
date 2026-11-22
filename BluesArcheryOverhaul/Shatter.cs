@@ -566,8 +566,14 @@ namespace BluesArcheryOverhaul {
                 float born, life, length, distance;
                 int sparks;
                 bool caught, stopped;
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal bool Busy => gameObject.activeSelf;
 
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal void Build() {
                     line = Fx.NewLine(gameObject, 2, 0.01f, false);
                     line.widthCurve = Comet;
@@ -575,6 +581,9 @@ namespace BluesArcheryOverhaul {
                     gameObject.SetActive(false);
                 }
 
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 internal void Fly(Vector3 a, Vector3 b, Color headColour, Color tailColour, float width, float seconds, float len, int endSparks,
                                   bool isCaught, bool isStopped) {
                     from = a; to = b; head = headColour; tail = tailColour; life = Mathf.Max(0.02f, seconds); length = len; born = Time.time;
@@ -587,6 +596,9 @@ namespace BluesArcheryOverhaul {
                 }
 
                 // point 0 is the head, point 1 the end of its trail
+#if QUEST
+                [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
                 void Place(float t) {
                     float at = distance * Mathf.Clamp01(t);
                     line.SetPosition(0, from + dir * at);

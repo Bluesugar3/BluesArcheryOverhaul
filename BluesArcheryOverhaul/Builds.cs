@@ -242,29 +242,39 @@ namespace BluesArcheryOverhaul {
             catch (Exception e) { MelonLogger.Warning($"[Archery] Build: refresh after {patch} failed: {e}"); }
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.UnlockSlot))]
+#endif
         static class OnUnlockSlot {
             [HarmonyPriority(Priority.Last)]
             static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.UnlockSlot");
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.LockSlot))]
+#endif
         static class OnLockSlot {
             static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.LockSlot");
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.PracticeSlot))]
+#endif
         static class OnPracticeSlot {
             static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.PracticeSlot");
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.EndPractice))]
+#endif
         static class OnEndPractice {
             static void Postfix(PlayerProgressionManager __instance) => Refreshed(__instance, "PlayerProgressionManager.EndPractice");
         }
 
         // Selling reaches PathExperience.LockSlot also from RemoveFreePoints/RemoveSlots, with no manager call.
+#if !QUEST
         [HarmonyPatch(typeof(PathExperience), nameof(PathExperience.LockSlot))]
+#endif
         static class OnPathLockSlot {
 #if QUEST
             static void Postfix(PathExperience __instance) => Refreshed(__instance.targetPlayer, "PathExperience.LockSlot");
@@ -275,7 +285,9 @@ namespace BluesArcheryOverhaul {
 
         // UpdateCounts clears the game's skill levels and recounts them from owned slots only: the test build's
         // granted levels go back on top.
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.UpdateCounts))]
+#endif
         static class OnUpdateCounts {
             static readonly int T = Timing.Section("patch PlayerProgressionManager.UpdateCounts / Builds.OnUpdateCounts");
             static void Postfix(PlayerProgressionManager __instance) {
@@ -286,7 +298,9 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if !QUEST
         [HarmonyPatch(typeof(PlayerProgressionManager), nameof(PlayerProgressionManager.LoadFrom))]
+#endif
         static class OnLoadFrom {
             static readonly int TPrefix = Timing.Section("patch PlayerProgressionManager.LoadFrom / Builds.OnLoadFrom prefix");
             static readonly int TPostfix = Timing.Section("patch PlayerProgressionManager.LoadFrom / Builds.OnLoadFrom postfix");

@@ -701,6 +701,9 @@ namespace BluesArcheryOverhaul {
                 Fx.Bolt(point, point + normal * spikeLength.Value * 1.4f, 0f, life, 0.03f, Color.white, c, 0); // the long one, straight out
             }
 
+#if QUEST
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
             void Paint(float t) {
                 float fade = Mathf.Max(0.01f, lineFade.Value);
                 float k = Mathf.Clamp01((t - lineHold.Value) / fade); // 0 while held, 1 when gone

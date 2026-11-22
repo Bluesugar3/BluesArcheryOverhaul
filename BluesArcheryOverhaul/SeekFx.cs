@@ -83,11 +83,17 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         void Frame(float alpha) {
             Transform tip = arrow!.ArrowTip != null ? arrow.ArrowTip.transform : arrow.transform;
             ghost!.Fade(tip.position, arrow.transform.forward, Length, alpha);
         }
 
+#if QUEST
+        [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+#endif
         void End() {
             if (ghost != null) Destroy(ghost.gameObject);
             ghost = null;
