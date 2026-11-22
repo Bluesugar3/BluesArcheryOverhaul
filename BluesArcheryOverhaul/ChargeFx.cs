@@ -1238,11 +1238,7 @@ namespace BluesArcheryOverhaul {
         // The game plays it in the same status callback that runs before the mod's (PickupBasedSkill.SendSerializedMessage),
         // so the archer comes from this draw's earlier statuses (NoteArcher). An unknown archer keeps the game's sound.
         // Stage 1 keeps the game's own sound for a Charge main; the heavier sound is stages 2 and 3 (StageThump).
-        // ponytail: not patched on Quest: the game crashed (signal 11) in its own PlaySoundAt the first time it ran with this patch on
-        // it. An off-path archer hears the game's charged sound there. Find another hook if that sound matters.
-#if !QUEST
         [HarmonyPatch(typeof(SkillInputStructure), nameof(SkillInputStructure.PlaySoundAt))]
-#endif
         static class Charge2Sound {
             static readonly int T = Timing.Section("patch SkillInputStructure.PlaySoundAt / ChargeFx.Charge2Sound");
             static bool live, listenersLogged;

@@ -337,16 +337,30 @@ namespace BluesArcheryOverhaul {
         [HarmonyPatch(typeof(PickupBasedSkill), nameof(PickupBasedSkill.SendSerializedMessage))]
         static class Owner {
             static void Prefix(IPlayer __0) => owner = __0;
+#if QUEST
+            // Quest: the build bits are read here, not in a patch on SerializeInternal (see Bits). SerializeInternal is the last
+            // thing the game's SendSerializedMessage reads, so the stream is where that patch would find it. First: the other
+            // postfixes on this method use the build this reads.
+            [HarmonyPriority(Priority.First)]
+            static void Postfix(PickupBasedSkill __instance, Il2CppAlta.Serialization.Stream __1) {
+                try { Bits.Postfix(__instance, __1); } finally { owner = null; }
+            }
+#else
             static void Postfix() => owner = null;
+#endif
         }
 
         // SerializeInternal is the last field of the status message (PickupBasedSkill.SendSerializedMessage), so
         // our block goes right after the game's own fields.
+        // Quest: never patched there. The game's SerializeInternal is an empty method: a few bytes of native code, smaller than the
+        // patch's jump, so patching it overwrote the code beside it and the game crashed (signal 11) on the first bow-skill status.
+#if !QUEST
         [HarmonyPatch(typeof(PickupBasedSkill), "SerializeInternal")]
+#endif
         static class Bits {
             static readonly int T = Timing.Section("patch PickupBasedSkill.SerializeInternal / Builds.Bits");
 #if QUEST
-            static void Postfix(PickupBasedSkill __instance, Il2CppAlta.Serialization.Stream stream) {
+            internal static void Postfix(PickupBasedSkill __instance, Il2CppAlta.Serialization.Stream stream) {
                 uint ___pickupIdentifier = __instance.pickupIdentifier;
                 ToolBasedSkillStatus ___status = __instance.status;
 #else
