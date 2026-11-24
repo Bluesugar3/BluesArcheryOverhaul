@@ -18,3 +18,8 @@ tools/.install/
 # other work in this folder
 .claude/
 BluesInGameStringTool/
+
+# kept local only: the unit tests and the play-test kit
+BluesArcheryOverhaul.Tests/
+BluesArcheryTestKit/
+BluesArcheryTestKit.Tests/

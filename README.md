@@ -66,7 +66,7 @@ Default numbers, with the orb's own path as your main path. Times count from the
 | **Burst** | At 1.5 s: 15 pellets, 4% each, 30 m range. |
 | **Seeking Volley** | Legendary. Rest your aim on a creature, or on another player when the server has PvP on, to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
 | **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage, then once more for half of that. |
-| **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s. |
+| **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s, or at once if one falls out of the world or sinks into a wall. |
 
 Stagger and interrupts work on creatures only. An interrupt cancels what the creature is doing where the game allows it: never on Wyrms, and at most once every 3 s per creature.
 
@@ -83,29 +83,9 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 - **Side orbs** work on any main path. Auto Dock always works in full. Ricochet and Shatter work at half strength off their own path.
 - **Legendaries** work only on their own path, and buying one makes that path your main path. To switch legendary, sell yours first.
 
-## Example builds
-
-Eight orbs each.
-
-| Build | Orbs | What you get |
-|---|---|---|
-| **Piercer** (Quick) | Quickdraw 1-4, Charge Shot 1-3, Shatter | Every snap is a line through up to 8 creatures that staggers each one. The first can be interrupted, and Shatter blasts on behind it at half strength. |
-| **Siege** (Charge) | Charge Shot 1-3, Holy Arrow, Shatter, Two-Shot, Three-Shot, Burst | A 2.5 s hold fires a 6x arrow with 6 heavy arrows beside it, and Shatter reaches up to 2.45x the hit. A 5.5 s hold fires Holy Arrow instead, on its own. |
-| **Swarm** (Multi) | Two-Shot, Three-Shot, Burst, Seeking Volley, Ricochet, Quickdraw 1-3 | A 30-arrow volley by 0.4 s with locks in 0.25 to 0.5 s. It homes through up to 4 creatures, and every ghost and pellet hit jumps on. |
-
 ## Install
 
-You need MelonLoader **0.7.3**. The same `BluesArcheryOverhaul.dll` goes on **the server and every player's game**.
-
-1. Download `BluesArcheryOverhaul.dll` from the [Releases](../../releases) page.
-2. Close the game and stop the server.
-3. Put it in the `Mods` folder of the game and of the server.
-4. Start the server, then the game.
-
-It loaded correctly if `MelonLoader\Latest.log` has a line starting `[Archery] Self-check:`. If that line says `FAILED`, don't play on that build.
-
-- **Joining:** by default the server turns away a game that has no matching copy of the mod, and tells the player why. `[Join] Check` on the server sets this: `refuse`, `log` (let everyone in and only log it) or `off`.
-- **Updating from QuickshotRing** (the mod's name up to 0.18.3): delete `QuickshotRing.dll` from both `Mods` folders. With both files present the new one refuses to start. Your settings are copied to the new names on first start, and the old files are left alone.
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.13; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
 
 ## Skyfall (admins only)
 
@@ -132,11 +112,6 @@ Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s
 - **`[Log] Level = Debug`** gives detailed logs.
 - **Orb icons:** put `<Name>.png` in `UserData\BluesArcheryOverhaul\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
 
-## Balance statistics (server)
+## License
 
-The server keeps running statistics of archery so you can see which skills are too strong. It is on by default, runs on the server only, and sends nothing anywhere.
-
-- **What it keeps:** per day, per player and per kind of shot: shots, damage to creatures, kills, damage to players, time spent, what dealt the damage, and which arrows were shot. Player names are in the files. No single shot is stored.
-- **Where:** `UserData\BluesArcheryOverhaul\telemetry\` on the server, one small `stats-v1-<day>-<run>.csv` per day and server run, rewritten about once a minute. A very busy month is about 3 MB. Old days are never deleted.
-- **The page:** `python -I tools/telemetry_report.py <that folder>` (Python 3, this repository's `tools` folder) compiles every day into one page: damage per shot and per minute for each skill, each skill's damage as a multiple of a plain hit with the same arrows, kills, and a flag on any skill at 1.5 times the median or more. On Windows, double-click `tools\Balance report.cmd`.
-- **Settings**, in `[Telemetry]` on the server: `Enabled = false` turns it off. `MinFreeMb` (2048) stops the file being written while the drive has less free space than that.
+The code is under the [MIT License](LICENSE). The images in `BluesArcheryOverhaul/Resources/` (also embedded in the DLL) are made from A Township Tale's own art and are not covered by it; they belong to Alta.

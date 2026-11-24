@@ -87,7 +87,22 @@ namespace BluesArcheryOverhaul {
             if (!quiverHasRoom) return ReturnAction.Wait;       // full quiver: comes back once there is room (0.19.11; gave up for good before)
             return ReturnAction.Return;
         }
+
+        // 0.19.13 (the owner: "IF arrows clip into the wall or fall out into the void, have it snap back to the quiver instantly")
+        public const float VoidFallSpeed = 15f, VoidDepthMetres = 3f;
+
+        /// <summary>A shot arrow nobody can get back, which returns at once instead of at its time. Void: falling faster than
+        /// VoidFallSpeed in loaded world with no ground at all under it (off the map) or ground more than VoidDepthMetres above it
+        /// (through the ground). Clipped: stuck in the world (not in a creature or player) with its middle behind the surface it
+        /// went into (<paramref name="wallBeforeMiddle"/>: a cast back along its own way met the world before its middle).</summary>
+        public static OutOfReach Reach(bool stuckInWorld, bool wallBeforeMiddle, float verticalSpeed, bool loaded, bool groundFound, float groundAboveMetres) {
+            if (stuckInWorld) return wallBeforeMiddle ? OutOfReach.Clipped : OutOfReach.None;
+            if (!(verticalSpeed < -VoidFallSpeed) || !loaded) return OutOfReach.None;
+            return !groundFound || groundAboveMetres > VoidDepthMetres ? OutOfReach.Void : OutOfReach.None;
+        }
     }
+
+    internal enum OutOfReach { None, Clipped, Void }
 
     /// <summary>What one poll of a queued Auto Dock does.</summary>
     internal enum DockStep { Wait, Dock, Drop }
