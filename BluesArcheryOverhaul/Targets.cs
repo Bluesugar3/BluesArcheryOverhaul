@@ -77,6 +77,9 @@ namespace BluesArcheryOverhaul {
         internal static bool BoundsOf(Transform root, out Bounds b, bool includeInactive = false) {
             bool any = false;
             b = default;
+#if QUEST
+            QuestWatch.Mark("bounds: colliders");
+#endif
             root.GetComponentsInChildren(includeInactive, boundsColliders); // G2: one list for every call (same colliders, same order)
             foreach (Collider c in boundsColliders) {
                 if (c == null || c.isTrigger) continue;
@@ -138,6 +141,9 @@ namespace BluesArcheryOverhaul {
         static bool HasAgent(HealthObject h) {
             int key = h.GetInstanceID();
             if (agentMemo.TryGetValue(key, out bool known)) return known;
+#if QUEST
+            QuestWatch.Mark("creature: agent test");
+#endif
             NetworkEntity e = h.Entity;
             NetworkEntity root = e != null ? e.PrefabRoot : null!;
 #if QUEST

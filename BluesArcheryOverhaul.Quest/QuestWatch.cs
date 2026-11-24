@@ -66,7 +66,7 @@ namespace BluesArcheryOverhaul {
 
         [HarmonyPatch(typeof(BowString), "StringGrabbed")]
         static class Grabbed {
-            static void Prefix() { Arm("a bow string was grabbed", 8f); }
+            static void Prefix() { Arm("a bow string was grabbed", 20f); }
         }
 
         [HarmonyPatch(typeof(SkillShrineTestingArea), "Open", new System.Type[0])]
