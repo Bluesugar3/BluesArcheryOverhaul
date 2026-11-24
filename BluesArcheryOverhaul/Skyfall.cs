@@ -268,6 +268,21 @@ namespace BluesArcheryOverhaul {
             if (float.IsNaN(fx) || float.IsInfinity(fx) || float.IsNaN(fz) || float.IsInfinity(fz) || float.IsNaN(ft) || float.IsInfinity(ft)
                 || !(length > 0f) || float.IsInfinity(length)) return false;
 #if QUEST
+            // Quest: the hold asks this every frame, and a full cast costs a game-made array (Il.cs). The first hit down the ray is
+            // the highest: when it is neither a body nor a loose item it is the answer SkyGround.Highest would give.
+            if (!Physics.Raycast(new Vector3(fx, ft, fz), Vector3.down, out RaycastHit top1, length, GroundMask, QueryTriggerInteraction.Ignore)) return false;
+            Collider col1 = top1.collider;
+            if (col1 != null) {
+                Rigidbody rb1 = col1.attachedRigidbody;
+                if (!IsBody(col1) && !(rb1 != null && !rb1.isKinematic)) {
+                    float y1 = top1.point.y;
+                    if (float.IsNaN(y1) || !Hits.Loaded(new Vector3(fx, y1, fz))) return false;
+                    y = y1;
+                    return true;
+                }
+            }
+#endif
+#if QUEST
             int n = Il.RaycastNonAlloc(new Vector3(fx, ft, fz), Vector3.down, groundHits, length, GroundMask, QueryTriggerInteraction.Ignore);
 #else
             int n = Physics.RaycastNonAlloc(new Vector3(fx, ft, fz), Vector3.down, groundHits, length, GroundMask, QueryTriggerInteraction.Ignore);

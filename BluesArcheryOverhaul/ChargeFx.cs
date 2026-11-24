@@ -607,8 +607,16 @@ namespace BluesArcheryOverhaul {
                 // the shape: s runs hand (0) to head (1) along the whole strand; the drawn part ends at p while it winds on.
                 // The gap closes onto the shaft's surface at the head (and over the front with the wind-up's braid).
                 for (int i = 0; i < StrandPoints; i++) strandPoints[i] = f.helix.Point(k, p * i / (StrandPoints - 1), 0f);
+#if QUEST
+                Il.SetPositions(lr, strandPoints);
+#else
                 lr.SetPositions(strandPoints);
+#endif
+#if QUEST
+                if (halo.enabled) Il.SetPositions(halo, strandPoints);
+#else
                 if (halo.enabled) halo.SetPositions(strandPoints);
+#endif
 
                 // width: the taper is the curve; the flare at a done strand, and one flicker factor per strand per frame
                 float wobble = flick > 0f ? UnityEngine.Random.Range(1f - flick, 1f) : 1f;
@@ -630,7 +638,11 @@ namespace BluesArcheryOverhaul {
                     strandColourKeys[j] = new GradientColorKey(Color.Lerp(c, Color.white, w), at);
                     strandAlphaKeys[j] = new GradientAlphaKey(Mathf.Clamp01(alpha * Mathf.Lerp(0.5f, 1f, at) * stageBright * (1f + boost)), at);
                 }
+#if QUEST
+                Il.SetKeys(strandGradient, strandColourKeys, strandAlphaKeys);
+#else
                 strandGradient.SetKeys(strandColourKeys, strandAlphaKeys);
+#endif
                 lr.colorGradient = strandGradient;
 
                 if (halo.enabled) {

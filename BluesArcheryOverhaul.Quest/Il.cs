@@ -163,6 +163,22 @@ namespace BluesArcheryOverhaul {
             return n;
         }
 
+        // A managed array handed to Unity becomes a NEW game array on every call (LineRenderer.SetPositions, Gradient.SetKeys: per
+        // ghost, per frame while it shimmers, homes or carries strands). These keep one game array per length and refill it. The
+        // array types are the ones that conversion already makes, so making them is known to work on the headset.
+        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.Vector3>> pointBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.Vector3>>();
+        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientColorKey>> colourBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientColorKey>>();
+        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientAlphaKey>> alphaBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientAlphaKey>>();
+
+        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T> Filled<T>(Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T>> buffers, T[] from) where T : unmanaged {
+            if (!buffers.TryGetValue(from.Length, out var buffer)) buffers[from.Length] = buffer = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T>(from.Length);
+            for (int i = 0; i < from.Length; i++) buffer[i] = from[i];
+            return buffer;
+        }
+
+        internal static void SetPositions(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) => line.SetPositions(Filled(pointBuffers, points));
+        internal static void SetKeys(UnityEngine.Gradient gradient, UnityEngine.GradientColorKey[] colours, UnityEngine.GradientAlphaKey[] alphas) => gradient.SetKeys(Filled(colourBuffers, colours), Filled(alphaBuffers, alphas));
+
         sealed class PointerComparer<T> : IEqualityComparer<T> where T : class {
             internal static readonly PointerComparer<T> Instance = new PointerComparer<T>();
             public bool Equals(T? a, T? b) => Same(a, b);

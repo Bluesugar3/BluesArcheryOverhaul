@@ -739,7 +739,11 @@ namespace BluesArcheryOverhaul {
                     tintColours[3] = new GradientColorKey(Color.Lerp(c, gold, weight), 1f);
                     tintAlphas[0] = new GradientAlphaKey(a, 0f);
                     tintAlphas[1] = new GradientAlphaKey(a, 1f);
+#if QUEST
+                    Il.SetKeys(tintGradient, tintColours, tintAlphas);
+#else
                     tintGradient.SetKeys(tintColours, tintAlphas);
+#endif
                     core.colorGradient = tintGradient;
                 }
                 else {
@@ -760,7 +764,11 @@ namespace BluesArcheryOverhaul {
                         float r = radius * Mathf.Clamp01(d / 0.8f); // grows out of the arrow tip instead of starting wide
                         buffer[i] = from + dir * d + (u * Mathf.Cos(ang) + w * Mathf.Sin(ang)) * r;
                     }
+#if QUEST
+                    Il.SetPositions(strands[s], buffer);
+#else
                     strands[s].SetPositions(buffer);
+#endif
                     strands[s].startColor = new Color(c.r, c.g, c.b, a * 0.9f);
                     // if the spirals stop short of a very long shot, they fade out instead of ending abruptly
                     strands[s].endColor = new Color(c.r, c.g, c.b, spiralLength < length - 0.01f ? 0f : a * 0.9f);

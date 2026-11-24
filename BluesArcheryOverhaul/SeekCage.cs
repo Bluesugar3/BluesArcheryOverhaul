@@ -298,7 +298,11 @@ namespace BluesArcheryOverhaul {
         static void Set(LineRenderer lr, int n, bool closed) {
             if (lr.positionCount != n) lr.positionCount = n;
             if (lr.loop != closed) lr.loop = closed;
+#if QUEST
+            Il.SetPositions(lr, points);
+#else
             lr.SetPositions(points);
+#endif
         }
 
         static void Paint(Arc a, bool show, Quaternion rotation, float radius, float sweep, float width, Color c, float alpha, in SeekLook.CageSet s) {

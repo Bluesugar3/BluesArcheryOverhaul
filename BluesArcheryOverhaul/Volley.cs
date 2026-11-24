@@ -1943,8 +1943,16 @@ namespace BluesArcheryOverhaul {
                     float a = Mathf.Lerp(tipAlpha, tailAlpha, time) + reached * tone.ShimmerGlow * tipAlpha;
                     shimmerAlphas[i] = new GradientAlphaKey(Mathf.Clamp01(a * k), time);
                 }
+#if QUEST
+                Il.SetPositions(shaft, shimmerPoints);
+#else
                 shaft.SetPositions(shimmerPoints);
+#endif
+#if QUEST
+                Il.SetKeys(shimmerGradient, shimmerColours, shimmerAlphas);
+#else
                 shimmerGradient.SetKeys(shimmerColours, shimmerAlphas);
+#endif
                 shaft.colorGradient = shimmerGradient;
             }
 
@@ -2056,7 +2064,11 @@ namespace BluesArcheryOverhaul {
                 if (w != shownWidth) { shaft.widthMultiplier = w; shownWidth = w; }
                 if (shaft.positionCount != count) shaft.positionCount = count;
                 manyPoints = true; // a straight paint after this (it let go and skipped) goes back to two points
+#if QUEST
+                Il.SetPositions(shaft, points);
+#else
                 shaft.SetPositions(points);
+#endif
                 shaft.startColor = new Color(c.r, c.g, c.b, Mathf.Min(1f, k));
                 shaft.endColor = new Color(c.r, c.g, c.b, 0f);
                 head.SetPositionAndRotation(points[0], Quaternion.LookRotation(direction) * headOffset);
@@ -2420,7 +2432,11 @@ namespace BluesArcheryOverhaul {
                     float r = StrandShape.Radius(shaftHalf, gap, s, converge);
                     points[i] = back + dir * (len * s) + (u * Mathf.Cos(angle) + v * Mathf.Sin(angle)) * r;
                 }
+#if QUEST
+                Il.SetPositions(strand, points);
+#else
                 strand.SetPositions(points);
+#endif
                 AnimationCurve curve = ChargeFx.StrandTaperCurve;
 #if QUEST
                 if (!Il.Same(curve, strandCurve)) { strand.widthCurve = curve; strandCurve = curve; }

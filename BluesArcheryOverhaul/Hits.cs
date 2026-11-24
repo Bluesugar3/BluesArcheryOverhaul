@@ -97,6 +97,12 @@ namespace BluesArcheryOverhaul {
             using var _t = Timing.Begin(T_CastCore);
             hit = default;
             if (maxDistance <= 0f || direction.sqrMagnitude < 1e-8f) return false;
+#if QUEST
+            // Quest: every full cast costs a game-made array (Il.cs). Most casts hit nothing, or their nearest hit is the answer:
+            // ask for that one hit first (no array) and take the full list only when the nearest must be passed over.
+            if (!Physics.Raycast(from, direction.normalized, out RaycastHit nearest, maxDistance, Mask, QueryTriggerInteraction.Ignore)) return false;
+            if (nearest.collider != null && !Ignored(nearest.transform, a, b, c, rest) && !(pastShells && Seek.CreatureShell(nearest.collider))) { hit = nearest; return true; }
+#endif
             // A full buffer means hits were dropped in no particular order, and the nearest may be among them: grow and ask again.
             int n;
 #if QUEST
