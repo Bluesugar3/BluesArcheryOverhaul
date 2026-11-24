@@ -85,7 +85,7 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 
 ## Install
 
-Download `BluesArcheryOverhaul.dll` from the [Releases](../../releases) page and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.13; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
 
 ## Skyfall (admins only)
 
@@ -111,3 +111,7 @@ Everything is in `UserData\BluesArcheryOverhaul.cfg`, and edits apply within 2 s
 - **`[PvP]`** decides whether arrows hurt players. Everything is on by default: arrows, the extra arrows, Ricochet's jumps, Shatter's blast and Holy Arrow's blast all hurt other players (the mod's own hits at half a creature's damage, `ModHitShare`), and Seeking Volley locks them (`[SeekingVolley] LockPlayers`). The server's own PvP setting must be on too, and its PvP damage multiplier applies on top.
 - **`[Log] Level = Debug`** gives detailed logs.
 - **Orb icons:** put `<Name>.png` in `UserData\BluesArcheryOverhaul\Icons\`. Name is Quickdraw4, TwoShot, ThreeShot, Burst, SeekingVolley, HolyArrow, AutoDock, Ricochet, Shatter or QuiverGather (the Arrow Gatherer).
+
+## License
+
+The code is under the [MIT License](LICENSE). The images in `BluesArcheryOverhaul/Resources/` (also embedded in the DLL) are made from A Township Tale's own art and are not covered by it; they belong to Alta.
