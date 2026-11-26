@@ -142,7 +142,7 @@ namespace BluesArcheryOverhaul {
             glyphSize = F("GlyphSize", 0.03f, "Size of the rune in metres.");
             glyphAlpha = F("GlyphAlpha", 0.55f, "Opacity of the rune (0-1).");
             maxLines = I("MaxLines", 8, "Most lines shown at once.");
-            testNote = S("TestNote", "Test aid: this tablet is temporary.", "The small last line (empty = none).");
+            testNote = S("TestNote", "","The small last line (empty = none).");
             // G3: [Tablet] CannotBuy and LegendaryOwned are retired: the reason line comes from BuyBlock (Preview.cs)
             restVisible = B("RestVisible", true, "While nobody has the archery tree open the tablet rests, small and dim, in the cradle. Off: it is hidden then.");
             riseSeconds = F("RiseSeconds", 1.4f, "Seconds the tablet takes to rise out of the cradle and unfold when someone opens the tree.");
