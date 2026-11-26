@@ -85,7 +85,13 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 
 ## Install
 
-Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.14; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.15; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
+
+### Quest
+
+Download [`BluesArcheryOverhaul.Quest.dll`](BluesArcheryOverhaul.Quest.dll) (same version) and copy it onto the headset into `Android/data/com.Alta.ATownshipTale/files/MelonLoader/com.Alta.ATownshipTale/Mods/` (LemonLoader / MelonLoader 0.6.5). The server still runs the PC `BluesArcheryOverhaul.dll`, and a headset on a different version is turned away at join, as on PC.
+
+Known gaps on Quest: quiet sounds play at full volume, and sparks end without fading.
 
 ## Skyfall (admins only)
 
