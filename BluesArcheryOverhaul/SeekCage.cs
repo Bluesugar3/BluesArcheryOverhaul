@@ -350,6 +350,9 @@ namespace BluesArcheryOverhaul {
                     if (!c.Busy) continue;
                     if (c.Go == null) { c.Busy = false; continue; }
                     if (!read) {
+#if QUEST
+                        QuestWatch.Mark("cage: settings read");
+#endif
                         s = SeekLook.Cage(); read = true;
                         Camera cam = Camera.main;
                         if (cam != null) { eye = cam.transform.position; hasEye = true; }
@@ -371,6 +374,9 @@ namespace BluesArcheryOverhaul {
                             p = CageShape.Burst(age, c.BurstTo, c.BurstSeconds); p.Alpha *= c.FromAlpha; spin = s.SpinFast; break;
                     }
                     if (live) c.Shown = p;
+#if QUEST
+                    QuestWatch.Mark("cage: pose");
+#endif
                     Vector3 centre = Where(c);
                     c.Centre = centre;
                     if (!c.Go.activeSelf) c.Go.SetActive(true);
@@ -390,6 +396,9 @@ namespace BluesArcheryOverhaul {
                     float alpha = p.Alpha * (bold ? s.Alpha : s.OtherAlpha) * c.Bright * boost;
                     // the main lock's arcs stay MainWidth times as wide at any distance (the far-away floor is widened with them)
                     float width = CageShape.Width(s.Width, distance, s.MinRadians) * (c.Main && c.WasLocked ? s.MainWidth : 1f) * (1f + p.Flash * FlashWidth);
+#if QUEST
+                    QuestWatch.Mark("cage: paint");
+#endif
                     Quaternion turn = Quaternion.AngleAxis(c.Turn, Vector3.up);
                     for (int k = 0; k < CageShape.Rings; k++)
                         Paint(c.Arcs[k], true, turn * planes[k] * Quaternion.AngleAxis(c.Phase + k * 120f, Vector3.forward), radius, p.Sweep, width, col, alpha, s);

@@ -163,21 +163,17 @@ namespace BluesArcheryOverhaul {
             return n;
         }
 
-        // A managed array handed to Unity becomes a NEW game array on every call (LineRenderer.SetPositions, Gradient.SetKeys: per
-        // ghost, per frame while it shimmers, homes or carries strands). These keep one game array per length and refill it. The
-        // array types are the ones that conversion already makes, so making them is known to work on the headset.
-        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.Vector3>> pointBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.Vector3>>();
-        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientColorKey>> colourBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientColorKey>>();
-        static readonly Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientAlphaKey>> alphaBuffers = new Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.GradientAlphaKey>>();
-
-        static Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T> Filled<T>(Dictionary<int, Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T>> buffers, T[] from) where T : unmanaged {
-            if (!buffers.TryGetValue(from.Length, out var buffer)) buffers[from.Length] = buffer = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<T>(from.Length);
-            for (int i = 0; i < from.Length; i++) buffer[i] = from[i];
-            return buffer;
+        // Line points, one at a time: no array of any kind crosses to the game. The mod making its own game-side array (here one
+        // kept buffer per length, filled each frame) ended the game process the first time the lock's cage drew with it
+        // (2026-11-25), as its own physics arrays did (2026-11-22); a managed array would be converted to a new game array per call.
+        internal static void SetPositions(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) {
+            QuestWatch.Mark("lines: points set one by one");
+            int n = Math.Min(points.Length, line.positionCount);
+            for (int i = 0; i < n; i++) line.SetPosition(i, points[i]);
         }
-
-        internal static void SetPositions(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) => line.SetPositions(Filled(pointBuffers, points));
-        internal static void SetKeys(UnityEngine.Gradient gradient, UnityEngine.GradientColorKey[] colours, UnityEngine.GradientAlphaKey[] alphas) => gradient.SetKeys(Filled(colourBuffers, colours), Filled(alphaBuffers, alphas));
+        // ponytail: as before 2026-11-23, the game converts the keys to a new array per call (a few keys; the per-frame callers are
+        // the shimmer and Quickdraw 4's tint). Keep it so until the cause of the array crashes is known.
+        internal static void SetKeys(UnityEngine.Gradient gradient, UnityEngine.GradientColorKey[] colours, UnityEngine.GradientAlphaKey[] alphas) => gradient.SetKeys(colours, alphas);
 
         sealed class PointerComparer<T> : IEqualityComparer<T> where T : class {
             internal static readonly PointerComparer<T> Instance = new PointerComparer<T>();
