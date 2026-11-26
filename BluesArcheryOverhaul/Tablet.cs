@@ -163,7 +163,7 @@ namespace BluesArcheryOverhaul {
             ShrineView.Changed += () => textDirty = true;
             Cfg.Reloaded += () => { geometryDirty = true; textDirty = true; };
 #if QUEST
-            Font.add_textureRebuilt(Il.Keep(DelegateSupport.ConvertDelegate<Il2CppSystem.Action<Font>>(new Action<Font>(f => { QuestWatch.Mark("font rebuilt: the game called the mod"); FontRebuilt(f); }))));
+            Font.add_textureRebuilt(Il.Keep(DelegateSupport.ConvertDelegate<Il2CppSystem.Action<Font>>(new Action<Font>(FontRebuilt))));
 #else
             Font.textureRebuilt += FontRebuilt;
 #endif
@@ -1180,38 +1180,23 @@ namespace BluesArcheryOverhaul {
             string tryOut = "", carrier = "";
             carries = false;
             if (held != null && held.Slot != null && Tree.OrbBySlot.TryGetValue(held.Slot.Hash, out Orb orb)) {
-#if QUEST
-                QuestWatch.Mark("Wording: tutorial line");
-#endif
                 string instruction = Tutorial.LineFor(orb);
                 carriedOrb = orb;
                 SkillStatus status = held.Status;
                 // G3: why it cannot be bought, from what this client knows (BuyBlock in Preview.cs, tested)
-#if QUEST
-                QuestWatch.Mark("Wording: facts");
-#endif
                 BuyFacts facts = Facts(held, orb, status, instruction);
-#if QUEST
-                QuestWatch.Mark("Wording: reason");
-#endif
                 string blocked = BuyBlock.Reason(facts);
                 // "Try it first: <what to do>" carries the try-out line itself, so the try-out line is not repeated above it; the
                 // reason line (never dropped by Fit) is then what carries the instruction for the floating text (Tutorial.Sync)
                 bool inReason = blocked.Length > 0 && instruction.Length > 0 && blocked.EndsWith(instruction, StringComparison.Ordinal);
                 tryOut = inReason ? "" : instruction;
                 carrier = inReason ? blocked : instruction;
-#if QUEST
-                QuestWatch.Mark("Wording: ForOrb");
-#endif
                 lines = TabletText.ForOrb(orb, ShrineView.IsOwned(status), blocked, ShrineView.Owned, ShrineView.Incumbent, numbers, tryOut, note);
                 string said = BuyBlock.Describe(facts) + " -> " + (blocked.Length > 0 ? "'" + blocked + "'" : "buyable or owned");
                 if (Logs.Debug && said != lastBuyFacts) MelonLogger.Msg($"[Archery] Tablet: held orb {said}");
                 lastBuyFacts = said;
             }
             else lines = TabletText.ForBuild(ShrineView.Owned, ShrineView.Incumbent, numbers, note);
-#if QUEST
-            QuestWatch.Mark("Wording: Fit");
-#endif
             lines = TabletText.Fit(lines, Mathf.Max(3, maxLines.Value), tryOut);
             carries = carrier.Length > 0 && lines.Contains(carrier);   // not so: Tutorial floats the line (Tutorial.Sync)
             return lines;
@@ -1225,18 +1210,12 @@ namespace BluesArcheryOverhaul {
         /// is not sent to clients: "Try it first" shows only while the game says it is otherwise buyable.</summary>
         static BuyFacts Facts(SkillOrb held, Orb orb, SkillStatus status, string tryOut) {
             ProgressionSlot slot = held.Slot;
-#if QUEST
-            QuestWatch.Mark("Facts: ParentOwned");
-#endif
             bool parent = ShrineView.ParentOwned(slot, out string parents);
             uint cap = 0u;
 #if QUEST
             try { cap = Il2CppAlta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxBoughtSkills; } catch { }
 #else
             try { cap = Alta.Global.GlobalSettings<ProgressionSettings>.Instance.MaxBoughtSkills; } catch { }
-#endif
-#if QUEST
-            QuestWatch.Mark("Facts: cap read");
 #endif
             return new BuyFacts {
                 Orb = orb, Status = ShrineView.Says(status), ParentOwned = parent, Parents = parents,
@@ -1265,16 +1244,10 @@ namespace BluesArcheryOverhaul {
             using var _t = Timing.Begin(T_Write);
             if (root == null || face == null || font == null || textMaterial == null || !wantUp) return;
             List<string> lines = openerMine ? Wording() : OtherWording();
-#if QUEST
-            QuestWatch.Mark("Write: wording done");
-#endif
             string text = string.Join("\n", lines);
             if (text == shownText) return;
             shownText = text;
 
-#if QUEST
-            QuestWatch.Mark("Write: layout");
-#endif
             TabletPage page = TabletLayout.Layout(lines, (testNote.Value ?? "").Trim().Length > 0, metrics, emWidth);
             float nudge = Mathf.Max(0f, carveOffset.Value);
             Color cut = Cfg.Colour(carveColour, new Color(0.07f, 0.09f, 0.12f));
@@ -1283,16 +1256,10 @@ namespace BluesArcheryOverhaul {
                 TabletRow row = page.Rows[i];
                 if (i >= inks.Count) { carves.Add(Line("Tablet Carve", 1)); inks.Add(Line("Tablet Line", 2)); }
                 Vector3 at = new Vector3(faceLeft + row.X, faceTop - row.Y, faceZ);
-#if QUEST
-                QuestWatch.Mark("Write: set a row");
-#endif
                 Set(inks[i], row, at, Ink(row.Kind), true);
                 Set(carves[i], row, at + new Vector3(nudge, -nudge, 0f), cut, nudge > 0f);
             }
             for (int i = rows; i < inks.Count; i++) { inks[i].gameObject.SetActive(false); carves[i].gameObject.SetActive(false); }
-#if QUEST
-            QuestWatch.Mark("Write: rows set");
-#endif
             if (rule != null) {
                 rule.gameObject.SetActive(rows > 0);
                 rule.localPosition = new Vector3(faceLeft + (page.RuleX0 + page.RuleX1) * 0.5f, faceTop - page.RuleY, faceZ);

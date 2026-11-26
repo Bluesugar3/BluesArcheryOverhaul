@@ -136,30 +136,23 @@ namespace BluesArcheryOverhaul {
         // ponytail: one game array per query (garbage). If the headset's timing report shows it, find out why the mod's own
         // Il2CppStructArray<RaycastHit> could not be made and go back to the NonAlloc calls.
         static int Out(Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStructArray<UnityEngine.RaycastHit> all, UnityEngine.RaycastHit[] results) {
-            QuestWatch.Mark("Il cast: the game returned");
             int n = all == null ? 0 : Math.Min(all.Length, results.Length);
             for (int i = 0; i < n; i++) results[i] = all![i];
-            QuestWatch.Mark("Il cast: hits copied out");
             return n;
         }
 
         internal static int RaycastNonAlloc(UnityEngine.Vector3 origin, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            QuestWatch.Mark("Il cast: RaycastAll starts");
             return Out(UnityEngine.Physics.RaycastAll(origin, direction, maxDistance, mask, triggers), results);
         }
 
         internal static int SphereCastNonAlloc(UnityEngine.Vector3 origin, float radius, UnityEngine.Vector3 direction, UnityEngine.RaycastHit[] results, float maxDistance, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            QuestWatch.Mark("Il cast: SphereCastAll starts");
             return Out(UnityEngine.Physics.SphereCastAll(origin, radius, direction, maxDistance, mask, triggers), results);
         }
 
         internal static int OverlapSphereNonAlloc(UnityEngine.Vector3 centre, float radius, UnityEngine.Collider[] results, int mask, UnityEngine.QueryTriggerInteraction triggers) {
-            QuestWatch.Mark("Il overlap: starts");
             var all = UnityEngine.Physics.OverlapSphere(centre, radius, mask, triggers);
-            QuestWatch.Mark("Il overlap: the game returned");
             int n = all == null ? 0 : Math.Min(all.Length, results.Length);
             for (int i = 0; i < n; i++) results[i] = all![i];
-            QuestWatch.Mark("Il overlap: colliders copied out");
             return n;
         }
 

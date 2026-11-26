@@ -77,9 +77,6 @@ namespace BluesArcheryOverhaul {
         internal static bool BoundsOf(Transform root, out Bounds b, bool includeInactive = false) {
             bool any = false;
             b = default;
-#if QUEST
-            QuestWatch.Mark("bounds: colliders");
-#endif
             root.GetComponentsInChildren(includeInactive, boundsColliders); // G2: one list for every call (same colliders, same order)
             foreach (Collider c in boundsColliders) {
                 if (c == null || c.isTrigger) continue;
@@ -125,23 +122,24 @@ namespace BluesArcheryOverhaul {
         }
 #endif
 
+        const int CreatureMask = ~((1 << 2) | (1 << 8) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 19));
+
         internal static int Overlap(Vector3 centre, float radius, ref Collider[] buffer, int cap, ref bool warned, string what) {
             using var _t = Timing.Begin(T_Overlap, what);
             int n;
+            // A creature's hit colliders are never on the terrain, ground or wall layers (8 Terrain, 10 Ground, 11 GroundOverlay, 13 Wall,
+            // 19 TerrainWallOnly: the world the range's planner and Skyfall's ground cast read), so those are not asked for: near the
+            // shrine the shot's list met about 1,900 colliders with them and 200 without (Quest headset, 2026-11-25; there each one
+            // cost about 7 us, 14 ms a release). On Quest LayersMet logs once which layers are still met.
 #if QUEST
-            // Quest: every collider the game hands back is a new wrapper there (about 7 us each with its bounds read; the shot's list met
-            // about 1,900 near the shrine: 14 ms a release, 2026-11-25). A creature's hit colliders are never on the terrain, ground or
-            // wall layers (8 Terrain, 10 Ground, 11 GroundOverlay, 13 Wall, 19 TerrainWallOnly: the world the range's planner and
-            // Skyfall's ground cast read), so those are not asked for. LayersMet logs once which layers are still met.
-            const int QuestCreatureMask = ~((1 << 2) | (1 << 8) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 19));
-            while ((n = Il.OverlapSphereNonAlloc(centre, radius, buffer, QuestCreatureMask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
-                buffer = new Collider[buffer.Length * 2];
-            if (!layersLogged && n >= 200) LayersMet(buffer, n, what);
-            if (false) // Quest: the loop above already grows the buffer; the PC loop's body below is never run here
+            while ((n = Il.OverlapSphereNonAlloc(centre, radius, buffer, CreatureMask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
 #else
-            while ((n = Physics.OverlapSphereNonAlloc(centre, radius, buffer, ~(1 << 2), QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
+            while ((n = Physics.OverlapSphereNonAlloc(centre, radius, buffer, CreatureMask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
 #endif
                 buffer = new Collider[buffer.Length * 2];
+#if QUEST
+            if (!layersLogged && n >= 200) LayersMet(buffer, n, what);
+#endif
             if (n == buffer.Length && !warned) { warned = true; MelonLogger.Warning(Inv($"[Archery] {what}: more than {n} colliders within {radius:0.#} m; some may be missed (said once)")); }
             return n;
         }
@@ -163,9 +161,6 @@ namespace BluesArcheryOverhaul {
         static bool HasAgent(HealthObject h) {
             int key = h.GetInstanceID();
             if (agentMemo.TryGetValue(key, out bool known)) return known;
-#if QUEST
-            QuestWatch.Mark("creature: agent test");
-#endif
             NetworkEntity e = h.Entity;
             NetworkEntity root = e != null ? e.PrefabRoot : null!;
 #if QUEST

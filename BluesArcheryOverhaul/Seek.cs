@@ -341,38 +341,23 @@ namespace BluesArcheryOverhaul {
                 while ((n = Physics.SphereCastNonAlloc(origin + fwd * start, r, fwd, sweep, z - start, ~(1 << 2), QueryTriggerInteraction.Ignore)) == sweep.Length && sweep.Length < 1024)
 #endif
                     sweep = new RaycastHit[sweep.Length * 2];
-#if QUEST
-                QuestWatch.Mark("sweep: cast done");
-#endif
                 if (n == sweep.Length && !sweepWarned) { sweepWarned = true; MelonLogger.Warning($"[Archery] Seek: the lock's sweep met more than {n} colliders; some may be missed (said once)"); }
                 for (int i = 0; i < n; i++) {
                     Collider c = sweep[i].collider;
                     if (c == null) continue;
                     ImpactDetector det = c.GetComponentInParent<ImpactDetector>();
                     HealthObject h = det != null ? det.HealthTarget : null!;
-#if QUEST
-                    QuestWatch.Mark("sweep: health");
-#endif
                     if (h == null || !(h.Health > 0f)) continue;
 #if QUEST
                     if (Targets.IsPlayer(h) ? !v.LockPlayers || (h.Is(out PlayerHealth own) && own.Player == me) : !Targets.IsCreature(h)) continue;   // 0.19.11: other players too
 #else
                     if (Targets.IsPlayer(h) ? !v.LockPlayers || (h is PlayerHealth own && own.Player == me) : !Targets.IsCreature(h)) continue;   // 0.19.11: other players too
 #endif
-#if QUEST
-                    QuestWatch.Mark("sweep: creature test passed");
-#endif
                     uint id = Targets.IdOf(h);
                     if (id == 0u || seen.ContainsKey(id)) continue;
-#if QUEST
-                    QuestWatch.Mark("sweep: measure");
-#endif
                     var k = Measure(h, eye);
                     seen[id] = k;
                     if (!LockRule.InRange(k.Distance, v)) continue;
-#if QUEST
-                    QuestWatch.Mark("sweep: in range");
-#endif
                     float cone = LockRule.AimCone(k.Distance, v), off = Vector3.Angle(fwd, k.Centre - origin);
                     if (off > cone) continue;
                     float score = off / Mathf.Max(0.01f, cone);
@@ -380,16 +365,10 @@ namespace BluesArcheryOverhaul {
                 }
             }
             // H3 (H1-review M-2): the best-scoring creature in sight, trying at most three in score order (was: the best or none)
-#if QUEST
-            QuestWatch.Mark("sweep: sort");
-#endif
             scored.Sort((x, y) => x.Key.CompareTo(y.Key));
             for (int i = 0; i < scored.Count && i < 3 && best == 0u; i++)
                 if (Sight(eye, seen[scored[i].Value], self, bowT, arrow.transform)) { best = scored[i].Value; bestScore = scored[i].Key; }
             scored.Clear();
-#if QUEST
-            QuestWatch.Mark("sweep: sight done");
-#endif
             aim.Candidate = best;
             if (best != 0u) { Tracked k = seen[best]; aim.Cand.Health = k.Health; aim.Cand.Root = k.Root; aim.Cand.Centre = k.Centre; aim.Cand.Radius = k.Radius; aim.Cand.Distance = k.Distance; aim.Cand.Extents = k.Extents; aim.Cand.Offset = k.Offset; }
             else aim.Cand.Health = null;
@@ -411,9 +390,6 @@ namespace BluesArcheryOverhaul {
 
         static Tracked Measure(HealthObject h, Vector3 eye) {
             Transform root = Targets.RootOf(h);
-#if QUEST
-            QuestWatch.Mark("measure: root");
-#endif
             var k = new Tracked { Health = h, Root = root };
 #if QUEST
             if (h.Is<PlayerHealth>()) { k.Centre = Targets.Centre(h, out _); k.Extents = new Vector3(0.3f, 0.6f, 0.3f); k.Radius = 0.6f; }   // 0.19.11: a player's chest (Targets.Centre)
@@ -422,9 +398,6 @@ namespace BluesArcheryOverhaul {
 #endif
             else if (Targets.BoundsOf(root, out Bounds bb)) { k.Centre = bb.center; k.Extents = bb.extents; k.Radius = Mathf.Clamp(Mathf.Max(bb.extents.x, Mathf.Max(bb.extents.y, bb.extents.z)), 0.3f, 3f); }
             else { k.Centre = root.position + Vector3.up * 0.5f; k.Radius = 0.5f; }
-#if QUEST
-            QuestWatch.Mark("measure: bounds");
-#endif
             k.Offset = root.InverseTransformPoint(k.Centre);
             k.Distance = (k.Centre - eye).magnitude;
             return k;
@@ -437,9 +410,6 @@ namespace BluesArcheryOverhaul {
             Vector3 to = k.Centre - eye;
             float d = to.magnitude;
             if (d < 0.05f) return true;
-#if QUEST
-            QuestWatch.Mark("sight: cast");
-#endif
             Hits.CastAll(eye, to, d, sightHits, self, bow, arrow);
             foreach (RaycastHit hit in sightHits) {
                 if (hit.transform == null) continue;

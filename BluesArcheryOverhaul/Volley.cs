@@ -1594,11 +1594,7 @@ namespace BluesArcheryOverhaul {
                     Transform tip = arrow.ArrowTip.transform;
                     Material? mat = index == 0 && rampTestOk ? Ghost0Material() : HeadMaterial();
                     g.ownHead = mat;
-#if QUEST
                     foreach (MeshFilter mf in HeadMeshesNow(arrow, tip)) {
-#else
-                    foreach (MeshFilter mf in HeadMeshes(arrow, tip)) {
-#endif
                         if (mf.sharedMesh == null || mat == null) continue;
                         var part = new GameObject(mf.name);
                         part.transform.SetParent(headGo.transform, false);
@@ -2125,7 +2121,10 @@ namespace BluesArcheryOverhaul {
                 }
             }
 
-            // the head meshes of one arrow, found once per frame (every ghost of a volley copies the same head)
+#endif
+
+            // the head meshes of one arrow, found once for the draw (every ghost of a volley, and Burst's pellet arrows at the rack,
+            // copy the same head; on the Quest headset each search cost about 3 ms, up to 47)
             static Arrow? headsArrow;
             static Transform? headsTip;
             static int headsFrame = -1;
@@ -2142,7 +2141,6 @@ namespace BluesArcheryOverhaul {
                 foreach (MeshFilter mf in list) if (mf == null || mf.sharedMesh == null) return false;
                 return true;
             }
-#endif
 
             /// <summary>The full-volley ripple (VolleyFx.Beats): the heads' _Progress through a property block (1 = the material's
             /// own value, so the block is cleared), the shafts' brightness factor.</summary>

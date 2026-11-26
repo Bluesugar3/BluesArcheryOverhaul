@@ -239,9 +239,6 @@ namespace BluesArcheryOverhaul {
             if (global::Player.Current == null) return; // not in a world yet
 #endif
             trigger = "this client, after joining (no shrine needed)";
-#if QUEST
-            QuestTrace.Step("client load: asking the game for the Ranged tree");
-#endif
             try { ProfessionSkillTree.GetProfessionTree(ProgressionPath.Ranged); }
             catch (Exception e) { if (!warnedClientLoad) { warnedClientLoad = true; MelonLogger.Warning($"[Archery] Tree: asking the game for the Ranged tree failed (tried again each second): {e.Message}"); } }
             finally { trigger = null; }
@@ -272,18 +269,12 @@ namespace BluesArcheryOverhaul {
         static void Inject() {
             using var _t = Timing.Begin(T_Inject);
 #if QUEST
-            QuestTrace.Step("inject: start");
-#endif
-#if QUEST
             // Quest: the game's own call, not an enumeration of treeMap. A game collection's generic code exists on IL2CPP only for the
             // instantiations the game itself compiled; walking treeMap.Values (keyed by the ProgressionPath enum) aborted the game on
             // the headset (2026-11-22). Re-entering GetProfessionTree from its own postfix is harmless: `injected` is already set.
             ProfessionSkillTree? tree = ProfessionSkillTree.GetProfessionTree(ProgressionPath.Ranged);
-            QuestTrace.Step("inject: the Ranged tree " + (tree != null ? $"found ({tree.Slots.Count} slots)" : "not loaded yet"));
             if (tree == null) { injected = false; return; } // not loaded yet: try again next call
             if (!tree.Slots.Any(s => s.Skill.Is<BowQuickdraw>())) tree = null;
-            QuestTrace.Step("inject: Quickdraw orb " + (tree != null ? "found" : "NOT found"));
-            if (tree != null) QuestChecks.WrapperIdentity(tree);
 #else
             var trees = Traverse.Create(typeof(ProfessionSkillTree)).Field("treeMap").GetValue<Dictionary<ProgressionPath, ProfessionSkillTree>>();
             if (trees == null || trees.Count == 0) { injected = false; return; } // not loaded yet: try again next call
@@ -321,9 +312,6 @@ namespace BluesArcheryOverhaul {
                 }
 #endif
             }
-#if QUEST
-            QuestTrace.Step($"inject: orbs sorted (charge {chargeSlots.Count}, multi {multi.Count})");
-#endif
             List<ProgressionSlot> byDepth = chargeSlots.OrderBy(s => s.GetIndentLevel(tree)).ToList(); // stable, as before
             chargeSlots.Clear();
             chargeSlots.AddRange(byDepth);
@@ -353,9 +341,6 @@ namespace BluesArcheryOverhaul {
             else if (twoSlot == null || threeSlot == null || TwoShot == null)
                 MelonLogger.Error("[Archery] Tree: Two-Shot or Three-Shot not found; the Volley skill is not in the tree.");
             else { RepointVolley(tree, twoSlot, threeSlot, TwoShot); volleyIn = true; }
-#if QUEST
-            QuestTrace.Step("inject: volley step done");
-#endif
 
             // ---- Burst: the Volley skill's third orb, after Three-Shot (only with the Volley skill in the tree)
             autoPosition.Clear();
@@ -410,9 +395,6 @@ namespace BluesArcheryOverhaul {
             Map(gatherer, Orb.Gatherer);
             // H3 section 5: the spot the game (or the mod's old pick, for Quickdraw 4) gave each of these, for "auto", before anything moves
             foreach (Orb o in GameSlotOrbs) { ProgressionSlot? s = SlotOf(o); if (s != null && !autoPosition.ContainsKey(s)) autoPosition[s] = s.Position; }
-#if QUEST
-            QuestTrace.Step("inject: adding the later orbs");
-#endif
             AddNewOrbs(tree, volleyIn);
             ApplyCosts(); // again: the later orbs' [Tree] <Orb>Cost (review I-1; the call above ran before they existed)
             RangedPath = tree.Path;
@@ -443,9 +425,6 @@ namespace BluesArcheryOverhaul {
             // ---- The gatherers get a side path of their own, linked to nothing in the bow tree: one pouch-gatherer
             // orb (feathers and arrows together; since H3 also Quiver Gather's return to the quiver).
             if (gatherer != null && feather != null) MergeGatherers(tree, gatherer, feather);
-#if QUEST
-            QuestTrace.Step("inject: gatherers merged");
-#endif
             placed.Clear();
             if (holySlot != null) placed.Add(new KeyValuePair<ProgressionSlot, MelonPreferences_Entry<string>>(holySlot, posHoly));
             if (gatherer != null) placed.Add(new KeyValuePair<ProgressionSlot, MelonPreferences_Entry<string>>(gatherer, posArrow));
@@ -463,17 +442,8 @@ namespace BluesArcheryOverhaul {
             if (holySlot != null) iconSlots["HolyArrow"] = holySlot;
 
             Ready = true;
-#if QUEST
-            QuestTrace.Step("inject: tree ready, timers next");
-#endif
             ApplyTimers();
-#if QUEST
-            QuestTrace.Step("inject: icons next");
-#endif
             ApplyIcons();
-#if QUEST
-            QuestTrace.Step("inject: icons done");
-#endif
             LogProgression();
             Shrine.LogTree(tree);
             firstPrintDone = true; // later layout, slot and timer lines: Debug only (G2)

@@ -305,9 +305,6 @@ namespace BluesArcheryOverhaul {
         /// <summary>The opener's unspent points on the open shrine's path, as its bought-orb ring was last told; null when not known.</summary>
         internal static int? FreePoints() {
             BoughtSkillVisualizer? ring = Ring();
-#if QUEST
-            QuestWatch.Mark("ShrineView.FreePoints");
-#endif
             return ring != null && freePoints.TryGetValue(ring, out int p) ? p : (int?)null;
         }
 
@@ -317,9 +314,6 @@ namespace BluesArcheryOverhaul {
             try {
                 BoughtSkillVisualizer? ring = Ring();
                 if (ring == null) return null;
-#if QUEST
-                QuestWatch.Mark("ShrineView.SlotsHeld: ring read");
-#endif
 #if QUEST
                 // Quest: the ring's holders are a game array (never a System.Array), read in place
                 var holders = ring.placedHolders;

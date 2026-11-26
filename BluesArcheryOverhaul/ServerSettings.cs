@@ -329,7 +329,7 @@ namespace BluesArcheryOverhaul {
                 // that crash turned out to be Tree.Inject walking treeMap, so disposing it is not known to be harmful, but a
                 // FileSystemWatcher's dispose under Android's Mono is a known source of the same abort, so it is left running. A load
                 // it makes from its own thread is already handled: OnPreferencesLoaded puts the server's values back next frame.
-                if (!watcherStopped) { watcherStopped = true; QuestTrace.Step("settings: file watcher left running (Quest)"); }
+                watcherStopped = true;
 #else
                 if (!watcherStopped) { watcherStopped = true; Cfg.StopFileWatcher(); }
 #endif

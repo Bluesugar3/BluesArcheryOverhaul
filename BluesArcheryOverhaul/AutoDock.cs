@@ -709,7 +709,7 @@ namespace BluesArcheryOverhaul {
             static readonly int T = Timing.Section("patch PickupDocker.OnPreDocked / AutoDock.Arriving");
 #if QUEST
             static void Prefix(PickupDocker __instance, Interactor interactor, PickupDock dock) {
-                Pickup ___pickup = __instance.pickup; QuestWatch.Once("PickupDocker.OnPreDocked (AutoDock)");
+                Pickup ___pickup = __instance.pickup;
                 using var _t = Timing.Begin(T);
                 try {
                     if (NetworkSceneManager.IsServer || interactor != null || ___pickup == null || dock == null || ___pickup.Entity == null) return;

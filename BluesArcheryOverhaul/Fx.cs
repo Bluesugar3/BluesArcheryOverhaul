@@ -154,21 +154,7 @@ namespace BluesArcheryOverhaul {
         internal static PooledObjectDefinition? FindEffect(string names) {
             if (effects.TryGetValue(names, out PooledObjectDefinition? cached) && cached != null) return cached;
             if (!Names(names).Any() || MissedRecently(effectMisses, names)) return null;
-#if QUEST
-            return QuestFindEffect(names);
-#endif
-            using var _t = Timing.Begin(TFindEffect, names); // G5: the search only (cache hits and recent misses return above)
-            PooledObjectDefinition[] all = Resources.FindObjectsOfTypeAll<PooledObjectDefinition>();
-            PooledObjectDefinition? hit = null;
-            bool first = true;
-            foreach (string n in Names(names)) {
-                hit = all.FirstOrDefault(d => d != null && (d.name == n || (d.Prefab != null && d.Prefab.name == n)));
-                if (hit != null) break;
-                first = false;
-            }
-            if (hit != null) { effects[names] = hit; effectMisses.Remove(names); Fallback(effectFallbacks, names, !first); }
-            else Missed(effectMisses, names);
-            return hit;
+            return IndexedEffect(names);
         }
 
         // G2: lists whose cached asset is a later name's (an earlier name was not loaded then). A reload drops these, as it dropped
@@ -206,32 +192,14 @@ namespace BluesArcheryOverhaul {
         internal static SoundEffectSet? FindSound(string names) {
             if (sounds.TryGetValue(names, out SoundEffectSet? cached) && cached != null) return cached;
             if (!Names(names).Any() || MissedRecently(soundMisses, names)) return null;
-#if QUEST
-            return QuestFindSound(names);
-#endif
-            using var _t = Timing.Begin(TFindSound, names); // G5: the search only
-            SoundEffectSet[] all = Resources.FindObjectsOfTypeAll<SoundEffectSet>();
-            SoundEffectSet? hit = null;
-            bool first = true;
-            foreach (string n in Names(names)) {
-                hit = all.FirstOrDefault(s => s != null && s.name == n);
-                if (hit != null) break;
-                first = false;
-            }
-            if (hit != null) { sounds[names] = hit; soundMisses.Remove(names); Fallback(soundFallbacks, names, !first); }
-            else Missed(soundMisses, names);
-            return hit;
+            return IndexedSound(names);
         }
 
-        /// <summary>After a settings change: forget the names that were NOT found, so they are tried again at once. G2: an asset found
-        /// on its list's FIRST name is kept (it is keyed by its own names string, so a changed setting is a new key; a destroyed asset
-        /// fails the cached != null test and is searched again; a new search would find that first name again), which saves a full
-        /// FindObjectsOfTypeAll per name on the first shots after a save. One found on a later name is dropped as before.</summary>
-#if QUEST
-        // Quest: every first use of a name scanned every loaded asset and read every name (20-30 ms each on the headset; 12 effects
-        // and 15 sounds in one session, 2026-11-25). One scan indexes every name instead (QuestStock runs it while idle after
-        // joining); a name the index lacks scans again at most once a minute. Matching is as above: the first asset, in the order
-        // the game lists them, whose own name (or, for an effect, its prefab's) is the name.
+        // Every first use of a name scanned every loaded asset and read every name (20-30 ms each on the Quest headset; 12 effects
+        // and 15 sounds in one session, 2026-11-25; less on PC, but the same work). One scan indexes every name instead (on Quest the
+        // warm-up runs it while idle after joining, QuestStock); a name the index lacks scans again at most once a minute. Matching
+        // is as before: the first asset, in the order the game lists them, whose own name (or, for an effect, its prefab's) is the
+        // name. Found assets stay cached by their names string (above); a miss is retried after MissRetrySeconds as before.
         static Dictionary<string, PooledObjectDefinition>? effectIndex;
         static Dictionary<string, SoundEffectSet>? soundIndex;
         static float effectIndexAt = -999f, soundIndexAt = -999f;
@@ -270,7 +238,7 @@ namespace BluesArcheryOverhaul {
             return null;
         }
 
-        static PooledObjectDefinition? QuestFindEffect(string names) {
+        static PooledObjectDefinition? IndexedEffect(string names) {
             if (effectIndex == null) IndexEffects();
             PooledObjectDefinition? hit = Lookup(effectIndex!, names, out bool first);
             if (hit == null && Time.unscaledTime - effectIndexAt > IndexAgeSeconds) { IndexEffects(); hit = Lookup(effectIndex!, names, out first); }
@@ -279,7 +247,7 @@ namespace BluesArcheryOverhaul {
             return hit;
         }
 
-        static SoundEffectSet? QuestFindSound(string names) {
+        static SoundEffectSet? IndexedSound(string names) {
             if (soundIndex == null) IndexSounds();
             SoundEffectSet? hit = Lookup(soundIndex!, names, out bool first);
             if (hit == null && Time.unscaledTime - soundIndexAt > IndexAgeSeconds) { IndexSounds(); hit = Lookup(soundIndex!, names, out first); }
@@ -290,12 +258,17 @@ namespace BluesArcheryOverhaul {
 
         internal static bool EffectsIndexed => effectIndex != null;
         internal static bool SoundsIndexed => soundIndex != null;
+#if QUEST
         internal static int StockBolts => Flicker.Spare;
         internal static int StockLights => FlashLight.Spare;
         internal static void StockBolt() => Flicker.Stock();
         internal static void StockLight() => FlashLight.Stock();
 #endif
 
+        /// <summary>After a settings change: forget the names that were NOT found, so they are tried again at once. G2: an asset found
+        /// on its list's FIRST name is kept (it is keyed by its own names string, so a changed setting is a new key; a destroyed asset
+        /// fails the cached != null test and is searched again; a new search would find that first name again), which saves a full
+        /// FindObjectsOfTypeAll per name on the first shots after a save. One found on a later name is dropped as before.</summary>
         internal static void ClearAssetCache() {
             effectMisses.Clear(); soundMisses.Clear();
             foreach (string names in effectFallbacks) effects.Remove(names);
