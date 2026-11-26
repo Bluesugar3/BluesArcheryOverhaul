@@ -875,8 +875,8 @@ namespace BluesArcheryOverhaul {
         public BlastValues(float metres, float coneDegrees, float share, float fullMetres, float edgeShare, float perMultiOrb) {
             Metres = metres; ConeDegrees = coneDegrees; Share = share; FullMetres = fullMetres; EdgeShare = edgeShare; PerMultiOrb = perMultiOrb;
         }
-        // G3 (play-test 8, the user: "10 m"): reach 6 -> 10 m, full within 2 -> 3 m; cone, share, edge share and per-orb bonus unchanged
-        public static BlastValues Default => new BlastValues(10f, 60f, 2f, 3f, 0.25f, 0.15f);
+        // G3 (play-test 8, the user: "10 m"): reach 6 -> 10 m, full within 2 -> 3 m; cone, share, edge share and per-orb bonus unchanged. 0.19.17 balance: share x2 -> x1, full within 3 -> 2 m, per-orb 0.15 -> 0.05
+        public static BlastValues Default => new BlastValues(10f, 60f, 1f, 2f, 0.25f, 0.05f);
     }
 
     /// <summary>Shatter becomes a blast (play-test 7, the user: "a giant shotgun is coming out behind ... a good chunk of pellets and

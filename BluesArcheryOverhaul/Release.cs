@@ -125,7 +125,7 @@ namespace BluesArcheryOverhaul {
     /// pellets deal x (1 + GhostDamagePerOrb x s) and each ghost carries GhostStaggerPerOrb x s (Complements.GhostDamageAt /
     /// GhostStaggerAt). Stage 0 is a plain volley. Every other main path, and a Multi main with no Charge Shot orbs, has no stage.</summary>
     internal static class VolleyHold {
-        public const float DefaultStageSeconds = 0.75f;
+        public const float DefaultStageSeconds = 0.6f;
         const double Eps = 1e-4;
 
         /// <summary>The stages this build can hold for: a Multi main's Charge Shot orbs (at most three); 0 for every other build.</summary>

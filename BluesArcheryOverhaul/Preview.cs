@@ -564,7 +564,7 @@ namespace BluesArcheryOverhaul {
                            + (extra.Length > 0 ? $"; {extra} skip once off the ground" : "") + $" ({Strength(share)} off the {Lines.PathName(MainPath.Multi)} path)";
                 }
                 case Orb.Shatter: {
-                    // play-test 7: a blast behind the hit; its share close behind for this build (x2 plus 15% per multi-arrow orb by default)
+                    // play-test 7: a blast behind the hit; its share close behind for this build (x1 plus 5% per multi-arrow orb by default since 0.19.17)
                     float peak = ShatterBlast.Peak(new BlastValues(v.ShatterMetres, 60f, v.ShatterBlast, 2f, 0.25f, v.ShatterPerOrb), b.Volley);
                     if (charge) return ShatterRule.Half(b) != ShatterHalf.None && peak > 0f ? $"Charged shots: blast behind the hit, {Num(v.ShatterMetres)} m, up to x{Num(peak)} of the hit" : "";
                     // fix batch D: off the Charge main the first creature hit of any release blasts, at the off-path share, no multi-arrow bonus

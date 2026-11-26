@@ -58,8 +58,8 @@ namespace BluesArcheryOverhaul {
 
         internal static void Init() {
             var cat = Cfg.Category("HolyArrow");
-            direct = Cfg.Shared(cat.CreateEntry("DirectMultiplier", 4f, description: "Direct hit, as a multiple of the charged main arrow."));
-            blast = Cfg.Shared(cat.CreateEntry("BlastMultiplier", 2f, description: "Blast damage at the centre, as a multiple of the charged main arrow."));
+            direct = Cfg.Shared(cat.CreateEntry("DirectMultiplier", 6f, description: "Direct hit, as a multiple of the charged main arrow."));
+            blast = Cfg.Shared(cat.CreateEntry("BlastMultiplier", 2.5f, description: "Blast damage at the centre, as a multiple of the charged main arrow."));
             radius = Cfg.Shared(cat.CreateEntry("Radius", 7f, description: "How far the blast reaches, in metres. Damage and the visuals both use it."));
             fullRadius = Cfg.Shared(cat.CreateEntry("FullRadius", 2f, description: "Inside this distance the blast does full damage."));
             edgeFraction = Cfg.Shared(cat.CreateEntry("EdgeFraction", 0.5f, description: "Share of the centre damage dealt at the very edge."));

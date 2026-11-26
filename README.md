@@ -54,18 +54,18 @@ Default numbers, with the orb's own path as your main path. Times count from the
 | **Quickdraw 1** | Snap: 1.25x damage, arrow 10% faster. Less wobble on every shot. |
 | **Quickdraw 2** | Snap 1.5x, 20% faster. |
 | **Quickdraw 3** | Snap 1.75x, 30% faster. |
-| **Quickdraw 4** | Legendary. The snap becomes an instant straight line, 150 m long, through up to 8 creatures: 2.5x to the first, 1.75x to the second, 1.25x to each one after. It stops at anything solid or at a player. |
+| **Quickdraw 4** | Legendary. The snap becomes an instant straight line, 150 m long, through up to 8 creatures: 2x to the first, 1.2x to the second, 0.8x to each one after. It stops at anything solid or at a player. |
 | **Auto Dock** | Side orb. While you keep hold of the bow, the next arrow from your quiver nocks itself 0.35 s after each shot. |
 | **Charge Shot 1** | Hold 1 s: 2x damage, a stagger and an interrupt. |
 | **Charge Shot 2** | Hold 1.75 s: 3.5x and a bigger stagger. |
 | **Charge Shot 3** | Hold 2.5 s: 6x and the biggest stagger. |
 | **Holy Arrow** | Legendary. Hold the same draw to 5.5 s: a golden beam at 5 times the arrow's speed that blasts and stuns creatures within 7 m. |
-| **Shatter** | Side orb. A charged hit blasts out behind the creature in a 60° cone, 10 m deep: up to 2x what the hit dealt, full within 3 m, a quarter at the edges. |
+| **Shatter** | Side orb. A charged hit blasts out behind the creature in a 60° cone, 10 m deep: up to 1x what the hit dealt, full within 2 m, a quarter at the edges. |
 | **Two-Shot** | From 0.3 s: 5 ghost arrows, 15% damage each. |
 | **Three-Shot** | From 1 s: 10 more ghosts, all 15 by 1.4 s, 6% each. |
 | **Burst** | At 1.5 s: 15 pellets, 4% each, 30 m range. |
-| **Seeking Volley** | Legendary. Rest your aim on a creature, or on another player when the server has PvP on, to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 4 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
-| **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage, then once more for half of that. |
+| **Seeking Volley** | Legendary. Rest your aim on a creature, or on another player when the server has PvP on, to lock it (0.45 s at 10 m, 0.9 s at 50 m), up to 3 locks. Let go within 25° of a lock and the volley homes, each ghost flying on from one lock to the next. Your own arrow doesn't fly: 5 ghosts take its place and it ends up where they land. |
+| **Ricochet** | Side orb. Ghosts and pellets skip once off the ground. An arrow that hits a creature jumps to another within 15 m for half its damage. |
 | **Arrow Gatherer** | Arrows and feathers go to your pouch. Arrows shot from a quiver return to it after 15 s, or at once if one falls out of the world or sinks into a wall. |
 
 Stagger and interrupts work on creatures only. An interrupt cancels what the creature is doing where the game allows it: never on Wyrms, and at most once every 3 s per creature.
@@ -76,16 +76,16 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 
 | Main path | Quickdraw 1-3 add | Charge Shot 1-3 add | Two-Shot, Three-Shot, Burst add |
 |---|---|---|---|
-| **Quick** | | **Snap weight.** Snaps stagger, more per orb. From 2 orbs they can interrupt. | **Needles.** 1 thin extra arrow per orb on each snap, 15% damage each. With Quickdraw 4 they are lines too. |
-| **Charge** | **Faster charge.** Stages and Holy Arrow come 12% sooner per orb (3 orbs: Holy Arrow at 3.5 s). Steadier charged shots. | | **Heavy arrows.** 2 per orb beside each charged shot, 15% damage each, not multiplied by the charge. Shatter's blast gains 0.15x per orb. |
-| **Multi** | **Faster volley.** Every volley time is 25% shorter per orb (3 orbs: a full volley by 0.4 s). Per orb, a 15% tighter spread and 15% quicker Seeking locks. | **Hold stages.** Past a full volley, one stage per orb, 0.75 s apart. The ghosts turn gold, and each stage adds 10% ghost and pellet damage and a little stagger. | |
+| **Quick** | | **Snap weight.** Snaps stagger, more per orb. From 2 orbs they can interrupt. | **Needles.** 1 thin extra arrow per orb on each snap, 25% damage each. With Quickdraw 4 they are lines too. |
+| **Charge** | **Faster charge.** Stages and Holy Arrow come 12% sooner per orb (3 orbs: Holy Arrow at 3.5 s). Steadier charged shots. | | **Heavy arrows.** 2 per orb beside each charged shot, 15% damage each, not multiplied by the charge. Shatter's blast gains 0.05x per orb. |
+| **Multi** | **Faster volley.** Every volley time is 20% shorter per orb (3 orbs: a full volley by 0.6 s). Per orb, a 15% tighter spread and 15% quicker Seeking locks. | **Hold stages.** Past a full volley, one stage per orb, 0.6 s apart. The ghosts turn gold, and each stage adds 20% ghost and pellet damage and a little stagger. | |
 
 - **Side orbs** work on any main path. Auto Dock always works in full. Ricochet and Shatter work at half strength off their own path.
 - **Legendaries** work only on their own path, and buying one makes that path your main path. To switch legendary, sell yours first.
 
 ## Install
 
-Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.16; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3), and every player needs the same version as the server.
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.17; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3), and every player needs the same version as the server.
 
 If `QuickshotRing.dll` is in your `Mods` folder, delete it: it is an old copy, and while it is there the new one does not start.
 

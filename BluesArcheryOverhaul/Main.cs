@@ -51,7 +51,7 @@ namespace BluesArcheryOverhaul {
     public class Main : MelonMod {
         /// <summary>This build's version (tools/stage-build.sh sets it). The play-test kit is compiled against it and refuses to run
         /// beside any other version.</summary>
-        internal const string Version = "0.19.16";
+        internal const string Version = "0.19.17";
         internal const float TightRadius = 0.012f; // metres, ring size once "absorbed" into the arrow
         static readonly Color DefaultGold = new Color(1f, 0.78f, 0.2f);
 

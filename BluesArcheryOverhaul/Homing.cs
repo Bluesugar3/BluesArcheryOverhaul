@@ -18,7 +18,7 @@ namespace BluesArcheryOverhaul {
         public float LockMinMetres = 3f, LockRangeMetres = 60f;
         // H2: 0.45 s to 0.9 s (were 0.6 and 1.2; the owner after playing 0.17.0: "have locking on be a little quicker")
         public float DwellNearSeconds = 0.45f, DwellNearMetres = 10f, DwellFarSeconds = 0.9f, DwellFarMetres = 50f, DwellFasterPerOrb = 0.15f;
-        public int MaxLocks = 4;
+        public int MaxLocks = 3; // 0.19.17 balance: 3 (was 4)
         public float LockConeDegrees = 5f, LockConeMetres = 0.6f, StillDegreesPerSecond = 30f, DrainFactor = 2f, TakeoverSeconds = 0.2f, SearchHz = 5f;
         public float BreakOffDegrees = 15f, BreakOffSeconds = 0.3f, SightLostSeconds = 0.5f, BreakMetres = 75f;
         // the release and the server's check

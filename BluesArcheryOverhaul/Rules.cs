@@ -345,11 +345,11 @@ namespace BluesArcheryOverhaul {
     /// <c>max</c>-th creature. The first creature takes the line's full damage; later ones a share from [Quickdraw4] PierceShares
     /// (second creature the first value, third the second, ...; the last value repeats).</summary>
     internal static class LinePierce {
-        public static readonly float[] DefaultShares = { 0.7f, 0.5f };
-        public const string DefaultSharesText = "0.7, 0.5";
+        public static readonly float[] DefaultShares = { 0.6f, 0.4f };
+        public const string DefaultSharesText = "0.6, 0.4";
         public const int DefaultMax = 8;
         /// <summary>[Quickdraw4] Damage, shipped (play-test 7 balance: was 3; a full Charge Shot 3 must hit much harder per arrow).</summary>
-        public const float DefaultDamage = 2.5f;
+        public const float DefaultDamage = 2.0f;
 
         /// <summary>The share of the line's damage the creature at <paramref name="order"/> takes (0 = the first: all of it).</summary>
         public static float Share(int order, IList<float> shares) {

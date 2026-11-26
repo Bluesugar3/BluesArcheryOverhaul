@@ -69,7 +69,7 @@ namespace BluesArcheryOverhaul {
         public readonly float VolleyStageSeconds;   // Multi main + Charge orbs (G3): seconds per hold stage after the volley is full
 
         public ComplementValues(float needleShare, int needlesPerOrb, float snapStaggerPerOrb, int snapInterruptFrom, float volleyFasterPerOrb,
-                                float spreadTighterPerOrb, float ghostStaggerPerOrb, float stageFasterPerOrb, int heavyPerOrb, float heavyShare, float ghostDamagePerOrb = 0.10f,
+                                float spreadTighterPerOrb, float ghostStaggerPerOrb, float stageFasterPerOrb, int heavyPerOrb, float heavyShare, float ghostDamagePerOrb = 0.20f,
                                 float volleyStageSeconds = VolleyHold.DefaultStageSeconds) {
             NeedleShare = needleShare; NeedlesPerOrb = needlesPerOrb; SnapStaggerPerOrb = snapStaggerPerOrb; SnapInterruptFrom = snapInterruptFrom;
             VolleyFasterPerOrb = volleyFasterPerOrb; SpreadTighterPerOrb = spreadTighterPerOrb; GhostStaggerPerOrb = ghostStaggerPerOrb;
@@ -77,7 +77,7 @@ namespace BluesArcheryOverhaul {
             VolleyStageSeconds = volleyStageSeconds;
         }
 
-        public static ComplementValues Default => new ComplementValues(0.15f, 1, 0.1f, 2, 0.25f, 0.15f, 0.03f, 0.12f, 2, 0.15f, 0.10f, VolleyHold.DefaultStageSeconds);
+        public static ComplementValues Default => new ComplementValues(0.25f, 1, 0.1f, 2, 0.20f, 0.15f, 0.03f, 0.12f, 2, 0.15f, 0.20f, VolleyHold.DefaultStageSeconds);
     }
 
     /// <summary>The numbers of the later orbs (spec 2026-11-16) that the shrine's tablet shows. Shared settings: each orb's
@@ -109,7 +109,7 @@ namespace BluesArcheryOverhaul {
         // play-test 7: Ricochet reaches 15 m (was 8) and spreads over 3; Shatter is a blast (24 pellets, x2, +15% per orb, 6 m)
         // G3 (play-test 8): Shatter reaches 10 m (was 6)
         // H1 (the owner, 2026-11-17: "Full damage"): Seeking Volley's seekers deal their whole share (was 0.6, words only until H1)
-        public static OrbValues Default => new OrbValues(15f, 1f, 24, 0.15f, 2f, 0.5f, null, 10f, 3);
+        public static OrbValues Default => new OrbValues(15f, 1f, 24, 0.05f, 1f, 0.5f, null, 10f, 3);
 
     }
 

@@ -54,10 +54,10 @@ namespace BluesArcheryOverhaul {
 
         internal static void Init() {
             var cat = Cfg.Category("Quickdraw4");
-            damage = Cfg.Shared(cat.CreateEntry("Damage", LinePierce.DefaultDamage, description: "Damage multiplier on the arrow. Replaces the normal Quickdraw bonus. (Play-test 7: 3 -> 2.5, so a full Charge Shot 3 hits much harder per arrow.)"));
+            damage = Cfg.Shared(cat.CreateEntry("Damage", LinePierce.DefaultDamage, description: "Damage multiplier on the arrow. Replaces the normal Quickdraw bonus. (Play-test 7: 3 -> 2.5; 0.19.17 balance: 2.5 -> 2.0.)"));
             maxReach = Cfg.Shared(cat.CreateEntry("MaxReach", 150f, description: "Longest the line can be, in metres."));
             // batch 4b (user, 2026-11-16): "Quickdraw 4 gains pierce. The line shot passes through every creature on its path"
-            pierceShares = Cfg.Shared(cat.CreateEntry("PierceShares", LinePierce.DefaultSharesText, description: "The line passes through every creature on its path: the first takes the line's full damage, the second the first value here, the third the second, and so on; the last value repeats. Values 0 to 1, separated by ',' (unreadable text: the default 0.7, 0.5)."));
+            pierceShares = Cfg.Shared(cat.CreateEntry("PierceShares", LinePierce.DefaultSharesText, description: "The line passes through every creature on its path: the first takes the line's full damage, the second the first value here, the third the second, and so on; the last value repeats. Values 0 to 1, separated by ',' (unreadable text: the default 0.6, 0.4)."));
             pierceMax = Cfg.Shared(cat.CreateEntry("PierceMax", LinePierce.DefaultMax, description: "The line strikes at most this many creatures; it ends in the last one."));
             colour = cat.CreateEntry("Colour", "#B8E6FF");
             lineWidth = cat.CreateEntry("LineWidth", 0.035f, description: "Width of the straight centre line.");

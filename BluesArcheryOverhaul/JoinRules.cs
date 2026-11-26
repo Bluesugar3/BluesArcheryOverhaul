@@ -67,7 +67,7 @@ namespace BluesArcheryOverhaul {
         /// <summary>THE wire number. Raise it on every build friends need: a change to the build block, the shot claim, the set of
         /// [shared] settings, or shooter-side behaviour that must match (the judgement tools/stage-build.sh asks for with
         /// "friends: yes"). A game with another number is refused.</summary>
-        public const int Version = 6;
+        public const int Version = 7;
 
         /// <summary>The game MessageType value both messages use. The game writes a message type in 5 bits
         /// (OutgoingPacketManager.StartSerialize), so only 0..31 exist.</summary>
