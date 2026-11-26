@@ -646,8 +646,16 @@ namespace BluesArcheryOverhaul {
     internal static class SettingsChecksum {
         public static string Format(object? value) {
             if (value == null) return "";
+#if QUEST
+            // Quest (.NET 8): "R" is the shortest text that reads back, where the PC game and the server (Mono) write 7 digits and
+            // 9 only when 7 do not read back. Only [HolyWindUp] CordShare (1/3) came out differently ("0.33333334" against
+            // "0.333333343"), but that made every Quest game's settings check differ from the server's (2026-11-25). Mono's rule:
+            if (value is float f) { string s = f.ToString("G7", CultureInfo.InvariantCulture); return float.Parse(s, CultureInfo.InvariantCulture) == f ? s : f.ToString("G9", CultureInfo.InvariantCulture); }
+            if (value is double d) { string s = d.ToString("G15", CultureInfo.InvariantCulture); return double.Parse(s, CultureInfo.InvariantCulture) == d ? s : d.ToString("G17", CultureInfo.InvariantCulture); }
+#else
             if (value is float f) return f.ToString("R", CultureInfo.InvariantCulture);
             if (value is double d) return d.ToString("R", CultureInfo.InvariantCulture);
+#endif
             return Convert.ToString(value, CultureInfo.InvariantCulture) ?? "";
         }
 
