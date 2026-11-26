@@ -326,7 +326,11 @@ namespace BluesArcheryOverhaul {
                 else {
                     // not loaded yet, or a wrong name: flat sparks for now, look again in a few seconds
                     m = Fx.LineMaterial();
+#if QUEST
+                    retryAt = Time.unscaledTime + 120f; // Quest: the game has no such material there, and each look scans every loaded particle renderer (20 ms on the headset)
+#else
                     retryAt = Time.unscaledTime + RetrySeconds;
+#endif
                     line = $"[Archery] Volley FX: particle material '{want}' NOT FOUND; sparks use the flat line material until it is (retried every {RetrySeconds:0} s)";
                 }
                 ps.GetComponent<ParticleSystemRenderer>().sharedMaterial = m;

@@ -245,7 +245,11 @@ namespace BluesArcheryOverhaul {
         /// <summary>The volley has been used up (fired, or absorbed by Holy Arrow).</summary>
         internal static void Consume(BowString bow) {
             if (bow == null || !states.TryGetValue(bow, out State s)) return;
+#if QUEST
+            foreach (Ghost? g in s.ghosts) if (g != null) Ghost.Recycle(g);
+#else
             foreach (Ghost? g in s.ghosts) if (g != null) UnityEngine.Object.Destroy(g.gameObject);
+#endif
             states.Remove(bow);
             DropFx(bow);
         }
@@ -526,7 +530,11 @@ namespace BluesArcheryOverhaul {
                     }
                     using (Timing.Begin(TGhostsGone))
                     for (int i = 0; i < ghosts.Length; i++) {
+#if QUEST
+                        if (ghosts[i] != null) Ghost.Recycle(ghosts[i]);
+#else
                         if (ghosts[i] != null) UnityEngine.Object.Destroy(ghosts[i]!.gameObject);
+#endif
                         ghosts[i] = null;
                     }
                 }
@@ -1378,11 +1386,19 @@ namespace BluesArcheryOverhaul {
                 float headProgress = VolleyFx.Beats.HeadProgress(ripple), shaftBoost = VolleyFx.Beats.ShaftBoost(ripple);
                 for (int i = 0; i < VolleyMath.Total; i++) {
                     if (i >= n) {
+#if QUEST
+                        if (s.ghosts[i] != null) { Ghost.Recycle(s.ghosts[i]); s.ghosts[i] = null; }
+#else
                         if (s.ghosts[i] != null) { UnityEngine.Object.Destroy(s.ghosts[i]!.gameObject); s.ghosts[i] = null; }
+#endif
                         continue;
                     }
                     // a ghost dressed as a heavy arrow is not reused as a plain ghost (the build changed mid-draw)
+#if QUEST
+                    if (!heavyHeld && s.ghosts[i] != null && s.ghosts[i]!.Heavy != null) { Ghost.Recycle(s.ghosts[i]); s.ghosts[i] = null; }
+#else
                     if (!heavyHeld && s.ghosts[i] != null && s.ghosts[i]!.Heavy != null) { UnityEngine.Object.Destroy(s.ghosts[i]!.gameObject); s.ghosts[i] = null; }
+#endif
                     Ghost g = s.ghosts[i] ??= Ghost.Create(arrow, i, rampTestOk: !heavyHeld);
                     if (heavyHeld && g.MakeHeavy()) g.Heavy!.Glow = heavyGlow; // else the gold ghost look
                     if (staged) {
@@ -1435,7 +1451,11 @@ namespace BluesArcheryOverhaul {
 #else
                 if (!ReferenceEquals(b, null) && states.TryGetValue(b, out State s)) {
 #endif
+#if QUEST
+                    foreach (Ghost? g in s.ghosts) if (g != null) Ghost.Recycle(g);
+#else
                     foreach (Ghost? g in s.ghosts) if (g != null) UnityEngine.Object.Destroy(g.gameObject);
+#endif
                     states.Remove(b);
                 }
 #if QUEST
@@ -1548,8 +1568,13 @@ namespace BluesArcheryOverhaul {
             static readonly int T_Create = Timing.Section("look Volley.Create (ghost / needle)");
             internal static Ghost Create(Arrow arrow, int index, bool rampTestOk = true) {
                 using var _t = Timing.Begin(T_Create);
+#if QUEST
+                Ghost g = TakeShell(); // Quest: a kept ghost (a new one costs about 4 ms on the headset: QuestStock)
+                GameObject go = g.gameObject;
+#else
                 var go = new GameObject("ArcheryGhostArrow");
                 Ghost g = go.AddComponent<Ghost>();
+#endif
                 g.outer = index >= VolleyMath.Inner;
                 var shaftGo = new GameObject("shaft");
                 shaftGo.transform.SetParent(go.transform, false);
@@ -1565,7 +1590,11 @@ namespace BluesArcheryOverhaul {
                     Transform tip = arrow.ArrowTip.transform;
                     Material? mat = index == 0 && rampTestOk ? Ghost0Material() : HeadMaterial();
                     g.ownHead = mat;
+#if QUEST
+                    foreach (MeshFilter mf in HeadMeshesNow(arrow, tip)) {
+#else
                     foreach (MeshFilter mf in HeadMeshes(arrow, tip)) {
+#endif
                         if (mf.sharedMesh == null || mat == null) continue;
                         var part = new GameObject(mf.name);
                         part.transform.SetParent(headGo.transform, false);
@@ -2003,8 +2032,97 @@ namespace BluesArcheryOverhaul {
 #endif
             internal void End() {
                 if (heavy != null) heavy.LetGo();
+#if QUEST
+                Recycle(this);
+#else
                 Destroy(gameObject);
+#endif
             }
+
+#if QUEST
+            // Quest: ghosts are kept and used again. Adding the mod's own component to a new object cost about 4 ms on the headset
+            // (2026-11-25: 138 ghosts at 7 ms each in one session, 60-90 ms frames as a volley was drawn). A ghost given back loses
+            // its children (shaft, head, glint, a heavy arrow's strand: Create makes them again), its fields go back to a fresh
+            // ghost's (read from one kept untouched), and a heavy look it wore stays on it, reset, for the next heavy arrow.
+            static readonly Stack<Ghost> spare = new Stack<Ghost>();
+            bool kept; // in the store (Recycle), not in use
+            static Ghost? pristine;
+            static System.Reflection.FieldInfo[]? fieldsToReset;
+            static bool recycleWarned;
+            internal static int Spare => spare.Count;
+
+            internal static Ghost TakeShell() {
+                while (spare.Count > 0) {
+                    Ghost k = spare.Pop();
+                    if (k == null) continue;
+                    k.kept = false;
+                    k.gameObject.name = "ArcheryGhostArrow";
+                    k.gameObject.SetActive(true);
+                    return k;
+                }
+                return new GameObject("ArcheryGhostArrow").AddComponent<Ghost>();
+            }
+
+            /// <summary>QuestStock: one more kept ghost, with a heavy look on it when <paramref name="heavyReady"/>.</summary>
+            internal static void StockShell(bool heavyReady) {
+                Ghost g = new GameObject("ArcheryGhostArrow").AddComponent<Ghost>();
+                if (heavyReady) g.gameObject.AddComponent<HeavyLook>();
+                g.gameObject.SetActive(false);
+                g.kept = true;
+                spare.Push(g);
+            }
+
+            /// <summary>The ghost is done: kept for the next Create (at most 64), else destroyed.</summary>
+            internal static void Recycle(Ghost? g) {
+                if (g == null || g.kept) return; // given back twice (an error path ends a ghost again): kept once only
+                try {
+                    if (g.heavy != null) { g.heavy.LetGo(); g.heavy.Stash(); }
+                    Transform t = g.transform;
+                    for (int i = t.childCount - 1; i >= 0; i--) {
+                        GameObject c = t.GetChild(i).gameObject;
+                        c.transform.SetParent(null, false); // out at once: Destroy waits for the end of the frame
+                        Destroy(c);
+                    }
+                    if (t.parent != null) t.SetParent(null, false);
+                    t.localPosition = Vector3.zero; t.localRotation = Quaternion.identity; t.localScale = Vector3.one;
+                    g.ResetFields();
+                    if (spare.Count >= 64) { Destroy(g.gameObject); return; }
+                    g.gameObject.SetActive(false);
+                    g.kept = true;
+                    spare.Push(g);
+                }
+                catch (Exception e) {
+                    if (!recycleWarned) { recycleWarned = true; MelonLogger.Warning($"[Archery] Volley: a ghost could not be kept for reuse ({e.Message}); it is destroyed (said once)"); }
+                    if (g != null) Destroy(g.gameObject);
+                }
+            }
+
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            void ResetFields() {
+                if (pristine == null) {
+                    pristine = new GameObject("ArcheryGhostPristine").AddComponent<Ghost>();
+                    pristine.gameObject.SetActive(false);
+                }
+                fieldsToReset ??= typeof(Ghost).GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                                                         | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.DeclaredOnly);
+                foreach (System.Reflection.FieldInfo f in fieldsToReset) {
+                    if (f.IsInitOnly) { if (f.GetValue(this) is System.Collections.IList list) list.Clear(); continue; }
+                    f.SetValue(this, f.GetValue(pristine));
+                }
+            }
+
+            // the head meshes of one arrow, found once per frame (every ghost of a volley copies the same head)
+            static Arrow? headsArrow;
+            static Transform? headsTip;
+            static int headsFrame = -1;
+            static List<MeshFilter>? heads;
+            static List<MeshFilter> HeadMeshesNow(Arrow arrow, Transform tip) {
+                if (heads != null && headsFrame == Time.frameCount && headsArrow == arrow && headsTip == tip) return heads;
+                heads = HeadMeshes(arrow, tip);
+                headsArrow = arrow; headsTip = tip; headsFrame = Time.frameCount;
+                return heads;
+            }
+#endif
 
             /// <summary>The full-volley ripple (VolleyFx.Beats): the heads' _Progress through a property block (1 = the material's
             /// own value, so the block is cleared), the shafts' brightness factor.</summary>
@@ -2315,7 +2433,11 @@ namespace BluesArcheryOverhaul {
                     // Ghost.Create scaled an outer ghost's head by OuterScale: undo it, so the sixth looks like the other five
                     float k = Mathf.Max(0f, scale.Value) / (wasOuter ? Mathf.Max(0.01f, outerScale.Value) : 1f);
                     bool strandWanted = strandTurns.Value > 0f;
+#if QUEST
+                    HeavyLook h = g.gameObject.GetComponent<HeavyLook>() ?? g.gameObject.AddComponent<HeavyLook>(); // a kept ghost keeps its look (Ghost.Recycle)
+#else
                     HeavyLook h = g.gameObject.AddComponent<HeavyLook>();
+#endif
                     if (h == null) { Failed("no HeavyLook component"); return null; }
                     h.shaftHalf = w * 0.5f;
                     if (strandWanted) h.AddStrand(); // a strand that cannot be made only loses the strand (caught inside)
@@ -2472,6 +2594,15 @@ namespace BluesArcheryOverhaul {
                 if (trail != null) trail.LetGo();
                 trail = null;
             }
+
+#if QUEST
+            /// <summary>Quest (Ghost.Recycle): back to a fresh look, kept on its ghost for the next heavy arrow. Its strand is one of
+            /// the ghost's children, which go.</summary>
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            internal void Stash() {
+                strand = null; strandCurve = null; trail = null; shaftHalf = 0.008f; Glow = 1f;
+            }
+#endif
 
             /// <summary>Played instead of the volley's slide-out when heavy arrows slide out (VolleyFx.Beats); false when
             /// SlideSound is empty, so the volley's plays.</summary>

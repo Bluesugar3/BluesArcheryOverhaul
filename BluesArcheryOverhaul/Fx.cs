@@ -102,17 +102,30 @@ namespace BluesArcheryOverhaul {
         internal static void Bolt(Vector3 a, Vector3 b, float amplitude, float life, float width, Color head, Color tail, int kinks = 4, float delay = 0f) {
             using var _t = Timing.Begin(T_Bolt);
             if (LineMaterial() == null) return;
+#if QUEST
+            Flicker f = Flicker.Take(); // Quest: a kept bolt (a new one costs about 4 ms on the headset: QuestStock)
+            f.a = a; f.b = b; f.amplitude = amplitude; f.life = life; f.width = width; f.head = head; f.tail = tail; f.points = kinks + 2; f.delay = delay;
+            f.Begin();
+#else
             var f = new GameObject("ArcheryBolt").AddComponent<Flicker>();
             f.a = a; f.b = b; f.amplitude = amplitude; f.life = life; f.width = width; f.head = head; f.tail = tail; f.points = kinks + 2; f.delay = delay;
+#endif
         }
 
         static readonly int T_Flash = Timing.Section("look Fx.Flash (new light)");
         internal static void Flash(Vector3 pos, Color color, float brightness, float range, float life, float delay = 0f) {
             using var _t = Timing.Begin(T_Flash);
+#if QUEST
+            FlashLight f = FlashLight.Take(); // Quest: a kept light (QuestStock)
+            f.transform.position = pos;
+            f.color = color; f.brightness = brightness; f.range = range; f.life = life; f.delay = delay;
+            f.Begin();
+#else
             var go = new GameObject("ArcheryFlash");
             go.transform.position = pos;
             var f = go.AddComponent<FlashLight>();
             f.color = color; f.brightness = brightness; f.range = range; f.life = life; f.delay = delay;
+#endif
         }
 
         // ---------------------------------------------------------------- the game's own assets, by name
@@ -141,6 +154,9 @@ namespace BluesArcheryOverhaul {
         internal static PooledObjectDefinition? FindEffect(string names) {
             if (effects.TryGetValue(names, out PooledObjectDefinition? cached) && cached != null) return cached;
             if (!Names(names).Any() || MissedRecently(effectMisses, names)) return null;
+#if QUEST
+            return QuestFindEffect(names);
+#endif
             using var _t = Timing.Begin(TFindEffect, names); // G5: the search only (cache hits and recent misses return above)
             PooledObjectDefinition[] all = Resources.FindObjectsOfTypeAll<PooledObjectDefinition>();
             PooledObjectDefinition? hit = null;
@@ -190,6 +206,9 @@ namespace BluesArcheryOverhaul {
         internal static SoundEffectSet? FindSound(string names) {
             if (sounds.TryGetValue(names, out SoundEffectSet? cached) && cached != null) return cached;
             if (!Names(names).Any() || MissedRecently(soundMisses, names)) return null;
+#if QUEST
+            return QuestFindSound(names);
+#endif
             using var _t = Timing.Begin(TFindSound, names); // G5: the search only
             SoundEffectSet[] all = Resources.FindObjectsOfTypeAll<SoundEffectSet>();
             SoundEffectSet? hit = null;
@@ -208,6 +227,75 @@ namespace BluesArcheryOverhaul {
         /// on its list's FIRST name is kept (it is keyed by its own names string, so a changed setting is a new key; a destroyed asset
         /// fails the cached != null test and is searched again; a new search would find that first name again), which saves a full
         /// FindObjectsOfTypeAll per name on the first shots after a save. One found on a later name is dropped as before.</summary>
+#if QUEST
+        // Quest: every first use of a name scanned every loaded asset and read every name (20-30 ms each on the headset; 12 effects
+        // and 15 sounds in one session, 2026-11-25). One scan indexes every name instead (QuestStock runs it while idle after
+        // joining); a name the index lacks scans again at most once a minute. Matching is as above: the first asset, in the order
+        // the game lists them, whose own name (or, for an effect, its prefab's) is the name.
+        static Dictionary<string, PooledObjectDefinition>? effectIndex;
+        static Dictionary<string, SoundEffectSet>? soundIndex;
+        static float effectIndexAt = -999f, soundIndexAt = -999f;
+        const float IndexAgeSeconds = 60f;
+
+        internal static void IndexEffects() {
+            using var _t = Timing.Begin(TFindEffect, "index");
+            var index = new Dictionary<string, PooledObjectDefinition>();
+            foreach (PooledObjectDefinition d in Resources.FindObjectsOfTypeAll<PooledObjectDefinition>()) {
+                if (d == null) continue;
+                string n = d.name;
+                if (!string.IsNullOrEmpty(n) && !index.ContainsKey(n)) index[n] = d;
+                var pf = d.Prefab;
+                if (pf != null) { string p = pf.name; if (!string.IsNullOrEmpty(p) && !index.ContainsKey(p)) index[p] = d; }
+            }
+            effectIndex = index; effectIndexAt = Time.unscaledTime;
+        }
+
+        internal static void IndexSounds() {
+            using var _t = Timing.Begin(TFindSound, "index");
+            var index = new Dictionary<string, SoundEffectSet>();
+            foreach (SoundEffectSet s in Resources.FindObjectsOfTypeAll<SoundEffectSet>()) {
+                if (s == null) continue;
+                string n = s.name;
+                if (!string.IsNullOrEmpty(n) && !index.ContainsKey(n)) index[n] = s;
+            }
+            soundIndex = index; soundIndexAt = Time.unscaledTime;
+        }
+
+        static T? Lookup<T>(Dictionary<string, T> index, string names, out bool first) where T : UnityEngine.Object {
+            first = true;
+            foreach (string n in Names(names)) {
+                if (index.TryGetValue(n, out T? hit) && hit != null) return hit;
+                first = false;
+            }
+            return null;
+        }
+
+        static PooledObjectDefinition? QuestFindEffect(string names) {
+            if (effectIndex == null) IndexEffects();
+            PooledObjectDefinition? hit = Lookup(effectIndex!, names, out bool first);
+            if (hit == null && Time.unscaledTime - effectIndexAt > IndexAgeSeconds) { IndexEffects(); hit = Lookup(effectIndex!, names, out first); }
+            if (hit != null) { effects[names] = hit; effectMisses.Remove(names); Fallback(effectFallbacks, names, !first); }
+            else Missed(effectMisses, names);
+            return hit;
+        }
+
+        static SoundEffectSet? QuestFindSound(string names) {
+            if (soundIndex == null) IndexSounds();
+            SoundEffectSet? hit = Lookup(soundIndex!, names, out bool first);
+            if (hit == null && Time.unscaledTime - soundIndexAt > IndexAgeSeconds) { IndexSounds(); hit = Lookup(soundIndex!, names, out first); }
+            if (hit != null) { sounds[names] = hit; soundMisses.Remove(names); Fallback(soundFallbacks, names, !first); }
+            else Missed(soundMisses, names);
+            return hit;
+        }
+
+        internal static bool EffectsIndexed => effectIndex != null;
+        internal static bool SoundsIndexed => soundIndex != null;
+        internal static int StockBolts => Flicker.Spare;
+        internal static int StockLights => FlashLight.Spare;
+        internal static void StockBolt() => Flicker.Stock();
+        internal static void StockLight() => FlashLight.Stock();
+#endif
+
         internal static void ClearAssetCache() {
             effectMisses.Clear(); soundMisses.Clear();
             foreach (string names in effectFallbacks) effects.Remove(names);
@@ -272,13 +360,47 @@ namespace BluesArcheryOverhaul {
 #endif
             internal Vector3 a, b; internal float amplitude, life, width, delay; internal int points = 6; internal Color head, tail;
             LineRenderer line = null!; float start, next;
+#if QUEST
+            // Quest: bolts are kept and used again (QuestStock): a new one cost about 4 ms on the headset (2026-11-25)
+            static readonly Stack<Flicker> spare = new Stack<Flicker>();
+            bool begun;
+            internal static int Spare => spare.Count;
+            internal static Flicker Take() {
+                while (spare.Count > 0) { Flicker k = spare.Pop(); if (k != null) { k.gameObject.SetActive(true); return k; } }
+                return New();
+            }
+            internal static Flicker New() => new GameObject("ArcheryBolt").AddComponent<Flicker>();
+            internal static void Stock() { Flicker k = New(); k.gameObject.SetActive(false); spare.Push(k); }
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            internal void Begin() {
+                begun = true;
+                start = Time.time + delay; next = 0f;
+                if (line == null) line = NewLine(gameObject, points, width, true);
+                else { line.positionCount = points; line.widthMultiplier = width; }
+                line.enabled = false;
+            }
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            void Give() {
+                begun = false;
+                if (line != null) line.enabled = false;
+                if (spare.Count >= 96) { Destroy(gameObject); return; }
+                gameObject.SetActive(false);
+                spare.Push(this);
+            }
+            void Start() { if (!begun) Begin(); }
+#else
             void Start() { start = Time.time + delay; line = NewLine(gameObject, points, width, true); line.enabled = false; }
+#endif
             static readonly int TUpdate = Timing.Section("Update Fx.Flicker");
             void Update() {
                 using var _t = Timing.Begin(TUpdate);
                 float t = Time.time - start;
                 if (t < 0f) return;
+#if QUEST
+                if (t >= life) { Give(); return; }
+#else
                 if (t >= life) { Destroy(gameObject); return; }
+#endif
                 float k = 1f - t / life;
                 line.enabled = true;
                 line.startColor = new Color(head.r, head.g, head.b, head.a * k);
@@ -293,17 +415,50 @@ namespace BluesArcheryOverhaul {
 #endif
             internal float brightness, range, life, delay; internal Color color;
             Light lamp = null!; float start;
+#if QUEST
+            // Quest: lights are kept and used again (QuestStock), as the bolts are
+            static readonly Stack<FlashLight> spare = new Stack<FlashLight>();
+            bool begun;
+            internal static int Spare => spare.Count;
+            internal static FlashLight Take() {
+                while (spare.Count > 0) { FlashLight k = spare.Pop(); if (k != null) { k.gameObject.SetActive(true); return k; } }
+                return New();
+            }
+            internal static FlashLight New() => new GameObject("ArcheryFlash").AddComponent<FlashLight>();
+            internal static void Stock() { FlashLight k = New(); k.gameObject.SetActive(false); spare.Push(k); }
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            internal void Begin() {
+                begun = true;
+                start = Time.time + delay;
+                if (lamp == null) { lamp = gameObject.AddComponent<Light>(); lamp.type = LightType.Point; lamp.shadows = LightShadows.None; }
+                lamp.color = color; lamp.range = range; lamp.intensity = 0f;
+            }
+            [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
+            void Give() {
+                begun = false;
+                if (lamp != null) lamp.intensity = 0f;
+                if (spare.Count >= 32) { Destroy(gameObject); return; }
+                gameObject.SetActive(false);
+                spare.Push(this);
+            }
+            void Start() { if (!begun) Begin(); }
+#else
             void Start() {
                 start = Time.time + delay;
                 lamp = gameObject.AddComponent<Light>();
                 lamp.type = LightType.Point; lamp.color = color; lamp.range = range; lamp.shadows = LightShadows.None; lamp.intensity = 0f;
             }
+#endif
             static readonly int TUpdate = Timing.Section("Update Fx.FlashLight");
             void Update() {
                 using var _t = Timing.Begin(TUpdate);
                 float t = Time.time - start;
                 if (t < 0f) return;
+#if QUEST
+                if (t >= life) { Give(); return; }
+#else
                 if (t >= life) { Destroy(gameObject); return; }
+#endif
                 lamp.intensity = brightness * (1f - t / life);
             }
         }

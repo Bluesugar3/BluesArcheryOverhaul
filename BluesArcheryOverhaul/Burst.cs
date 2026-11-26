@@ -121,7 +121,11 @@ namespace BluesArcheryOverhaul {
 
             static void Destroy(Set set) {
                 for (int p = 0; p < set.arrows.Length; p++) {
+#if QUEST
+                    if (set.arrows[p] != null) Volley.Ghost.Recycle(set.arrows[p]);
+#else
                     if (set.arrows[p] != null) Object.Destroy(set.arrows[p]!.gameObject);
+#endif
                     set.arrows[p] = null;
                 }
             }

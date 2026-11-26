@@ -284,6 +284,9 @@ namespace BluesArcheryOverhaul {
             try { using (Timing.Begin(TTelemetry)) Telemetry.Tick(); } // balance telemetry, server: every 5 s the queued rows go to the writer's thread
             catch (Exception e) { MelonLogger.Error($"[Archery] Telemetry: tick failed: {e.Message}"); }
             using (Timing.Begin(TClientLoad)) Tree.ClientLoad(); // G3: a client loads the archery tree once it has joined (once a second until it is in; nothing after)
+#if QUEST
+            QuestStock.Tick(); // Quest: the warm-up after joining (indexes and kept objects, one item a frame)
+#endif
             if (Time.unscaledTime >= nextSlowPoll) {
                 nextSlowPoll = Time.unscaledTime + 2f;
                 using (Timing.Begin(TCfgPoll)) Cfg.Poll();

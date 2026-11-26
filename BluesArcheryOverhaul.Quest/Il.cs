@@ -163,11 +163,13 @@ namespace BluesArcheryOverhaul {
             return n;
         }
 
-        // Line points, one at a time: no array of any kind crosses to the game. The mod making its own game-side array (here one
-        // kept buffer per length, filled each frame) ended the game process the first time the lock's cage drew with it
-        // (2026-11-25), as its own physics arrays did (2026-11-22); a managed array would be converted to a new game array per call.
-        internal static void SetPositions(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) {
-            QuestWatch.Mark("lines: points set one by one");
+        // Line points in one call: the interop converts the managed array to a new game array for the call (as the PC line compiles
+        // to on Quest; it ran on the headset for the Fill's strands since 2026-11-22). One point at a time was about 170 calls a
+        // frame for a Fill (2 ms a frame on the headset, 2026-11-25). The lock's cage alone keeps SetPositionsEach: a buffer the mod
+        // kept and refilled crashed it (2026-11-25), and it has never run with the conversion.
+        internal static void SetPositions(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) => line.SetPositions(points);
+
+        internal static void SetPositionsEach(UnityEngine.LineRenderer line, UnityEngine.Vector3[] points) {
             int n = Math.Min(points.Length, line.positionCount);
             for (int i = 0; i < n; i++) line.SetPosition(i, points[i]);
         }

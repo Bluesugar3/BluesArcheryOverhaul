@@ -299,7 +299,7 @@ namespace BluesArcheryOverhaul {
             if (lr.positionCount != n) lr.positionCount = n;
             if (lr.loop != closed) lr.loop = closed;
 #if QUEST
-            Il.SetPositions(lr, points);
+            Il.SetPositionsEach(lr, points);
 #else
             lr.SetPositions(points);
 #endif

@@ -1571,9 +1571,18 @@ namespace BluesArcheryOverhaul {
             internal static EmberTrail? AttachTo(Transform parent, float widthScale, float alpha = 1f, float lengthScale = 1f) {
                 float seconds = trailSeconds.Value * Mathf.Max(0f, lengthScale), width = trailWidth.Value * Mathf.Max(0f, widthScale);
                 if (seconds <= 0f || width <= 0f || Fx.LineMaterial() == null) return null;
+#if QUEST
+                // Quest: a trail that has faded is used again (a new one costs about 4 ms on the headset: QuestStock)
+                EmberTrail? kept = TakeFaded();
+                GameObject go = kept != null ? kept.gameObject : new GameObject("ArcheryEmberTrail");
+                go.transform.SetParent(parent, false);
+                TrailRenderer tr = kept != null ? kept.trail : go.AddComponent<TrailRenderer>();
+                tr.emitting = true;
+#else
                 var go = new GameObject("ArcheryEmberTrail");
                 go.transform.SetParent(parent, false);
                 TrailRenderer tr = go.AddComponent<TrailRenderer>();
+#endif
                 tr.material = Fx.LineMaterial();
                 tr.time = seconds;
                 tr.widthMultiplier = width;
@@ -1585,7 +1594,13 @@ namespace BluesArcheryOverhaul {
                 tr.startColor = new Color(c.r, c.g, c.b, c.a * Mathf.Clamp01(alpha));
                 tr.endColor = new Color(c.r, c.g, c.b, 0f);
                 tr.Clear();
+#if QUEST
+                EmberTrail t = kept ?? go.AddComponent<EmberTrail>();
+                t.enabled = true;
+                t.still = 0f;
+#else
                 EmberTrail t = go.AddComponent<EmberTrail>();
+#endif
                 t.trail = tr;
                 t.born = Time.time;
                 t.last = go.transform.position;
@@ -1615,8 +1630,29 @@ namespace BluesArcheryOverhaul {
                 enabled = false;
                 if (trail != null) trail.emitting = false;
                 transform.SetParent(null, true);
+#if QUEST
+                if (fading.Count < 32) { fadedAt = Time.time + (trail != null ? trail.time + 0.05f : 0f); fading.Add(this); return; }
+#endif
                 Destroy(gameObject, trail != null ? trail.time + 0.05f : 0f);
             }
+
+#if QUEST
+            static readonly List<EmberTrail> fading = new List<EmberTrail>();
+            float fadedAt;
+
+            // a let-go trail whose drawing has faded out, or null
+            static EmberTrail? TakeFaded() {
+                float now = Time.time;
+                for (int i = 0; i < fading.Count; i++) {
+                    EmberTrail k = fading[i];
+                    if (k == null || k.trail == null) { fading.RemoveAt(i); i--; continue; }
+                    if (now < k.fadedAt) continue;
+                    fading.RemoveAt(i);
+                    return k;
+                }
+                return null;
+            }
+#endif
         }
 
         /// <summary>Charge 2 and 3: a dust-coloured circle on the ground under the hit, growing from DustRingFrom to

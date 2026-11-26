@@ -95,7 +95,11 @@ namespace BluesArcheryOverhaul {
         [Il2CppInterop.Runtime.Attributes.HideFromIl2Cpp]
 #endif
         void End() {
+#if QUEST
+            if (ghost != null) Volley.Ghost.Recycle(ghost);
+#else
             if (ghost != null) Destroy(ghost.gameObject);
+#endif
             ghost = null;
             Destroy(gameObject);
         }
