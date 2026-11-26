@@ -85,7 +85,9 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 
 ## Install
 
-Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.15; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.16; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3), and every player needs the same version as the server.
+
+If `QuickshotRing.dll` is in your `Mods` folder, delete it: it is an old copy, and while it is there the new one does not start.
 
 ### Quest
 

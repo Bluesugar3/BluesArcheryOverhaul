@@ -216,11 +216,11 @@ namespace BluesArcheryOverhaul {
                                          JoinCheck check, bool settingsRefuse) {
             var v = new JoinVerdict();
             if (hello == null) {
-                v.Problem = $"This server needs the mod {ModName} ({serverVersion}). Install it, then join again.";
+                v.Problem = $"This server needs {ModName} {serverVersion}. Install that version (PC: MelonLoader 0.7.3), delete QuickshotRing.dll from Mods if it is there (an old copy), then join again.";
             } else {
                 JoinHello h = hello.Value;
                 v.SettingsDiffer = h.Check != serverCheck;
-                if (h.Wire < serverWire) v.Problem = $"Your {ModName} {h.Version} is too old for this server's {serverVersion}. Update it, then join again.";
+                if (h.Wire < serverWire) v.Problem = $"Your {ModName} {h.Version} is too old for this server. Install {serverVersion}, then join again.";
                 else if (h.Wire > serverWire) v.Problem = $"Your {ModName} {h.Version} is newer than this server's {serverVersion}. The server needs an update first.";
                 else if (v.SettingsDiffer && settingsRefuse) v.Problem = $"Your {ModName} settings differ from this server's. Ask the server owner for its {CfgName}, then join again.";
             }
