@@ -673,7 +673,12 @@ namespace BluesArcheryOverhaul {
                 l.spiralLength = Mathf.Min(l.length, Mathf.Max(0f, spiralMax.Value));
                 if (count > 0 && spiralRadius.Value > 0f && l.spiralLength > 0.5f) {
                     float turn = Mathf.Max(0.2f, spiralTurn.Value);
+#if QUEST
+                    // Quest: 8 per turn, at most 160 (12 and 480 cost about 10 ms a frame on the headset while a line showed, 2026-11-25)
+                    int points = Mathf.Clamp(Mathf.CeilToInt(l.spiralLength / turn * 8f), 8, 160);
+#else
                     int points = Mathf.Clamp(Mathf.CeilToInt(l.spiralLength / turn * 12f), 8, 480); // 12 per turn, capped for long shots
+#endif
                     l.buffer = new Vector3[points];
                     l.strands = new LineRenderer[count];
                     for (int i = 0; i < count; i++) {

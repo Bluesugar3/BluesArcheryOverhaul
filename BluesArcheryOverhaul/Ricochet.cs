@@ -791,12 +791,34 @@ namespace BluesArcheryOverhaul {
             LineRenderer line = null!;
             Color colour;
             float born, life, tailAlpha;
+#if QUEST
+            static readonly Stack<Line> spare = new Stack<Line>();
+            bool kept;
+#endif
 
             internal static void Create(string name, Color c, float width, float seconds, int points, Func<int, int, Vector3> at, float tail) {
                 if (Fx.LineMaterial() == null) { LookFailed("no line material"); return; }
+#if QUEST
+                // Quest: a kept line (a new one costs about 4 ms on the headset: every skip made one)
+                Line? l = null;
+                while (spare.Count > 0 && l == null) { l = spare.Pop(); if (l != null && l.line == null) { Destroy(l.gameObject); l = null; } }
+                if (l != null) {
+                    l.kept = false;
+                    l.gameObject.name = name;
+                    l.gameObject.SetActive(true);
+                    l.line.positionCount = points;
+                    l.line.widthMultiplier = width;
+                }
+                else {
+                    var go = new GameObject(name);
+                    l = go.AddComponent<Line>();
+                    l.line = Fx.NewLine(go, points, width, false);
+                }
+#else
                 var go = new GameObject(name);
                 Line l = go.AddComponent<Line>();
                 l.line = Fx.NewLine(go, points, width, false);
+#endif
                 for (int i = 0; i < points; i++) l.line.SetPosition(i, at(i, points));
                 l.colour = c; l.born = Time.time; l.life = seconds; l.tailAlpha = tail;
                 l.Paint(1f);
@@ -814,7 +836,18 @@ namespace BluesArcheryOverhaul {
             void Update() {
                 using var _t = Timing.Begin(TUpdate);
                 float t = (Time.time - born) / life;
+#if QUEST
+                if (t >= 1f) {
+                    if (kept) return;
+                    if (spare.Count >= 32 || line == null) { Destroy(gameObject); return; }
+                    gameObject.SetActive(false);
+                    kept = true;
+                    spare.Push(this);
+                    return;
+                }
+#else
                 if (t >= 1f) { Destroy(gameObject); return; }
+#endif
                 Paint(1f - t);
             }
         }

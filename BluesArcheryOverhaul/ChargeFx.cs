@@ -540,7 +540,11 @@ namespace BluesArcheryOverhaul {
             }
         }
 
+#if QUEST
+        const int StrandPoints = 16, StrandKeys = 7; // Quest: 16 points (28 cost about 1 ms a held frame there with the halos)
+#else
         const int StrandPoints = 28, StrandKeys = 7; // a Gradient takes at most 8 keys
+#endif
         const float DoneWhiteness = 0.3f;            // a completed strand's lean toward white before the stage brightness
 
         // Reused every frame by every strand (the main thread only): no allocation in the draw loop. A LineRenderer copies

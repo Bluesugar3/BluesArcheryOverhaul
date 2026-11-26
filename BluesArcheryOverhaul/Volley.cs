@@ -1563,6 +1563,10 @@ namespace BluesArcheryOverhaul {
             static MaterialPropertyBlock? block;
             static readonly int ProgressId = Shader.PropertyToID("_Progress"); // the property the game animates (ToolBasedEffectBase.cs:8)
             float headProgress = 1f, shaftBoost = 1f;
+#if QUEST
+            bool headShown = true;        // Paint: the head's object is active (it is when made)
+            int shimmerKeysFrame = -99;   // PaintShimmer: the frame its colours were last set
+#endif
 
             /// <summary>Ghost 0 (the top inner ghost) carries the ramp test's material unless <paramref name="rampTestOk"/> is false (echoes).</summary>
             static readonly int T_Create = Timing.Section("look Volley.Create (ghost / needle)");
@@ -1939,7 +1943,13 @@ namespace BluesArcheryOverhaul {
                     shaft.endColor = new Color(c.r, c.g, c.b, Mathf.Min(1f, tailAlpha * k));
                 }
                 head.SetPositionAndRotation(tip, Quaternion.LookRotation(direction) * headOffset);
+#if QUEST
+                // Quest: set only when it changes (every call made a new wrapper for the head's object: garbage every frame per ghost)
+                bool showHead = tipAlpha > 0.5f;
+                if (showHead != headShown) { head.gameObject.SetActive(showHead); headShown = showHead; }
+#else
                 head.gameObject.SetActive(tipAlpha > 0.5f);
+#endif
                 if (heavy != null) heavy.Painted(tip, direction, drawnLength, tipAlpha * brightness, held);
                 else if (glint != null || tone.Glint > 0.01f) PaintGlint(tip, direction, tipAlpha);
             }
@@ -1973,7 +1983,11 @@ namespace BluesArcheryOverhaul {
                     shimmerAlphas[i] = new GradientAlphaKey(Mathf.Clamp01(a * k), time);
                 }
 #if QUEST
-                Il.SetPositions(shaft, shimmerPoints);
+                // Quest: the points one at a time (no new game array per ghost per frame), and the colours (two new arrays each)
+                // every third frame: up to 45 new arrays a frame for a held volley set off the runtime's garbage collector
+                Il.SetPositionsEach(shaft, shimmerPoints);
+                if (Time.frameCount - shimmerKeysFrame < 3) return;
+                shimmerKeysFrame = Time.frameCount;
 #else
                 shaft.SetPositions(shimmerPoints);
 #endif
@@ -2117,10 +2131,16 @@ namespace BluesArcheryOverhaul {
             static int headsFrame = -1;
             static List<MeshFilter>? heads;
             static List<MeshFilter> HeadMeshesNow(Arrow arrow, Transform tip) {
-                if (heads != null && headsFrame == Time.frameCount && headsArrow == arrow && headsTip == tip) return heads;
+                if (heads != null && headsArrow == arrow && headsTip == tip && (headsFrame == Time.frameCount || StillThere(heads))) return heads;
                 heads = HeadMeshes(arrow, tip);
                 headsArrow = arrow; headsTip = tip; headsFrame = Time.frameCount;
                 return heads;
+            }
+
+            // the same arrow's head, a later frame (Burst's pellet arrows come at the rack): kept while every mesh it found is still there
+            static bool StillThere(List<MeshFilter> list) {
+                foreach (MeshFilter mf in list) if (mf == null || mf.sharedMesh == null) return false;
+                return true;
             }
 #endif
 
