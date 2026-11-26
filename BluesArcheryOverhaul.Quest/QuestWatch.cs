@@ -54,6 +54,18 @@ namespace BluesArcheryOverhaul {
         static class TryOutOpening {
             static void Prefix(SkillOrb orb) {
                 Arm($"a try-out is opening ({(orb != null ? orb.name : "no orb")})");
+                if (!On || orb == null) return;
+                // what the game's Open() reads next, one read at a time (a crash after one of these names the next read)
+                MelonLogger.Msg("[Archery] Quest watch: try-out reads: slot " + (orb.Slot != null ? orb.Slot.Name : "null"));
+                ProfessionSkill sk = orb.Skill;
+                MelonLogger.Msg("[Archery] Quest watch: try-out reads: skill " + (sk == null ? "null" : sk.name + " (" + sk.GetIl2CppType().FullName + ")"));
+                if (sk == null) return;
+                var st = sk.StaticContentPrefabs; MelonLogger.Msg("[Archery] Quest watch: try-out reads: static content " + (st == null ? "null" : st.Count.ToString()));
+                var dy = sk.DynamicContentPrefabs; MelonLogger.Msg("[Archery] Quest watch: try-out reads: dynamic content " + (dy == null ? "null" : dy.Count.ToString()));
+                var gl = sk.PracticeGlyphSprites; MelonLogger.Msg("[Archery] Quest watch: try-out reads: glyphs " + (gl == null ? "null" : gl.Length.ToString()));
+                var icon = orb.Slot != null ? orb.Slot.SlotIcon : null; MelonLogger.Msg("[Archery] Quest watch: try-out reads: icon " + (icon == null ? "null" : icon.name));
+                
+                MelonLogger.Msg("[Archery] Quest watch: try-out reads: all read");
             }
             static void Postfix() { if (On) MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
         }
