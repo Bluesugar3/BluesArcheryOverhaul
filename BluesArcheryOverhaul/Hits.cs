@@ -405,7 +405,11 @@ namespace BluesArcheryOverhaul {
 #else
             if (tool == null || h == null || h is PlayerHealth) return false;
 #endif
+#if QUEST
+            foreach (object o in Il.Detectors(h))
+#else
             foreach (object o in h.ImpactDetectors)
+#endif
 #if QUEST
                 if ((o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector d) && BestPart(tool, d, out _, out _, out _)) return true;
 #else

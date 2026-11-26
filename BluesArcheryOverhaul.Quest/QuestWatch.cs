@@ -70,13 +70,15 @@ namespace BluesArcheryOverhaul {
             static void Postfix() { if (On) MelonLogger.Msg("[Archery] Quest watch: the game's Open(orb) returned"); }
         }
 
-        [HarmonyPatch(typeof(Shooter), nameof(Shooter.Shoot))]
+        // not patched since 2026-11-25: arming on every shot and grab logged hundreds of lines a shot (felt as an FPS drop)
+        // [HarmonyPatch] (shot, grab)
         static class Shooting {
             [HarmonyPriority(1000)]
             static void Prefix() { Arm("a shot", 8f); }
         }
 
-        [HarmonyPatch(typeof(BowString), "StringGrabbed")]
+        // not patched since 2026-11-25: arming on every shot and grab logged hundreds of lines a shot (felt as an FPS drop)
+        // [HarmonyPatch] (shot, grab)
         static class Grabbed {
             static void Prefix() { Arm("a bow string was grabbed", 20f); }
         }

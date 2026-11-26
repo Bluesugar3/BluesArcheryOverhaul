@@ -205,7 +205,11 @@ namespace BluesArcheryOverhaul {
             if (p.h == null) return false;
             // the part it met refused (or had no detector): the creature's other detectors (b4b-review M-3; Trace counts only a
             // creature one of them accepts)
+#if QUEST
+            foreach (object o in Il.Detectors(p.h))
+#else
             foreach (object o in p.h.ImpactDetectors)
+#endif
 #if QUEST
                 if ((o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector d) && !Il.Same(d, p.det) && Hits.Apply(tool, d, p.hit.point, p.hit.normal, multiplier, out what)) return true;
 #else

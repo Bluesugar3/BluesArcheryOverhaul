@@ -321,7 +321,11 @@ namespace BluesArcheryOverhaul {
             using var _tel = HitScope.As(DealtBy.Ricochet, release); // balance telemetry
             Vector3 normal = (fromC - at).sqrMagnitude > 1e-6f ? (fromC - at).normalized : Vector3.up;
             bool dealt = false; how = "no detector";
+#if QUEST
+            foreach (object o in Il.Detectors(target)) {
+#else
             foreach (object o in target.ImpactDetectors) {
+#endif
 #if QUEST
                 if (!(o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector det)) continue;
 #else

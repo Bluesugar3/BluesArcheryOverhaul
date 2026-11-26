@@ -250,7 +250,11 @@ namespace BluesArcheryOverhaul {
                 Vector3 at = new Vector3(c.X, c.Y, c.Z);
                 Vector3 normal = (point - at).sqrMagnitude > 1e-6f ? (point - at).normalized : -axis;
                 bool hitOne = false; string how = "no detector";
+#if QUEST
+                foreach (object o in Il.Detectors(h)) {
+#else
                 foreach (object o in h.ImpactDetectors) {
+#endif
 #if QUEST
                     if (!(o as Il2CppInterop.Runtime.InteropTypes.Il2CppObjectBase).Is(out ImpactDetector det)) continue;
 #else

@@ -175,6 +175,16 @@ namespace BluesArcheryOverhaul {
         // the shimmer and Quickdraw 4's tint). Keep it so until the cause of the array crashes is known.
         internal static void SetKeys(UnityEngine.Gradient gradient, UnityEngine.GradientColorKey[] colours, UnityEngine.GradientAlphaKey[] alphas) => gradient.SetKeys(colours, alphas);
 
+        /// <summary>A creature's impact detectors, read by index from the game's own list. Walking HealthObject.ImpactDetectors (a
+        /// non-generic IEnumerable) on Quest threw "Collection was modified" from the game's list enumerator on every Quickdraw 4
+        /// shot (2026-11-25), so the client's line shot failed and its arrow was left at the line's far end.</summary>
+        internal static IEnumerable<ImpactDetector> Detectors(HealthObject h) {
+            var list = h != null ? h.impactDetectors : null;
+            if (list == null) yield break;
+            int n = list.Count;
+            for (int i = 0; i < n && i < list.Count; i++) { ImpactDetector d = list[i]; if (d != null) yield return d; }
+        }
+
         sealed class PointerComparer<T> : IEqualityComparer<T> where T : class {
             internal static readonly PointerComparer<T> Instance = new PointerComparer<T>();
             public bool Equals(T? a, T? b) => Same(a, b);

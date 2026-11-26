@@ -708,6 +708,9 @@ namespace BluesArcheryOverhaul {
             if (items != null) to.Field("dynamicContentPrefabs").SetValue(new List<PositionedNetworkPrefab>(items));
 #endif
             if (glyphs != null) to.Field("practiceGlyphSprites").SetValue((Sprite[])glyphs.Clone());
+#if QUEST
+            QuestSkills.Pin(target);
+#endif
             MelonLogger.Msg($"[Archery] Tree: '{target.name}' try-out copied from '{source.name}': {props?.Count ?? 0} prop(s), {items?.Count ?? 0} item(s), {glyphs?.Length ?? 0} glyph(s)");
         }
 
@@ -912,6 +915,9 @@ namespace BluesArcheryOverhaul {
             s.Field("staticContentPrefabs").SetValue(new List<PositionedStaticPrefab>());
             s.Field("dynamicContentPrefabs").SetValue(new List<PositionedNetworkPrefab>());
             s.Field("practiceGlyphSprites").SetValue(new Sprite[0]);
+#if QUEST
+            QuestSkills.Pin(skill);
+#endif
             return skill;
         }
 

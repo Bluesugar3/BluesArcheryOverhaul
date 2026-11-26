@@ -20,6 +20,18 @@ namespace BluesArcheryOverhaul {
             } catch (Exception e) { MelonLogger.Error($"[Archery] Quest: could not register the later orbs' skill class: {e}"); }
         }
 
+        // The game's collector never looks inside an object of a class the mod registered (Il2CppInterop builds the class without
+        // the game's "holds references" flag or field map), so the lists and arrays a QuestPassiveSkill points to looked unused and
+        // were freed: on the headset (2026-11-25) Auto Dock read 0/2/2 try-out entries, later 1757/0/0, Shatter 9, and opening a later
+        // orb's try-out ended the game. The mod's own wrapper of each holds a strong handle on it, so keeping the wrappers keeps them.
+        static readonly System.Collections.Generic.Dictionary<IntPtr, object?[]> pinned = new System.Collections.Generic.Dictionary<IntPtr, object?[]>();
+
+        /// <summary>Keeps the try-out lists and glyphs of a skill of the mod's registered class alive. Call after every write of them.</summary>
+        internal static void Pin(ProfessionSkill skill) {
+            if (skill == null || skill.GetIl2CppType().Name != nameof(QuestPassiveSkill)) return;
+            pinned[skill.Pointer] = new object?[] { skill.staticContentPrefabs, skill.dynamicContentPrefabs, skill.practiceGlyphSprites };
+        }
+
         internal static ProfessionSkill NewPassive(string name) {
             ProfessionSkill? made = null;
             string how = "";
