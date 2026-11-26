@@ -275,10 +275,29 @@ namespace BluesArcheryOverhaul {
         internal static PelletStreak? Create(Color c, float brightness) {
             using var _t = Timing.Begin(T_Create);
             if (Fx.LineMaterial() == null) return null;
+#if QUEST
+            // Quest: a kept streak (a new one costs about 3 ms on the headset, 15 at each Burst release)
+            PelletStreak? s = null;
+            while (spare.Count > 0 && s == null) { s = spare.Pop(); if (s != null && s.line == null) { Destroy(s.gameObject); s = null; } }
+            if (s != null) {
+                s.kept = false;
+                s.gameObject.SetActive(true);
+                s.offset = Vector3.zero; s.joinFrom = 0f; s.joinSeconds = 0f; s.lengthScale = 1f; s.steady = false;
+                s.width = Volley.ShaftWidth;
+                s.line.widthMultiplier = s.width;
+            }
+            else {
+                var go = new GameObject("ArcheryPelletStreak");
+                s = go.AddComponent<PelletStreak>();
+                s.width = Volley.ShaftWidth;
+                s.line = Fx.NewLine(go, 2, s.width, true);
+            }
+#else
             var go = new GameObject("ArcheryPelletStreak");
             PelletStreak s = go.AddComponent<PelletStreak>();
             s.width = Volley.ShaftWidth;
             s.line = Fx.NewLine(go, 2, s.width, true);
+#endif
             s.colour = c;
             s.brightness = brightness;
             s.line.enabled = false; // until its first position
@@ -325,7 +344,34 @@ namespace BluesArcheryOverhaul {
 #endif
         internal void End(bool puff, Vector3 at, Vector3 dir) {
             if (puff) VolleyFx.Sparks.Emit(at, dir, Burst.PuffSpecks, new Color(colour.r, colour.g, colour.b, brightness), PuffSpread, PuffSpeed);
+#if QUEST
+            if (kept) return; // ended twice: kept once only
+            if (line != null) line.enabled = false;
+            if (spare.Count >= 48 || line == null) { Destroy(gameObject); return; }
+            gameObject.SetActive(false);
+            kept = true;
+            spare.Push(this);
+#else
             Destroy(gameObject);
+#endif
         }
+
+#if QUEST
+        static readonly System.Collections.Generic.Stack<PelletStreak> spare = new System.Collections.Generic.Stack<PelletStreak>();
+        bool kept;
+        internal static int Spare => spare.Count;
+        /// <summary>QuestStock: one more kept streak.</summary>
+        internal static void Stock() {
+            if (Fx.LineMaterial() == null) return;
+            var go = new GameObject("ArcheryPelletStreak");
+            PelletStreak s = go.AddComponent<PelletStreak>();
+            s.width = Volley.ShaftWidth;
+            s.line = Fx.NewLine(go, 2, s.width, true);
+            s.line.enabled = false;
+            go.SetActive(false);
+            s.kept = true;
+            spare.Push(s);
+        }
+#endif
     }
 }

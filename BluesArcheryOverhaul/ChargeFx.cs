@@ -421,8 +421,18 @@ namespace BluesArcheryOverhaul {
         }
 
         static readonly int T_Draw = Timing.Section("look ChargeFx.Draw (per Fill per frame)");
+#if QUEST
+        // Quest: the Fill cost about 2 ms a held frame on the headset (2026-11-25) with no single heavy call: its parts, timed
+        static readonly int T_DrawStrands = Timing.Section("look ChargeFx.Draw: strands"),
+            T_DrawKnots = Timing.Section("look ChargeFx.Draw: knots"),
+            T_DrawCore = Timing.Section("look ChargeFx.Draw: core, halo, ember, shell"),
+            T_DrawSetup = Timing.Section("look ChargeFx.Draw: stages, Holy, camera");
+#endif
         static void Draw(Fill f, Arrow arrow) {
             using var _t = Timing.Begin(T_Draw);
+#if QUEST
+            TimingScope setupScope = Timing.Begin(T_DrawSetup);
+#endif
             Transform tipT = arrow.ArrowTip != null ? arrow.ArrowTip.transform : arrow.transform;
             Vector3 tip = tipT.position, fwd = arrow.transform.forward;
             float L = Mathf.Max(0.3f, (tip - f.bow.transform.position).magnitude); // the string's grab point, as Volley's HeldLayout
@@ -464,8 +474,15 @@ namespace BluesArcheryOverhaul {
             // the cord and head take the armed pulse; without it, the plain squeeze as before.
             float strandSqueeze = wind != null ? wind.Span : baseShare > 0.001f ? share / baseShare : 1f;
             float headPulse = wind != null ? wind.Pulse : 1f;
+#if QUEST
+            setupScope.Dispose();
+            using (Timing.Begin(T_DrawStrands))
+#endif
             try { DrawStrands(f, tip, fwd, L, strandSqueeze, st, owned, t, Flare(f) * (wind != null ? wind.Pulse : pulse), wind); }
             catch (Exception e) { FrameError(e); }
+#if QUEST
+            using (Timing.Begin(T_DrawKnots))
+#endif
             if (f.stage > 0) {
                 try {
                     if (f.knots == null) f.knots = new StrandKnots();
@@ -478,6 +495,9 @@ namespace BluesArcheryOverhaul {
                 catch (Exception e) { FrameError(e); StopWindUp(f, "drawing failed"); } // the strands go back to the squeeze
             }
 
+#if QUEST
+            using var coreScope = Timing.Begin(T_DrawCore);
+#endif
             float b = f.local ? 1f : Volley.OtherArcherBrightness;
             float thump = Flare(f), flare = thump * pulse;
             Color back0 = BackColour, front0 = FrontColour, litColour = Color.Lerp(back0, front0, grown);

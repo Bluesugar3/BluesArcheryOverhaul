@@ -11,7 +11,7 @@ namespace BluesArcheryOverhaul {
     // burst needs more than are kept.
     internal static class QuestStock {
         const float StartAfterSeconds = 5f;
-        const int Ghosts = 16, HeavyGhosts = 8, Bolts = 24, Lights = 8;
+        const int Ghosts = 16, HeavyGhosts = 8, Bolts = 24, Lights = 8, Streaks = 15;
         static float startAt = -1f;
         static bool done;
         static int items;
@@ -29,7 +29,7 @@ namespace BluesArcheryOverhaul {
             try {
                 if (Step()) { items++; return; }
                 done = true;
-                MelonLogger.Msg($"[Archery] Quest: warm-up done ({items} items over {Time.unscaledTime - began:0.0} s: the game's effects and sounds indexed, {Volley.Ghost.Spare} ghost arrows, {Fx.StockBolts} bolts and {Fx.StockLights} lights kept)");
+                MelonLogger.Msg($"[Archery] Quest: warm-up done ({items} items over {Time.unscaledTime - began:0.0} s: the game's effects and sounds indexed, {Volley.Ghost.Spare} ghost arrows, {Fx.StockBolts} bolts, {Fx.StockLights} lights and {PelletStreak.Spare} pellet streaks kept)");
             }
             catch (Exception e) {
                 done = true;
@@ -39,12 +39,14 @@ namespace BluesArcheryOverhaul {
 
         // one item; false when there is nothing left to do
         static bool Step() {
+            if (items >= 200) return false; // a stock that cannot grow (no line material) never keeps the warm-up going
             if (!Fx.EffectsIndexed) { Fx.IndexEffects(); return true; }
             if (!Fx.SoundsIndexed) { Fx.IndexSounds(); return true; }
             if (Volley.Ghost.Spare < HeavyGhosts) { Volley.Ghost.StockShell(heavyReady: true); return true; }
             if (Volley.Ghost.Spare < Ghosts) { Volley.Ghost.StockShell(heavyReady: false); return true; }
             if (Fx.StockBolts < Bolts) { Fx.StockBolt(); return true; }
             if (Fx.StockLights < Lights) { Fx.StockLight(); return true; }
+            if (PelletStreak.Spare < Streaks) { PelletStreak.Stock(); return true; }
             return false;
         }
     }

@@ -111,11 +111,33 @@ namespace BluesArcheryOverhaul {
         /// <paramref name="buffer"/>, which is doubled while full up to <paramref name="cap"/>; still full at the cap, one warning
         /// per <paramref name="warned"/> flag naming <paramref name="what"/>. Returns how many were found.</summary>
         static readonly int T_Overlap = Timing.Section("scene Targets.Overlap (overlap sphere)");
+#if QUEST
+        static bool layersLogged;
+        // once a session, a large search's colliders by layer (which layers the creature search could leave out next)
+        static void LayersMet(Collider[] buffer, int n, string what) {
+            layersLogged = true;
+            var count = new Dictionary<int, int>();
+            for (int i = 0; i < n; i++) { Collider c = buffer[i]; if (c == null) continue; int l = c.gameObject.layer; count.TryGetValue(l, out int k); count[l] = k + 1; }
+            var parts = new List<string>();
+            foreach (KeyValuePair<int, int> kv in count) parts.Add($"{kv.Value} on {kv.Key} '{LayerMask.LayerToName(kv.Key)}'");
+            parts.Sort((a, b) => int.Parse(b.Split(' ')[0]).CompareTo(int.Parse(a.Split(' ')[0])));
+            MelonLogger.Msg($"[Archery] Quest: {what} met {n} colliders: {string.Join(", ", parts.ToArray())} (said once)");
+        }
+#endif
+
         internal static int Overlap(Vector3 centre, float radius, ref Collider[] buffer, int cap, ref bool warned, string what) {
             using var _t = Timing.Begin(T_Overlap, what);
             int n;
 #if QUEST
-            while ((n = Il.OverlapSphereNonAlloc(centre, radius, buffer, ~(1 << 2), QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
+            // Quest: every collider the game hands back is a new wrapper there (about 7 us each with its bounds read; the shot's list met
+            // about 1,900 near the shrine: 14 ms a release, 2026-11-25). A creature's hit colliders are never on the terrain, ground or
+            // wall layers (8 Terrain, 10 Ground, 11 GroundOverlay, 13 Wall, 19 TerrainWallOnly: the world the range's planner and
+            // Skyfall's ground cast read), so those are not asked for. LayersMet logs once which layers are still met.
+            const int QuestCreatureMask = ~((1 << 2) | (1 << 8) | (1 << 10) | (1 << 11) | (1 << 13) | (1 << 19));
+            while ((n = Il.OverlapSphereNonAlloc(centre, radius, buffer, QuestCreatureMask, QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
+                buffer = new Collider[buffer.Length * 2];
+            if (!layersLogged && n >= 200) LayersMet(buffer, n, what);
+            if (false) // Quest: the loop above already grows the buffer; the PC loop's body below is never run here
 #else
             while ((n = Physics.OverlapSphereNonAlloc(centre, radius, buffer, ~(1 << 2), QueryTriggerInteraction.Ignore)) == buffer.Length && buffer.Length < cap)
 #endif
