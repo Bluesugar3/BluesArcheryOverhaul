@@ -85,7 +85,7 @@ Orbs outside your main path don't give you their own shot. They add to yours:
 
 ## Install
 
-Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.13; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
+Download [`BluesArcheryOverhaul.dll`](BluesArcheryOverhaul.dll) (0.19.14; also on the [Releases](../../releases) page) and put it in your `Mods` folder. Required on both the server and the client (MelonLoader 0.7.3).
 
 ## Skyfall (admins only)
 
